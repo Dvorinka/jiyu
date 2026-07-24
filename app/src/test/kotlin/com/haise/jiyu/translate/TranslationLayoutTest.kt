@@ -15,6 +15,14 @@ class TranslationLayoutTest {
     private fun block(l: Float, t: Float, r: Float, b: Float, text: String = "x") =
         TranslatedBlock(originalText = text, translatedText = text, leftF = l, topF = t, rightF = r, bottomF = b)
 
+    private fun blockWithShape(shape: List<BubbleShapePoint>, text: String = "x") =
+        TranslatedBlock(
+            originalText = text, translatedText = text,
+            leftF = shape.minOf { it.leftF }, topF = shape.first().yF,
+            rightF = shape.maxOf { it.rightF }, bottomF = shape.last().yF,
+            shape = shape,
+        )
+
     private fun overlaps(a: PositionedTranslationBlock, b: PositionedTranslationBlock): Boolean {
         val horizontallyOverlaps = a.leftF < b.rightF && b.leftF < a.rightF
         val verticallyOverlaps = a.topF < b.maxBottomF && b.topF < a.maxBottomF
@@ -106,5 +114,39 @@ class TranslationLayoutTest {
             assertTrue(pos.rightF >= original.rightF - 1e-4f)
             assertTrue(pos.maxBottomF >= original.bottomF - 1e-4f)
         }
+    }
+
+    @Test
+    fun `block with shape uses shape bounding box and skips heuristic expansion`() {
+        val shape = listOf(
+            BubbleShapePoint(0.20f, 0.30f, 0.60f),
+            BubbleShapePoint(0.25f, 0.22f, 0.68f),
+            BubbleShapePoint(0.30f, 0.25f, 0.65f),
+        )
+        val positioned = layoutTranslationBlocks(listOf(blockWithShape(shape)))
+
+        assertEquals(1, positioned.size)
+        val pos = positioned[0]
+        // Ohraničující obdélník tvaru, ŽÁDNÁ heuristická expanze k okrajům stránky.
+        assertEquals(0.22f, pos.leftF, 0.001f)
+        assertEquals(0.68f, pos.rightF, 0.001f)
+        assertEquals(0.20f, pos.minTopF, 0.001f)
+        assertEquals(0.30f, pos.maxBottomF, 0.001f)
+    }
+
+    @Test
+    fun `blocks with and without shape can coexist in the same page`() {
+        val shape = listOf(BubbleShapePoint(0.10f, 0.10f, 0.30f), BubbleShapePoint(0.15f, 0.10f, 0.30f))
+        val plain = block(0.60f, 0.60f, 0.80f, 0.65f)
+        val positioned = layoutTranslationBlocks(listOf(blockWithShape(shape), plain))
+
+        assertEquals(2, positioned.size)
+        // Blok bez tvaru pořád projde starou heuristikou nezávisle na tom shape-based bloku
+        // (nepřekrývají se, takže by se navzájem neměly nijak omezovat) - ověřuje se, že
+        // heuristika pořád běží, ne přesná cílová hodnota (ta závisí na pozici bloku na
+        // stránce, viz dedikované heuristické testy výše).
+        val plainPositioned = positioned.first { it.block === plain }
+        assertTrue("heuristic must still expand a shape-less block beyond its own OCR bounds", plainPositioned.leftF < plain.leftF)
+        assertTrue(plainPositioned.leftF >= 0f)
     }
 }

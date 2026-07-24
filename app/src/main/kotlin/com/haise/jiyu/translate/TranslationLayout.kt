@@ -32,7 +32,33 @@ data class PositionedTranslationBlock(
  * ReaderScreen.kt) měl s čím pracovat při volbě šířky/velikosti písma bez
  * kolize se sousedy.
  */
+/**
+ * Bloky se skutečně detekovaným tvarem bubliny (viz [BubbleShapeDetector]) použijí přímo
+ * ohraničující obdélník tohohle tvaru - žádná heuristická expanze k sousedům/okrajům
+ * stránky, protože už víme přesně, kde bublina končí. Bloky bez tvaru (detekce selhala,
+ * nebo starý cache záznam ještě nedoběhl migrací) projdou beze změny starou heuristikou
+ * ([layoutHeuristic]) - viz spec docs/superpowers/specs/2026-07-24-bubble-shape-and-font-design.md.
+ */
 fun layoutTranslationBlocks(blocks: List<TranslatedBlock>): List<PositionedTranslationBlock> {
+    val shapeBased = blocks.filter { it.shape != null }
+    val heuristicBased = blocks.filter { it.shape == null }
+
+    val shapePositioned = shapeBased.map { b ->
+        val shape = b.shape!!
+        PositionedTranslationBlock(
+            block = b,
+            leftF = shape.minOf { it.leftF },
+            topF = shape.first().yF,
+            rightF = shape.maxOf { it.rightF },
+            maxBottomF = shape.last().yF,
+            minTopF = shape.first().yF,
+        )
+    }
+
+    return shapePositioned + layoutHeuristic(heuristicBased)
+}
+
+private fun layoutHeuristic(blocks: List<TranslatedBlock>): List<PositionedTranslationBlock> {
     fun verticallyOverlaps(a: TranslatedBlock, b: TranslatedBlock) = a.topF < b.bottomF && a.bottomF > b.topF
 
     val positioned = blocks.map { b ->
