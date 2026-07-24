@@ -1,15 +1,24 @@
 package com.haise.jiyu.source.demonicscans
 
+import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.BitmapRegionDecoder
+import android.graphics.Rect
 import com.haise.jiyu.source.MangaFilter
 import com.haise.jiyu.source.MangaSource
 import com.haise.jiyu.source.Page
 import com.haise.jiyu.source.SChapter
 import com.haise.jiyu.source.SManga
+import com.haise.jiyu.util.TallImageSlicer
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.jsoup.Jsoup
+import java.io.File
+import java.io.FileOutputStream
 import java.net.URLEncoder
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -29,6 +38,7 @@ import javax.inject.Singleton
 @Singleton
 class DemonicScansSource @Inject constructor(
     private val client: OkHttpClient,
+    @ApplicationContext private val context: Context,
 ) : MangaSource {
 
     override val id = "demonicscans"
@@ -144,13 +154,71 @@ class DemonicScansSource @Inject constructor(
     override suspend fun getPageList(chapter: SChapter): List<Page> = withContext(Dispatchers.IO) {
         try {
             val doc = Jsoup.parse(get("$base${chapter.url}"))
-            doc.select("img.imgholder").mapIndexedNotNull { i, img ->
+            val rawUrls = doc.select("img.imgholder").mapNotNull { img ->
                 val src = img.attr("src")
                 // Vyfiltrovat reklamní banner ("free_ads.jpg"), který má taky class="imgholder".
-                if (!src.contains("demoniclibs.com")) return@mapIndexedNotNull null
-                Page(index = i, url = src, imageUrl = src)
+                if (!src.contains("demoniclibs.com")) return@mapNotNull null
+                src
             }
+            rawUrls.flatMapIndexed { pageIndex, url -> sliceIfNeeded(chapter, pageIndex, url) }
+                .mapIndexed { i, p -> p.copy(index = i) }
         } catch (_: Exception) { emptyList() }
+    }
+
+    /**
+     * DemonicScans servíruje jednu "stránku" jako jeden souvislý obrázek, který může být
+     * extrémně vysoký (pozorováno 720x11400 px u "Somebody Stop the Pope" kap. 90) - to
+     * přesahuje maximální rozměr GPU textury na spoustě zařízení, takže se Compose Image
+     * nevykreslí vůbec, potichu, bez chybové hlášky (černá plocha - viz issue report).
+     * Takovou stránku stáhneme jednou a rozřežeme na menší kusy přes [BitmapRegionDecoder]
+     * (dekóduje jen požadovaný výřez, nemusí držet celý obrázek v paměti najednou), uložíme
+     * do cache složky appky a vrátíme jako VÍCE [Page] záznamů místo jednoho. Normální
+     * (nepřesahující limit) stránky projdou beze změny - žádné stahování navíc.
+     */
+    private fun sliceIfNeeded(chapter: SChapter, pageIndex: Int, url: String): List<Page> {
+        val original = Page(index = pageIndex, url = url, imageUrl = url)
+        val cacheDir = File(context.cacheDir, "demonicscans_slices/${chapter.url.hashCode()}")
+
+        // Cache hit z dřívějšího otevření stejné kapitoly - žádné nové stahování/řezání.
+        cacheDir.listFiles { f -> f.name.startsWith("${pageIndex}_") }
+            ?.sortedBy { it.name.substringAfter('_').substringBefore('.').toIntOrNull() ?: 0 }
+            ?.takeIf { it.isNotEmpty() }
+            ?.let { files -> return files.map { f -> Page(index = 0, url = f.absolutePath, imageUrl = "file://${f.absolutePath}") } }
+
+        val bytes = try {
+            val req = Request.Builder().url(url)
+                .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+                .build()
+            client.newCall(req).execute().use { it.body?.bytes() }
+        } catch (_: Exception) { null } ?: return listOf(original)
+
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
+        if (bounds.outHeight <= 0 || bounds.outWidth <= 0) return listOf(original)
+
+        val slices = TallImageSlicer.computeSlices(height = bounds.outHeight, maxSliceHeight = MAX_SLICE_HEIGHT)
+        if (slices.size <= 1) return listOf(original)
+
+        @Suppress("DEPRECATION")
+        val decoder = try {
+            BitmapRegionDecoder.newInstance(bytes, 0, bytes.size, false)
+        } catch (_: Exception) { null } ?: return listOf(original)
+
+        return try {
+            cacheDir.mkdirs()
+            slices.mapIndexed { sliceIndex, range ->
+                val rect = Rect(0, range.first, bounds.outWidth, range.last + 1)
+                val bitmap = decoder.decodeRegion(rect, null) ?: return listOf(original)
+                val file = File(cacheDir, "${pageIndex}_$sliceIndex.jpg")
+                FileOutputStream(file).use { out -> bitmap.compress(Bitmap.CompressFormat.JPEG, 90, out) }
+                bitmap.recycle()
+                Page(index = 0, url = file.absolutePath, imageUrl = "file://${file.absolutePath}")
+            }
+        } catch (_: Exception) {
+            listOf(original)
+        } finally {
+            decoder.recycle()
+        }
     }
 
     private fun Float.toChapterLabel(): String =
@@ -159,4 +227,9 @@ class DemonicScansSource @Inject constructor(
     private fun parseDate(text: String): Long = try {
         java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).parse(text)?.time ?: 0L
     } catch (_: Exception) { 0L }
+
+    companion object {
+        /** Bezpečný strop - běžný minimální GL_MAX_TEXTURE_SIZE napříč zařízeními je 4096. */
+        private const val MAX_SLICE_HEIGHT = 4000
+    }
 }
