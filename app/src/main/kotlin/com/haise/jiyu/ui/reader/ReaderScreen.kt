@@ -105,6 +105,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.TextStyle
@@ -121,6 +122,7 @@ import coil.compose.AsyncImagePainter
 import coil.request.ImageRequest
 import com.haise.jiyu.R
 import com.haise.jiyu.settings.ReadingMode
+import com.haise.jiyu.translate.BubbleType
 import com.haise.jiyu.translate.PositionedTranslationBlock
 import com.haise.jiyu.translate.TranslatedBlock
 import com.haise.jiyu.translate.layoutTranslationBlocks
@@ -1834,6 +1836,7 @@ private fun WebtoonPage(
                             boxWidth = boxWidth,
                             maxHeight = maxHeight,
                             textScale = textScale,
+                            bubbleType = pos.block.bubbleType,
                         )
                     }
                 }
@@ -1933,6 +1936,7 @@ private fun BoxWithConstraintsScope.TranslationOverlay(pos: PositionedTranslatio
             boxWidth = w,
             maxHeight = maxH,
             textScale = textScale,
+            bubbleType = pos.block.bubbleType,
         )
     }
 }
@@ -1944,11 +1948,24 @@ private fun BoxWithConstraintsScope.TranslationOverlay(pos: PositionedTranslatio
  * vejde do [maxHeight] při dané [boxWidth] (měřeno přes TextMeasurer), a teprve tu
  * vykreslíme - box tak roste/mrští se podle skutečné potřeby textu, ne naopak.
  */
-/** Comic Neue - komiksové písmo s plnou podporou české diakritiky (ř,ž,č,š,ě,ň,ť,ů...), ne systémový font, který v malé bublině vypadá jako titulky, ne jako lettering. */
-private val ComicNeueFamily = FontFamily(
-    Font(R.font.comic_neue_regular, FontWeight.Normal),
-    Font(R.font.comic_neue_bold, FontWeight.Bold),
-)
+/**
+ * Comic Neue - komiksové písmo s plnou podporou české diakritiky (ř,ž,č,š,ě,ň,ť,ů...), ne
+ * systémový font, který v malé bublině vypadá jako titulky, ne jako lettering. Různé řezy
+ * podle typu bubliny (viz BubbleType/fontFamilyFor) místo jednoho univerzálního - skutečná
+ * vizuální analýza stylu písma z nízkorozlišeného OCR výřezu by byla nespolehlivá (viz spec
+ * docs/superpowers/specs/2026-07-24-bubble-shape-and-font-design.md), tohle je praktičtější
+ * přiblížení "co nejpodobnějšího originálu" fontu.
+ */
+private val ComicNeueRegular = FontFamily(Font(R.font.comic_neue_regular, FontWeight.Normal))
+private val ComicNeueBold = FontFamily(Font(R.font.comic_neue_bold, FontWeight.Bold))
+private val ComicNeueItalic = FontFamily(Font(R.font.comic_neue_italic, FontWeight.Normal, FontStyle.Italic))
+private val ComicNeueBoldItalic = FontFamily(Font(R.font.comic_neue_bold_italic, FontWeight.Bold, FontStyle.Italic))
+
+private fun fontFamilyFor(bubbleType: BubbleType): FontFamily = when (bubbleType) {
+    BubbleType.SHOUT -> ComicNeueBold
+    BubbleType.THOUGHT, BubbleType.WHISPER -> ComicNeueItalic
+    BubbleType.SPEECH, BubbleType.NARRATION, BubbleType.SYSTEM, BubbleType.SFX -> ComicNeueRegular
+}
 
 @Composable
 private fun AutoFitTranslatedText(
@@ -1957,20 +1974,22 @@ private fun AutoFitTranslatedText(
     boxWidth: androidx.compose.ui.unit.Dp,
     maxHeight: androidx.compose.ui.unit.Dp,
     textScale: Float,
+    bubbleType: BubbleType,
 ) {
     val density = LocalDensity.current
     val textMeasurer = rememberTextMeasurer()
+    val fontFamily = fontFamilyFor(bubbleType)
     val baseFontSp = 11f * textScale
     val minFontSp = 6f * textScale
     val widthPx = with(density) { boxWidth.roundToPx() }.coerceAtLeast(1)
     val maxHeightPx = with(density) { maxHeight.roundToPx() }.coerceAtLeast(1)
 
-    val fontSp = remember(text, widthPx, maxHeightPx, baseFontSp) {
+    val fontSp = remember(text, widthPx, maxHeightPx, baseFontSp, fontFamily) {
         var fs = baseFontSp
         while (fs > minFontSp) {
             val measured = textMeasurer.measure(
                 text = text,
-                style = TextStyle(fontSize = fs.sp, lineHeight = (fs * 1.25f).sp, fontFamily = ComicNeueFamily),
+                style = TextStyle(fontSize = fs.sp, lineHeight = (fs * 1.25f).sp, fontFamily = fontFamily),
                 constraints = Constraints(maxWidth = widthPx),
             )
             if (measured.size.height <= maxHeightPx) break
@@ -1991,7 +2010,7 @@ private fun AutoFitTranslatedText(
         color = textColor,
         fontSize = fontSp.sp,
         lineHeight = (fontSp * 1.25f).sp,
-        fontFamily = ComicNeueFamily,
+        fontFamily = fontFamily,
     )
 }
 
