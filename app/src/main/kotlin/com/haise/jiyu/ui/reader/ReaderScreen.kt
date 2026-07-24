@@ -84,6 +84,13 @@ import androidx.compose.foundation.focusable
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Outline
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.draw.clip
@@ -122,6 +129,7 @@ import coil.compose.AsyncImagePainter
 import coil.request.ImageRequest
 import com.haise.jiyu.R
 import com.haise.jiyu.settings.ReadingMode
+import com.haise.jiyu.translate.BubbleShapePoint
 import com.haise.jiyu.translate.BubbleType
 import com.haise.jiyu.translate.PositionedTranslationBlock
 import com.haise.jiyu.translate.TranslatedBlock
@@ -1774,6 +1782,40 @@ private fun WebtoonReader(
     }
 }
 
+/**
+ * Compose Shape, co kopíruje skutečný obrys bubliny z [BubbleShapePoint] seznamu místo
+ * pevného zaobleného obdélníku. Body jsou v normalizovaných (0..1) souřadnicích stránky -
+ * shapeTopF/shapeBottomF/leftMinF/rightMaxF (= PositionedTranslationBlock.minTopF/maxBottomF/
+ * leftF/rightF pro shape-based blok, viz TranslationLayout.kt) je přemapují na velikost
+ * skutečně vykresleného boxu.
+ */
+private class BubbleClipShape(
+    private val points: List<BubbleShapePoint>,
+    private val shapeTopF: Float,
+    private val shapeBottomF: Float,
+) : Shape {
+    override fun createOutline(size: Size, layoutDirection: LayoutDirection, density: Density): Outline {
+        if (points.size < 2 || shapeBottomF <= shapeTopF) {
+            return Outline.Rectangle(Rect(0f, 0f, size.width, size.height))
+        }
+        val yRange = shapeBottomF - shapeTopF
+        val leftMinF = points.minOf { it.leftF }
+        val rightMaxF = points.maxOf { it.rightF }
+        val spanF = (rightMaxF - leftMinF).coerceAtLeast(0.0001f)
+
+        fun py(p: BubbleShapePoint) = ((p.yF - shapeTopF) / yRange) * size.height
+        fun pxLeft(p: BubbleShapePoint) = ((p.leftF - leftMinF) / spanF) * size.width
+        fun pxRight(p: BubbleShapePoint) = ((p.rightF - leftMinF) / spanF) * size.width
+
+        val path = Path()
+        path.moveTo(pxLeft(points.first()), py(points.first()))
+        points.forEach { path.lineTo(pxLeft(it), py(it)) }
+        points.asReversed().forEach { path.lineTo(pxRight(it), py(it)) }
+        path.close()
+        return Outline.Generic(path)
+    }
+}
+
 @Composable
 private fun WebtoonPage(
     pageUrl: String,
@@ -1816,8 +1858,13 @@ private fun WebtoonPage(
                     // bubliny (block.bottomF, ne maxBottomF) - to jediné MUSÍ box zakrýt, aby
                     // neprosvítal originál; zbytek volného prostoru k dalšímu prvku je jen
                     // strop pro růst, ne povinnost box vyplnit celý.
-                    val minHeight = (size.height * (pos.block.bottomF - pos.minTopF)).toInt().toDp().coerceAtLeast(0.dp) + TRANSLATION_BOX_BLEED * 2
+                    // Blok se skutečným tvarem bubliny má pevnou výšku přesně podle tvaru
+                    // (žádný "prostor pro růst") - block.bottomF (jen OCR text, ne celá
+                    // bublina) by tady byl zavádějící, viz TranslationLayout.kt.
+                    val effectiveMinBottomF = pos.block.shape?.let { pos.maxBottomF } ?: pos.block.bottomF
+                    val minHeight = (size.height * (effectiveMinBottomF - pos.minTopF)).toInt().toDp().coerceAtLeast(0.dp) + TRANSLATION_BOX_BLEED * 2
                     val maxHeight = (size.height * (pos.maxBottomF - pos.minTopF)).toInt().toDp().coerceAtLeast(0.dp) + TRANSLATION_BOX_BLEED * 2
+                    val clipShape = pos.block.shape?.let { BubbleClipShape(it, pos.minTopF, pos.maxBottomF) } ?: RoundedCornerShape(3.dp)
                     Box(
                         modifier = Modifier
                             .offset(
@@ -1826,7 +1873,12 @@ private fun WebtoonPage(
                             )
                             .width(boxWidth)
                             .heightIn(min = minHeight)
-                            .background(Color(pos.block.bgColorArgb).copy(alpha = TRANSLATION_BOX_ALPHA), RoundedCornerShape(3.dp))
+                            // .clip() (ne jen .background(color, shape)) - background by jinak
+                            // ohraničil tvarem jen VYKRESLENÉ pozadí, ne obsah uvnitř (Text by
+                            // u nepravidelného tvaru bubliny mohl přesahovat přes okraj u ostrých
+                            // rohů/ocasu, protože background(color, shape) neomezuje potomky).
+                            .clip(clipShape)
+                            .background(Color(pos.block.bgColorArgb).copy(alpha = TRANSLATION_BOX_ALPHA))
                             .padding(horizontal = 4.dp, vertical = 2.dp),
                         contentAlignment = Alignment.Center,
                     ) {
@@ -1914,8 +1966,10 @@ private fun BoxWithConstraintsScope.TranslationOverlay(pos: PositionedTranslatio
     // spoustu prázdného pozadí) - použít ho jako MINIMUM by box nutilo vyplnit i prázdný
     // prostor, kde žádný originál nebyl. Skutečné minimum je vlastní OCR rozsah bubliny
     // (block.bottomF, ne maxBottomF) - to jediné je potřeba zakrýt, aby nikde neprosvítal originál.
-    val minH = (maxHeight * (pos.block.bottomF - pos.minTopF)).coerceAtLeast(0.dp) + TRANSLATION_BOX_BLEED * 2
+    val effectiveMinBottomF = pos.block.shape?.let { pos.maxBottomF } ?: pos.block.bottomF
+    val minH = (maxHeight * (effectiveMinBottomF - pos.minTopF)).coerceAtLeast(0.dp) + TRANSLATION_BOX_BLEED * 2
     val maxH = (maxHeight * (pos.maxBottomF - pos.minTopF)).coerceAtLeast(0.dp) + TRANSLATION_BOX_BLEED * 2
+    val clipShape = pos.block.shape?.let { BubbleClipShape(it, pos.minTopF, pos.maxBottomF) } ?: RoundedCornerShape(3.dp)
 
     Box(
         modifier = Modifier
@@ -1926,7 +1980,8 @@ private fun BoxWithConstraintsScope.TranslationOverlay(pos: PositionedTranslatio
             // až k dalšímu prvku na stránce.
             .width(w)
             .heightIn(min = minH)
-            .background(Color(pos.block.bgColorArgb).copy(alpha = TRANSLATION_BOX_ALPHA), RoundedCornerShape(3.dp))
+            .clip(clipShape)
+            .background(Color(pos.block.bgColorArgb).copy(alpha = TRANSLATION_BOX_ALPHA))
             .padding(horizontal = 4.dp, vertical = 2.dp),
         contentAlignment = Alignment.Center,
     ) {
