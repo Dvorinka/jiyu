@@ -192,6 +192,7 @@ class SourceManager @Inject constructor(
         MadaraSource("manhuascan",    "ManhuaScan",         "https://manhuascan.com",       client, contentTypeOverride = "MANHUA"),
         MadaraSource("mangayo",       "MangaYo",            "https://mangayo.com",          client, contentTypeOverride = "MANHUA"),
         MadaraSource("manhuarock",    "ManhuaRock",         "https://manhuarock.cc",        client, contentTypeOverride = "MANHUA"),
+        MadaraSource("manhuaus",      "ManhuaUS",           "https://manhuaus.com",         client, contentTypeOverride = "MANHUA"),
         // ── Manhwa scanlation skupiny ────────────────────────────────────────
         MadaraSource("cosmicscans",   "Cosmic Scans",       "https://cosmicscans.org",      client, contentTypeOverride = "MANHWA"),
         MadaraSource("nightscans",    "Night Scans",        "https://nightscans.net",       client, contentTypeOverride = "MANHWA"),
