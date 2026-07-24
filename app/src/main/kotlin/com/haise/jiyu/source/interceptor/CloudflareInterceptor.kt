@@ -133,9 +133,19 @@ class CloudflareInterceptor @Inject constructor(
                 return chain.proceed(request)
             }
 
+            // Cookie z WebView (cf_clearance) neni zaruka uspechu - napr. kdyz chybi dalsi
+            // cookie jako __cf_bm, nebo interaktivni reseni bylo neuplne. Bez tyhle kontroly
+            // by se takova neplatna clearance ulozila do cache na 25 minut a uzivatel by
+            // dalsich 25 minut dostaval 403 bez jakekoli dalsi sance to zkusit znovu.
+            val retried = chain.proceed(request.withClearance(cookies))
+            if (isCloudflareBlocked(retried)) {
+                failureCache[host] = System.currentTimeMillis()
+                return retried
+            }
+
             clearanceCache[host] = CachedClearance(cookies, System.currentTimeMillis() + clearanceTtlMs)
             persistCacheAsync()
-            return chain.proceed(request.withClearance(cookies))
+            return retried
         }
     }
 
@@ -152,16 +162,6 @@ class CloudflareInterceptor @Inject constructor(
         .header("Cookie", cookies)
         .header("User-Agent", CHROME_UA)
         .build()
-
-    private fun isCloudflareBlocked(response: Response): Boolean {
-        if (response.code !in listOf(403, 503)) return false
-        val body = response.peekBody(8 * 1024).string()
-        return body.contains("cf-browser-verification") ||
-            body.contains("challenge-running") ||
-            body.contains("jschl_vc") ||
-            body.contains("cf_clearance") ||
-            (response.header("Server")?.contains("cloudflare") == true && response.code == 403)
-    }
 
     @SuppressLint("SetJavaScriptEnabled")
     private fun solveCloudflareSynchronously(url: String, host: String): String? {
@@ -215,4 +215,28 @@ class CloudflareInterceptor @Inject constructor(
     companion object {
         const val CHROME_UA = "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.6099.210 Mobile Safari/537.36"
     }
+}
+
+/**
+ * `internal` (ne `private`) a mimo třídu, aby to šlo přímo zavolat z čistého JVM testu
+ * (viz CloudflareBlockedDetectionTest) bez nutnosti sestavovat celou [CloudflareInterceptor]
+ * (ta potřebuje Android Context + DataStore).
+ *
+ * `cf-mitigated` je hlavička, kterou Cloudflare posílá SCHVÁLNĚ pro programovou detekci
+ * výzvy (hodnoty jako "challenge") - na rozdíl od sniffování textu z těla stránky není
+ * závislá na tom, jak zrovna vypadá HTML aktuální verze výzvy (Cloudflare ho v čase mění,
+ * viz komentář v [CloudflareInterceptor] - staré textové shody jako "cf-browser-verification"
+ * už novým výzvám vůbec neodpovídají a appka se bez týhle hlavičky spoléhala jen na
+ * náhodnou shodu `Server: cloudflare` + 403). Text-sniffing zůstává jako fallback pro
+ * starší/neobvyklé nasazení, kde by hlavička chyběla.
+ */
+internal fun isCloudflareBlocked(response: Response): Boolean {
+    if (response.code !in listOf(403, 503)) return false
+    if (response.header("cf-mitigated")?.contains("challenge", ignoreCase = true) == true) return true
+    val body = response.peekBody(8 * 1024).string()
+    return body.contains("cf-browser-verification") ||
+        body.contains("challenge-running") ||
+        body.contains("jschl_vc") ||
+        body.contains("cf_clearance") ||
+        (response.header("Server")?.contains("cloudflare") == true && response.code == 403)
 }
