@@ -24,6 +24,10 @@ data class RawTextBlock(
     val topF: Float,
     val rightF: Float,
     val bottomF: Float,
+    /** Kolik původních ML Kit "lines" bylo sloučeno do tohoto bloku - viz [OcrEngine.mergeNearbyLines]. */
+    val lineCount: Int = 1,
+    /** Barva pozadí bubliny nasamplovaná z bitmapy - viz [OcrEngine.sampleBackgroundColor]. */
+    val bgColorArgb: Int = DEFAULT_BUBBLE_BG_ARGB,
 )
 
 @Singleton
@@ -68,9 +72,9 @@ class OcrEngine @Inject constructor(
         // víceřádkového textu, ale jednotlivá slova mají stejně chybné souřadnice, takže to
         // problém neřešilo, a navíc to rozbilo slučování slov na stejném řádku - viz [shouldMerge]
         // dole, jehož práh je odvozený z výšky vstupu, a slova jsou o řád nižší než řádky.
-        // Oprava chybějící výšky (box zakryje jen spodek víceřádkové bubliny) zatím čeká -
-        // viz [PositionedTranslationBlock.minTopF] v TranslationLayout.kt, kde je připravené
-        // pole pro budoucí opravu, ale zatím jako no-op.)
+        // Oprava chybějící výšky řeší [lineCount] (kolik "lines" bylo do bloku sloučeno) -
+        // viz [PositionedTranslationBlock.minTopF] v TranslationLayout.kt, kde se podle
+        // tohohle signálu box bezpečně roztáhne nahoru jen u opravdu víceřádkových bloků.)
         val lines = result.textBlocks.flatMap { it.lines }.mapNotNull { line ->
             val box = line.boundingBox ?: return@mapNotNull null
             if (line.text.isBlank()) return@mapNotNull null
@@ -82,7 +86,9 @@ class OcrEngine @Inject constructor(
                 bottomF = (box.bottom / h).coerceIn(0f, 1f),
             )
         }
-        mergeNearbyLines(lines)
+        // Sampling barvy pozadí potřebuje ještě živou bitmapu, proto běží tady a ne až
+        // v TranslateRepository, kam se bitmapa vůbec nedostane (jen relativní souřadnice).
+        mergeNearbyLines(lines).map { it.copy(bgColorArgb = sampleBackgroundColor(bitmap, it)) }
     }
 
     /**
@@ -120,8 +126,56 @@ class OcrEngine @Inject constructor(
                 topF = group.minOf { it.topF },
                 rightF = group.maxOf { it.rightF },
                 bottomF = group.maxOf { it.bottomF },
+                lineCount = group.size,
             )
         }
+    }
+
+    /**
+     * Nasampluje průměrnou barvu tenkého prstence pixelů těsně kolem OCR boxu (mimo text,
+     * ale typicky pořád uvnitř bubliny) - viz [TranslatedBlock.bgColorArgb]. Bez tohohle
+     * je přeložený box vždy bílý, což na barevných/šrafovaných bublinách (shout efekty,
+     * system boxy) nechává viditelně prosvítat okraj originálu kolem hran boxu.
+     */
+    private fun sampleBackgroundColor(bitmap: Bitmap, block: RawTextBlock): Int {
+        val w = bitmap.width
+        val h = bitmap.height
+        if (w <= 0 || h <= 0) return DEFAULT_BUBBLE_BG_ARGB
+        val margin = 4
+
+        val left = (block.leftF * w).toInt()
+        val top = (block.topF * h).toInt()
+        val right = (block.rightF * w).toInt()
+        val bottom = (block.bottomF * h).toInt()
+
+        val ringLeft = (left - margin).coerceIn(0, w - 1)
+        val ringTop = (top - margin).coerceIn(0, h - 1)
+        val ringRight = (right + margin).coerceIn(0, w - 1)
+        val ringBottom = (bottom + margin).coerceIn(0, h - 1)
+        if (ringRight <= ringLeft || ringBottom <= ringTop) return DEFAULT_BUBBLE_BG_ARGB
+
+        var sumR = 0L; var sumG = 0L; var sumB = 0L; var count = 0
+        fun sample(x: Int, y: Int) {
+            if (x < 0 || x >= w || y < 0 || y >= h) return
+            val px = bitmap.getPixel(x, y)
+            sumR += (px shr 16) and 0xFF
+            sumG += (px shr 8) and 0xFF
+            sumB += px and 0xFF
+            count++
+        }
+
+        // Vzorkujeme jen obvod prstence (ne celou plochu) - max ~80 bodů, dost na stabilní
+        // průměr a zanedbatelné vůči jednomu OCR volání na stránku.
+        val maxSamplesPerSide = 20
+        val stepX = ((ringRight - ringLeft).coerceAtLeast(1) / maxSamplesPerSide).coerceAtLeast(1)
+        var x = ringLeft
+        while (x <= ringRight) { sample(x, ringTop); sample(x, ringBottom); x += stepX }
+        val stepY = ((ringBottom - ringTop).coerceAtLeast(1) / maxSamplesPerSide).coerceAtLeast(1)
+        var y = ringTop
+        while (y <= ringBottom) { sample(ringLeft, y); sample(ringRight, y); y += stepY }
+
+        if (count == 0) return DEFAULT_BUBBLE_BG_ARGB
+        return android.graphics.Color.rgb((sumR / count).toInt(), (sumG / count).toInt(), (sumB / count).toInt())
     }
 
     private fun shouldMerge(a: RawTextBlock, b: RawTextBlock): Boolean {

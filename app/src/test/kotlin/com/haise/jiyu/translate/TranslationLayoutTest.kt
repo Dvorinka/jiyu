@@ -22,12 +22,19 @@ class TranslationLayoutTest {
     }
 
     @Test
-    fun `single block expands to full page when no neighbors`() {
+    fun `single block expands horizontally to page edges but caps vertical growth when no neighbors`() {
+        // Vodorovně beze zbytku sousedů roste až k okrajům stránky (bezpečné - box se
+        // stejně zobrazí jen tak široký, jak potřebuje AutoFitTranslatedText).
+        // Svisle ALE MUSÍ mít strop i bez souseda: box teď fyzicky vyplňuje aspoň vlastní
+        // rozsah bubliny (viz ReaderScreen.kt .heightIn(min=)), takže "žádný soused dole
+        // = roztáhni box přes zbytek stránky" by v reálné appce vytvořilo obří box přes
+        // spoustu prázdného pozadí (reprodukováno a opraveno na reálném zařízení).
         val positioned = layoutTranslationBlocks(listOf(block(0.4f, 0.2f, 0.6f, 0.25f)))
         assertEquals(1, positioned.size)
         assertEquals(0f, positioned[0].leftF)
         assertEquals(1f, positioned[0].rightF)
-        assertEquals(1f, positioned[0].maxBottomF)
+        assertTrue("vertical growth without a neighbor must stay bounded, not reach the page edge", positioned[0].maxBottomF < 0.5f)
+        assertEquals(0.35f, positioned[0].maxBottomF, 0.01f)
     }
 
     @Test

@@ -30,6 +30,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
@@ -102,6 +103,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.TextStyle
@@ -1600,7 +1603,7 @@ private fun MangaReader(
                         val blocks = translatedPages[indices[0]]
                         if (!blocks.isNullOrEmpty()) {
                             val positioned = remember(blocks) { layoutTranslationBlocks(blocks) }
-                            positioned.forEach { pos -> TranslationOverlay(pos, textScale) }
+                            positioned.forEach { pos -> if (!pos.block.isSfx) TranslationOverlay(pos, textScale) }
                         }
                     }
                 } else {
@@ -1627,7 +1630,7 @@ private fun MangaReader(
                                     val blocks = translatedPages[idx]
                                     if (!blocks.isNullOrEmpty()) {
                                         val positioned = remember(blocks) { layoutTranslationBlocks(blocks) }
-                                        positioned.forEach { pos -> TranslationOverlay(pos, textScale) }
+                                        positioned.forEach { pos -> if (!pos.block.isSfx) TranslationOverlay(pos, textScale) }
                                     }
                                 }
                             }
@@ -1795,6 +1798,8 @@ private fun WebtoonPage(
         if (translateMode && translatedBlocks.isNotEmpty() && size != IntSize.Zero) {
             val positioned = remember(translatedBlocks) { layoutTranslationBlocks(translatedBlocks) }
             positioned.forEach { pos ->
+                // SFX bublina se nikdy nepřekládá (viz BubbleClassifier) - žádný box, originál zůstává čitelný.
+                if (pos.block.isSfx) return@forEach
                 with(density) {
                     // .coerceAtLeast(0.dp): záporná šířka/výška z neobvyklého OCR boxu by jinak
                     // spadla na IllegalArgumentException přímo v Compose layout fázi (mimo dosah
@@ -1804,6 +1809,12 @@ private fun WebtoonPage(
                     // vizuální rozsah textu (antialiasing, mírně pootočené písmo v bublině) -
                     // bez malého přesahu pak po stranách prosvítal kousek originálu.
                     val boxWidth = (size.width * (pos.rightF - pos.leftF)).toInt().toDp().coerceAtLeast(0.dp) + TRANSLATION_BOX_BLEED * 2
+                    // maxHeight = horní limit růstu (může sahat až k dalšímu prvku na stránce,
+                    // klidně přes hodně prázdného pozadí). minHeight = vlastní OCR rozsah
+                    // bubliny (block.bottomF, ne maxBottomF) - to jediné MUSÍ box zakrýt, aby
+                    // neprosvítal originál; zbytek volného prostoru k dalšímu prvku je jen
+                    // strop pro růst, ne povinnost box vyplnit celý.
+                    val minHeight = (size.height * (pos.block.bottomF - pos.minTopF)).toInt().toDp().coerceAtLeast(0.dp) + TRANSLATION_BOX_BLEED * 2
                     val maxHeight = (size.height * (pos.maxBottomF - pos.minTopF)).toInt().toDp().coerceAtLeast(0.dp) + TRANSLATION_BOX_BLEED * 2
                     Box(
                         modifier = Modifier
@@ -1811,13 +1822,15 @@ private fun WebtoonPage(
                                 x = (size.width * pos.leftF).toInt().toDp() - TRANSLATION_BOX_BLEED,
                                 y = (size.height * pos.minTopF).toInt().toDp() - TRANSLATION_BOX_BLEED,
                             )
-                            .widthIn(max = boxWidth)
-                            .background(TRANSLATION_BOX_COLOR, RoundedCornerShape(3.dp))
+                            .width(boxWidth)
+                            .heightIn(min = minHeight)
+                            .background(Color(pos.block.bgColorArgb).copy(alpha = TRANSLATION_BOX_ALPHA), RoundedCornerShape(3.dp))
                             .padding(horizontal = 4.dp, vertical = 2.dp),
                         contentAlignment = Alignment.Center,
                     ) {
                         AutoFitTranslatedText(
-                            text = pos.block.translatedText,
+                            text = pos.block.displayText,
+                            bgColorArgb = pos.block.bgColorArgb,
                             boxWidth = boxWidth,
                             maxHeight = maxHeight,
                             textScale = textScale,
@@ -1883,7 +1896,7 @@ private fun RetryableAsyncImage(
 private val TRANSLATION_BOX_BLEED = 2.dp
 
 /** Téměř neprůhledné (ne 100%, kvůli měkčímu vzhledu štítku) - vyšší než dřívějších 92 % kvůli viditelnému "duchu" originálu skrz box. */
-private val TRANSLATION_BOX_COLOR = Color.White.copy(alpha = 0.98f)
+private const val TRANSLATION_BOX_ALPHA = 0.98f
 
 @Composable
 private fun BoxWithConstraintsScope.TranslationOverlay(pos: PositionedTranslationBlock, textScale: Float = 1f) {
@@ -1894,18 +1907,29 @@ private fun BoxWithConstraintsScope.TranslationOverlay(pos: PositionedTranslatio
     val left = maxWidth  * pos.leftF - TRANSLATION_BOX_BLEED
     val top  = maxHeight * pos.minTopF - TRANSLATION_BOX_BLEED
     val w    = (maxWidth  * (pos.rightF     - pos.leftF)).coerceAtLeast(0.dp) + TRANSLATION_BOX_BLEED * 2
+    // maxBottomF je HORNÍ LIMIT růstu (může sahat až k dalšímu prvku na stránce, klidně přes
+    // spoustu prázdného pozadí) - použít ho jako MINIMUM by box nutilo vyplnit i prázdný
+    // prostor, kde žádný originál nebyl. Skutečné minimum je vlastní OCR rozsah bubliny
+    // (block.bottomF, ne maxBottomF) - to jediné je potřeba zakrýt, aby nikde neprosvítal originál.
+    val minH = (maxHeight * (pos.block.bottomF - pos.minTopF)).coerceAtLeast(0.dp) + TRANSLATION_BOX_BLEED * 2
     val maxH = (maxHeight * (pos.maxBottomF - pos.minTopF)).coerceAtLeast(0.dp) + TRANSLATION_BOX_BLEED * 2
 
     Box(
         modifier = Modifier
             .offset(x = left, y = top)
-            .widthIn(max = w)
-            .background(TRANSLATION_BOX_COLOR, RoundedCornerShape(3.dp))
+            // Pevná šířka + heightIn(min = minH): box musí vždy zakrýt aspoň vlastní OCR
+            // rozsah bubliny (jinak prosvítá originál), ale smí růst výš k maxH, jen když to
+            // text opravdu potřebuje - ne nutit box vyplnit celý (klidně prázdný) prostor
+            // až k dalšímu prvku na stránce.
+            .width(w)
+            .heightIn(min = minH)
+            .background(Color(pos.block.bgColorArgb).copy(alpha = TRANSLATION_BOX_ALPHA), RoundedCornerShape(3.dp))
             .padding(horizontal = 4.dp, vertical = 2.dp),
         contentAlignment = Alignment.Center,
     ) {
         AutoFitTranslatedText(
-            text = pos.block.translatedText,
+            text = pos.block.displayText,
+            bgColorArgb = pos.block.bgColorArgb,
             boxWidth = w,
             maxHeight = maxH,
             textScale = textScale,
@@ -1920,9 +1944,16 @@ private fun BoxWithConstraintsScope.TranslationOverlay(pos: PositionedTranslatio
  * vejde do [maxHeight] při dané [boxWidth] (měřeno přes TextMeasurer), a teprve tu
  * vykreslíme - box tak roste/mrští se podle skutečné potřeby textu, ne naopak.
  */
+/** Comic Neue - komiksové písmo s plnou podporou české diakritiky (ř,ž,č,š,ě,ň,ť,ů...), ne systémový font, který v malé bublině vypadá jako titulky, ne jako lettering. */
+private val ComicNeueFamily = FontFamily(
+    Font(R.font.comic_neue_regular, FontWeight.Normal),
+    Font(R.font.comic_neue_bold, FontWeight.Bold),
+)
+
 @Composable
 private fun AutoFitTranslatedText(
     text: String,
+    bgColorArgb: Int,
     boxWidth: androidx.compose.ui.unit.Dp,
     maxHeight: androidx.compose.ui.unit.Dp,
     textScale: Float,
@@ -1939,7 +1970,7 @@ private fun AutoFitTranslatedText(
         while (fs > minFontSp) {
             val measured = textMeasurer.measure(
                 text = text,
-                style = TextStyle(fontSize = fs.sp, lineHeight = (fs * 1.25f).sp),
+                style = TextStyle(fontSize = fs.sp, lineHeight = (fs * 1.25f).sp, fontFamily = ComicNeueFamily),
                 constraints = Constraints(maxWidth = widthPx),
             )
             if (measured.size.height <= maxHeightPx) break
@@ -1948,11 +1979,19 @@ private fun AutoFitTranslatedText(
         fs.coerceAtLeast(minFontSp)
     }
 
+    // Vzorkovaná barva pozadí bubliny (viz TranslatedBlock.bgColorArgb) může být i tmavá
+    // (stínovaný/černý shout box) - černý text na černém pozadí by byl nečitelný, proto
+    // volíme barvu textu podle jasu (luminance) pozadí, ne napevno černou.
+    val bg = Color(bgColorArgb)
+    val luminance = 0.299f * bg.red + 0.587f * bg.green + 0.114f * bg.blue
+    val textColor = if (luminance < 0.5f) Color.White else Color.Black
+
     Text(
         text = text,
-        color = Color.Black,
+        color = textColor,
         fontSize = fontSp.sp,
         lineHeight = (fontSp * 1.25f).sp,
+        fontFamily = ComicNeueFamily,
     )
 }
 

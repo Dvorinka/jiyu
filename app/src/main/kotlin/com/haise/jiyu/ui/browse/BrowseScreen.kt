@@ -9,6 +9,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -40,6 +41,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -47,6 +49,9 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
@@ -84,6 +89,13 @@ fun BrowseScreen(
     val sources           by viewModel.sources.collectAsState()
     val contentTypeFilter by viewModel.contentTypeFilter.collectAsState()
     val languageFilter    by viewModel.languageFilter.collectAsState()
+    val sourceNameFilter  by viewModel.sourceNameFilter.collectAsState()
+
+    // false = hledat TITUL napříč všemi zdroji (otevře GlobalSearch, beze změny chování),
+    // true = hledat přímo podle NÁZVU ZDROJE (jen lokálně filtruje mřížku níže) - pro
+    // uživatele, co chtějí číst na jednom konkrétním zdroji a nechtějí kvůli tomu
+    // prohledávat všechny zdroje najednou.
+    var searchBySourceName by rememberSaveable { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -103,25 +115,59 @@ fun BrowseScreen(
                 style = TextStyle(brush = titleGradient, fontSize = 24.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 2.sp),
             )
 
-            // Search bar → navigates to GlobalSearch on tap
+            // Přepínač režimu hledání - viz komentář u [searchBySourceName].
+            Row(
+                modifier = Modifier.padding(top = 10.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                FilterChip(label = stringResource(R.string.browse_search_mode_title), selected = !searchBySourceName) {
+                    searchBySourceName = false
+                    viewModel.setSourceNameFilter("")
+                }
+                FilterChip(label = stringResource(R.string.browse_search_mode_source), selected = searchBySourceName) {
+                    searchBySourceName = true
+                }
+            }
+
+            // Titul: klik naviguje na GlobalSearch (beze změny). Zdroj: skutečné textové
+            // pole, které jen lokálně filtruje mřížku zdrojů podle jejich názvu.
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 10.dp)
+                    .padding(top = 8.dp)
                     .clip(RoundedCornerShape(14.dp))
                     .background(NightBlue.copy(alpha = 0.7f))
                     .glassBorder(14.dp)
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = onGlobalSearch,
+                    .then(
+                        if (searchBySourceName) Modifier else Modifier.clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = onGlobalSearch,
+                        )
                     )
                     .padding(horizontal = 16.dp, vertical = 12.dp),
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(TablerIcons.Search, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(10.dp))
-                    Text(stringResource(R.string.browse_search_placeholder), color = TextSecondary, fontSize = 15.sp)
+                    if (searchBySourceName) {
+                        Box(modifier = Modifier.weight(1f)) {
+                            if (sourceNameFilter.isEmpty()) {
+                                Text(stringResource(R.string.browse_search_by_source_placeholder), color = TextSecondary, fontSize = 15.sp)
+                            }
+                            BasicTextField(
+                                value = sourceNameFilter,
+                                onValueChange = viewModel::setSourceNameFilter,
+                                singleLine = true,
+                                textStyle = TextStyle(color = TextPrimary, fontSize = 15.sp),
+                                cursorBrush = SolidColor(Violet),
+                                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                        }
+                    } else {
+                        Text(stringResource(R.string.browse_search_placeholder), color = TextSecondary, fontSize = 15.sp)
+                    }
                 }
             }
         }

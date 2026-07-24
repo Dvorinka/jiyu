@@ -1,9 +1,7 @@
 package com.haise.jiyu.translate
 
-import com.haise.jiyu.data.db.GlossaryDao
 import com.haise.jiyu.data.db.TranslatedNovelDao
 import com.haise.jiyu.data.db.TranslatedPageDao
-import com.haise.jiyu.data.db.entity.GlossaryEntity
 import com.haise.jiyu.data.db.entity.TranslatedNovelEntity
 import com.haise.jiyu.data.db.entity.TranslatedPageEntity
 import org.json.JSONArray
@@ -15,14 +13,15 @@ import javax.inject.Singleton
 class TranslateRepository @Inject constructor(
     private val ocrEngine: OcrEngine,
     private val groqClient: GroqTranslateClient,
+    private val geminiClient: GeminiTranslateClient,
+    private val glossaryRepository: GlossaryRepository,
     private val dao: TranslatedPageDao,
     private val novelDao: TranslatedNovelDao,
-    private val glossaryDao: GlossaryDao,
 ) {
     val isApiKeyConfigured: Boolean get() = groqClient.isConfigured
 
     private suspend fun glossaryFor(mangaId: String, targetLanguage: String): Map<String, String> =
-        glossaryDao.getForMangaAndLanguage(mangaId, targetLanguage).associate { it.sourceTerm to it.targetTerm }
+        glossaryRepository.getMap(mangaId, targetLanguage)
 
     /**
      * Vrátí přeložené bloky pro jednu stránku.
@@ -42,28 +41,108 @@ class TranslateRepository @Inject constructor(
         val rawBlocks = ocrEngine.recognize(pageUrl, sourceLanguage)
         if (rawBlocks.isEmpty()) return emptyList()
 
-        val translations = groqClient.translateBatch(
-            texts = rawBlocks.map { it.text },
-            targetLanguage = targetLanguage,
-            sourceLanguage = sourceLanguage,
-            glossary = glossaryFor(mangaId, targetLanguage),
-        )
-        if (translations.isEmpty()) return emptyList()
+        val glossary = glossaryFor(mangaId, targetLanguage)
+        val classified = rawBlocks.map { raw -> BubbleClassifier.classify(raw, raw.lineCount) }
 
-        val blocks = rawBlocks.mapIndexed { i, raw ->
-            TranslatedBlock(
-                originalText = raw.text,
-                translatedText = translations.getOrElse(i) { raw.text },
-                leftF = raw.leftF,
-                topF = raw.topF,
-                rightF = raw.rightF,
-                bottomF = raw.bottomF,
-            )
+        // GeminiUltraPrompt je napsaný natvrdo pro češtinu (znakové limity a kompresní
+        // pravidla mají české příklady) - pro jiný cílový jazyk zůstáváme na obecném
+        // Groq promptu (translate-proxy mode="manga"), který jazyk dostává jako parametr.
+        val blocks = if (targetLanguage == "Czech") {
+            translateWithGemini(classified, glossary) ?: translateWithGroq(classified, glossary, targetLanguage, sourceLanguage)
+        } else {
+            translateWithGroq(classified, glossary, targetLanguage, sourceLanguage)
         }
+        if (blocks.isEmpty()) return emptyList()
 
         dao.upsert(TranslatedPageEntity(id = cacheId(chapterId, pageIndex, targetLanguage, sourceLanguage), blocksJson = blocks.serialize()))
         return blocks
     }
+
+    /**
+     * @return null když se nepodařilo přeložit ani jednu bublinu (proxy nemá nasazený
+     *   "gemini" mód, síť selhala po všech pokusech...) - volající pak zkusí [translateWithGroq]
+     *   jako záchrannou síť. Rate limit (viz [RateLimitedException]) se propaguje výš beze změny,
+     *   protože tam degradace na Groq nedává smysl - proxy je sdílená pro oba providery.
+     */
+    private suspend fun translateWithGemini(
+        classified: List<ClassifiedBubble>,
+        glossary: Map<String, String>,
+    ): List<TranslatedBlock>? {
+        if (!geminiClient.isConfigured) return null
+        val response = geminiClient.translateBubbles(classified, glossary) ?: return null
+        val byId = response.bubbles.associateBy { it.id }
+
+        val result = classified.mapIndexedNotNull { i, c ->
+            if (c.isSfx) return@mapIndexedNotNull sfxBlock(c)
+            val t = byId[i] ?: return@mapIndexedNotNull null
+            TranslatedBlock(
+                originalText = c.raw.text,
+                translatedText = t.translated,
+                leftF = c.raw.leftF,
+                topF = c.raw.topF,
+                rightF = c.raw.rightF,
+                bottomF = c.raw.bottomF,
+                displayText = t.syllableBreaks.ifBlank { t.translated },
+                bgColorArgb = c.raw.bgColorArgb,
+                isSfx = false,
+                lineCount = c.lineCount,
+            )
+        }
+        return result.ifEmpty { null }
+    }
+
+    /** Legacy/fallback cesta - Groq vrací jen holé přeložené texty, žádné syllable_breaks. */
+    private suspend fun translateWithGroq(
+        classified: List<ClassifiedBubble>,
+        glossary: Map<String, String>,
+        targetLanguage: String,
+        sourceLanguage: String,
+    ): List<TranslatedBlock> {
+        val toTranslate = classified.filter { !it.isSfx }
+        val translations = if (toTranslate.isEmpty()) emptyList() else groqClient.translateBatch(
+            texts = toTranslate.map { it.raw.text },
+            targetLanguage = targetLanguage,
+            sourceLanguage = sourceLanguage,
+            glossary = glossary,
+        )
+        if (toTranslate.isNotEmpty() && translations.isEmpty()) return emptyList()
+
+        var ti = 0
+        return classified.map { c ->
+            if (c.isSfx) {
+                sfxBlock(c)
+            } else {
+                val translated = translations.getOrElse(ti) { c.raw.text }
+                ti++
+                TranslatedBlock(
+                    originalText = c.raw.text,
+                    translatedText = translated,
+                    leftF = c.raw.leftF,
+                    topF = c.raw.topF,
+                    rightF = c.raw.rightF,
+                    bottomF = c.raw.bottomF,
+                    displayText = translated,
+                    bgColorArgb = c.raw.bgColorArgb,
+                    isSfx = false,
+                    lineCount = c.lineCount,
+                )
+            }
+        }
+    }
+
+    /** SFX bublina se nikdy nepřekládá (viz [BubbleClassifier]) - originál zůstává, jen si nese klasifikaci pro render. */
+    private fun sfxBlock(c: ClassifiedBubble) = TranslatedBlock(
+        originalText = c.raw.text,
+        translatedText = c.raw.text,
+        leftF = c.raw.leftF,
+        topF = c.raw.topF,
+        rightF = c.raw.rightF,
+        bottomF = c.raw.bottomF,
+        displayText = c.raw.text,
+        bgColorArgb = c.raw.bgColorArgb,
+        isSfx = true,
+        lineCount = c.lineCount,
+    )
 
     /** Vrátí výsledek z Room cache bez volání API; null = není v cache */
     suspend fun getCachedPage(
@@ -146,6 +225,10 @@ class TranslateRepository @Inject constructor(
             arr.put(JSONObject().apply {
                 put("orig", b.originalText)
                 put("trans", b.translatedText)
+                put("disp", b.displayText)
+                put("bg", b.bgColorArgb)
+                put("sfx", b.isSfx)
+                put("lc", b.lineCount)
                 // put(String, float) na Android org.json.JSONObject neexistuje (jen desktopová
                 // verze knihovny) -> NoSuchMethodError za běhu. Double overload existuje vždy.
                 put("l", b.leftF.toDouble())
@@ -156,17 +239,23 @@ class TranslateRepository @Inject constructor(
         }
     }.toString()
 
+    /** disp/bg/sfx/lc chybí ve starších cache záznamech (před přidáním klasifikace bublin) - optXxx s výchozí hodnotou stejnou jako [TranslatedBlock] defaults, ať se nic nerozbije. */
     private fun TranslatedPageEntity.deserialize(): List<TranslatedBlock> = try {
         val arr = JSONArray(blocksJson)
         List(arr.length()) { i ->
             val o = arr.getJSONObject(i)
+            val translated = o.getString("trans")
             TranslatedBlock(
                 originalText = o.getString("orig"),
-                translatedText = o.getString("trans"),
+                translatedText = translated,
                 leftF = o.getDouble("l").toFloat(),
                 topF = o.getDouble("t").toFloat(),
                 rightF = o.getDouble("r").toFloat(),
                 bottomF = o.getDouble("b").toFloat(),
+                displayText = o.optString("disp", translated),
+                bgColorArgb = if (o.has("bg")) o.getInt("bg") else DEFAULT_BUBBLE_BG_ARGB,
+                isSfx = o.optBoolean("sfx", false),
+                lineCount = o.optInt("lc", 1),
             )
         }
     } catch (e: Exception) { emptyList() }

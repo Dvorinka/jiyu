@@ -581,6 +581,9 @@
     <!-- Explorar -->
     <string name="browse_title">Explorar</string>
     <string name="browse_search_placeholder">Buscar en todas las fuentes…</string>
+    <string name="browse_search_by_source_placeholder">Buscar por nombre de fuente…</string>
+    <string name="browse_search_mode_title">Título</string>
+    <string name="browse_search_mode_source">Fuente</string>
     <string name="browse_filter_manga">Manga</string>
     <string name="browse_filter_novels">Novelas</string>
     <string name="browse_filter_comics">Cómics</string>

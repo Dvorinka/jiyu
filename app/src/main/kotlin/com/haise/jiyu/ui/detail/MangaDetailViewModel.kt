@@ -203,8 +203,17 @@ class MangaDetailViewModel @Inject constructor(
     val readingStatus: StateFlow<String?> = manga.map { it?.readingStatus }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
+    /**
+     * Nastavení statusu (Čtu/Dokončeno/...) samo o sobě NEpřidává mangu do knihovny -
+     * [MangaDao.setReadingStatus] jen zapíše sloupec `readingStatus`, zatímco Knihovna i
+     * Seznam (viz [MangaDao.observeLibrary]/[MangaDao.observeByReadingStatus]) filtrují
+     * na `inLibrary = 1`. Bez tohohle volání by manga se zvoleným statusem, na kterou
+     * uživatel nikdy neťukl bookmark ikonu, zůstala navždy neviditelná v obou seznamech -
+     * přesně nahlášený bug (status nastaven, historie čtení existuje, ale 0 titulů všude).
+     */
     fun setReadingStatus(status: String?) = viewModelScope.launch {
         repository.setReadingStatus(mangaId, status)
+        if (status != null && manga.value?.inLibrary != true) addToLibrary()
     }
 
     // ── Hodnocení (#41) ───────────────────────────────────────────────────────

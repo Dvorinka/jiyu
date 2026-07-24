@@ -584,6 +584,9 @@
     <!-- Browse -->
     <string name="browse_title">Browse</string>
     <string name="browse_search_placeholder">Search all sources…</string>
+    <string name="browse_search_by_source_placeholder">Search by source name…</string>
+    <string name="browse_search_mode_title">Title</string>
+    <string name="browse_search_mode_source">Source</string>
     <string name="browse_filter_manga">Manga</string>
     <string name="browse_filter_novels">Novels</string>
     <string name="browse_filter_comics">Comics</string>

@@ -32,17 +32,26 @@ class BrowseViewModel @Inject constructor(
     private val _languageFilter = MutableStateFlow("ALL")
     val languageFilter: StateFlow<String> = _languageFilter.asStateFlow()
 
+    // Lokální filtr podle NÁZVU ZDROJE (ne titulu mangy) - na rozdíl od GlobalSearch
+    // nevolá žádný zdroj, jen filtruje už načtenou mřížku, pro uživatele co chtějí
+    // najít konkrétní zdroj ("chci číst jen na MangaDexu"), ne prohledat všechny
+    // zdroje kvůli jednomu titulu. Viz přepínač režimu hledání v BrowseScreen.
+    private val _sourceNameFilter = MutableStateFlow("")
+    val sourceNameFilter: StateFlow<String> = _sourceNameFilter.asStateFlow()
+
     val sources: StateFlow<List<MangaSource>> = combine(
-        _allSources, _contentTypeFilter, _languageFilter,
-    ) { all, type, lang ->
+        _allSources, _contentTypeFilter, _languageFilter, _sourceNameFilter,
+    ) { all, type, lang, nameQuery ->
         all.filter { src ->
             matchesContentType(src.contentType, type) &&
-            (lang == "ALL" || src.language == lang)
+            (lang == "ALL" || src.language == lang) &&
+            (nameQuery.isBlank() || src.name.contains(nameQuery, ignoreCase = true))
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     fun setContentTypeFilter(type: String) { _contentTypeFilter.value = type }
     fun setLanguageFilter(lang: String) { _languageFilter.value = lang }
+    fun setSourceNameFilter(query: String) { _sourceNameFilter.value = query }
 
     private fun matchesContentType(sourceType: String, filter: String): Boolean = when (filter) {
         "ALL" -> true
