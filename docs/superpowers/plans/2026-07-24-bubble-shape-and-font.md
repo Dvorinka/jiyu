@@ -73,6 +73,10 @@ class BubbleShapeDetectorTest {
             height = 60,
             seeds = listOf(50 to 30),
             bgColorArgb = BG,
+            // Testovací obdélník (61x41 = ~42 % plátna) je uměle velký vůči malému plátnu -
+            // reálná bublina na skutečné stránce manga bývá zlomek celé plochy. Výchozí
+            // maxAreaFraction (0.25) je testovaný zvlášť níž ("leaks past the area cap").
+            maxAreaFraction = 0.5f,
         )
 
         assertNotNull(shape)
@@ -132,6 +136,7 @@ class BubbleShapeDetectorTest {
             height = 60,
             seeds = listOf(50 to 30),
             bgColorArgb = BG,
+            maxAreaFraction = 0.5f,
         )
 
         assertNotNull(shape)
@@ -151,6 +156,7 @@ class BubbleShapeDetectorTest {
             height = 60,
             seeds = listOf(-5 to -5, 50 to 30), // první seed mimo plátno, druhý platný
             bgColorArgb = BG,
+            maxAreaFraction = 0.5f,
         )
 
         assertNotNull(shape)
