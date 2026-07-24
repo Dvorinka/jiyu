@@ -48,15 +48,17 @@ class TranslateRepository @Inject constructor(
         // pravidla mají české příklady) - pro jiný cílový jazyk zůstáváme na obecném
         // Groq promptu (translate-proxy mode="manga"), který jazyk dostává jako parametr.
         val blocks = if (targetLanguage == "Czech") {
-            // Gemini a Groq mají oddělené kvóty (Google AI Studio vs. Groq Cloud) - i když
-            // Gemini narazí na svůj denní free-tier limit (RateLimitedException), Groq je
-            // dál dostupný, takže na něj zkusíme spadnout místo označení bublin [UNTRANSLATED].
-            val geminiResult = try {
-                translateWithGemini(classified, glossary)
-            } catch (_: RateLimitedException) {
-                null
-            }
-            geminiResult ?: translateWithGroq(classified, glossary, targetLanguage, sourceLanguage)
+            // 1) Gemini. 2) Stejný "ultra" prompt (komprese/sylabické dělení), ale přes Groq
+            //    jako upstream - viz GeminiTranslateClient.translateBubbles(provider="groq") -
+            //    zachytí Gemini-specifické selhání (deprekovaný model, jeho vlastní výpadek)
+            //    beze ztráty kvality. 3) Holý Groq překlad bez komprese jako poslední záchrana.
+            // [RateLimitedException] se NEODCHYTÁVÁ ani na jednom kroku - proxy má jednu
+            // sdílenou denní kvótu pro všechny tři cesty (viz translate-proxy checkQuota),
+            // takže jakmile je vyčerpaná, další pokus by dopadl stejně - rovnou se propaguje
+            // až do ReaderViewModelu, který na to má vlastní hlášku.
+            translateWithGemini(classified, glossary, provider = "gemini")
+                ?: translateWithGemini(classified, glossary, provider = "groq")
+                ?: translateWithGroq(classified, glossary, targetLanguage, sourceLanguage)
         } else {
             translateWithGroq(classified, glossary, targetLanguage, sourceLanguage)
         }
@@ -67,18 +69,23 @@ class TranslateRepository @Inject constructor(
     }
 
     /**
+     * @param provider "gemini" nebo "groq" - viz [GeminiTranslateClient.translateBubbles].
+     *   Oba provideři používají STEJNÝ [GeminiUltraPrompt] (komprese, sylabické dělení),
+     *   liší se jen upstream model, na který proxy request přepošle.
      * @return null když se nepodařilo přeložit ani jednu bublinu (proxy nemá nasazený
-     *   "gemini" mód, síť selhala po všech pokusech...) - volající pak zkusí [translateWithGroq]
-     *   jako záchrannou síť. [RateLimitedException] (Gemini narazil na svou vlastní denní
-     *   kvótu) se dál propaguje - volající ([translatePage]) ji odchytí a taky spadne na
-     *   Groq, protože ten má oddělenou kvótu u Groq Cloud.
+     *   "gemini" mód, síť selhala po všech pokusech, upstream model vrátil chybu...) -
+     *   volající ([translatePage]) pak zkusí druhého providera nebo nakonec
+     *   [translateWithGroq] (bez komprese) jako poslední záchrannou síť.
+     * @throws RateLimitedException když je vyčerpaná sdílená denní kvóta proxy - viz
+     *   [translatePage], tohle se záměrně NEODCHYTÁVÁ tady.
      */
     private suspend fun translateWithGemini(
         classified: List<ClassifiedBubble>,
         glossary: Map<String, String>,
+        provider: String,
     ): List<TranslatedBlock>? {
         if (!geminiClient.isConfigured) return null
-        val response = geminiClient.translateBubbles(classified, glossary) ?: return null
+        val response = geminiClient.translateBubbles(classified, glossary, provider) ?: return null
         val byId = response.bubbles.associateBy { it.id }
 
         val result = classified.mapIndexedNotNull { i, c ->

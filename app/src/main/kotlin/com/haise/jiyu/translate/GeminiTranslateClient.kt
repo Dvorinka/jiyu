@@ -18,9 +18,15 @@ import javax.inject.Singleton
  * posílá HOTOVÝ system+user prompt postavený v [GeminiUltraPrompt] (kompresní pravidla,
  * glosář, JSON schema - vše je verzovatelné v Kotlinu, ne skryté server-side).
  *
- * Google AI Studio API klíč NENÍ nikde v appce - proxy ho vloží server-side ze Supabase
- * secretu, stejně jako u Groq. Přímé volání z appky s klíčem v hlavičce by šlo dekompilací
- * APK triviálně ukrást a zneužít na cizí free-tier kvótu.
+ * Od verze 10 proxy funkce umí ten samý "gemini" mód obsloužit i přes Groq (parametr
+ * [provider] = "groq") - stejný system+user prompt, jen jiný upstream model. Díky tomu
+ * komprese/sylabické dělení z [GeminiUltraPrompt] fungují i když samotné Gemini selže
+ * (deprekovaný model, jeho vlastní výpadek), místo aby appka spadla na holý Groq překlad
+ * bez těchhle pravidel - viz [TranslateRepository.translateWithGemini].
+ *
+ * Google AI Studio / Groq API klíč NENÍ nikde v appce - proxy je vloží server-side ze
+ * Supabase secretů. Přímé volání z appky s klíčem v hlavičce by šlo dekompilací APK
+ * triviálně ukrást a zneužít na cizí free-tier kvótu.
  */
 @Singleton
 class GeminiTranslateClient @Inject constructor(
@@ -33,19 +39,25 @@ class GeminiTranslateClient @Inject constructor(
      * Přeloží dávku bublin jedné stránky. SFX bubliny (viz [ClassifiedBubble.isSfx]) se
      * do requestu vůbec nezahrnují - filtruje [GeminiUltraPrompt.buildUserPrompt].
      *
+     * @param provider "gemini" (výchozí) nebo "groq" - viz komentář u třídy. Groq model se
+     *   nastavuje server-side (stejný "llama-3.3-70b-versatile" jako [GroqTranslateClient]),
+     *   appka ho nemusí posílat.
      * @return null při selhání (síť, rate limit mimo [RateLimitedException], neparsovatelná odpověď)
-     * @throws RateLimitedException viz [GroqTranslateClient] - stejná sémantika, proxy je sdílená.
+     * @throws RateLimitedException viz [GroqTranslateClient] - stejná sémantika, proxy je sdílená
+     *   (kvóta je jedna společná pro gemini i groq provider).
      */
     suspend fun translateBubbles(
         bubbles: List<ClassifiedBubble>,
         glossary: Map<String, String>,
+        provider: String = "gemini",
     ): GeminiTranslationResponse? = withContext(Dispatchers.IO) {
         val toTranslate = bubbles.filterIndexed { _, b -> !b.isSfx }
         if (!isConfigured || toTranslate.isEmpty()) return@withContext null
 
         val requestBody = JSONObject().apply {
             put("mode", "gemini")
-            put("model", GeminiUltraPrompt.MODEL)
+            put("provider", provider)
+            if (provider == "gemini") put("model", GeminiUltraPrompt.MODEL)
             put("system", GeminiUltraPrompt.buildSystemPrompt(glossary))
             put("user", GeminiUltraPrompt.buildUserPrompt(bubbles))
         }
