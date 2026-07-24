@@ -1088,7 +1088,12 @@ za:
                             )
                             .width(boxWidth)
                             .heightIn(min = minHeight)
-                            .background(Color(pos.block.bgColorArgb).copy(alpha = TRANSLATION_BOX_ALPHA), clipShape)
+                            // .clip() (ne jen .background(color, shape)) - background by jinak
+                            // ohraničil tvarem jen VYKRESLENÉ pozadí, ne obsah uvnitř (Text by
+                            // u nepravidelného tvaru bubliny mohl přesahovat přes okraj u ostrých
+                            // rohů/ocasu, protože background(color, shape) neomezuje potomky).
+                            .clip(clipShape)
+                            .background(Color(pos.block.bgColorArgb).copy(alpha = TRANSLATION_BOX_ALPHA))
                             .padding(horizontal = 4.dp, vertical = 2.dp),
                         contentAlignment = Alignment.Center,
                     ) {
@@ -1121,7 +1126,8 @@ Aplikuj analogickou úpravu (stejný princip: `effectiveMinBottomF`, `clipShape`
             .offset(x = left, y = top)
             .width(w)
             .heightIn(min = minH)
-            .background(Color(pos.block.bgColorArgb).copy(alpha = TRANSLATION_BOX_ALPHA), clipShape)
+            .clip(clipShape)
+            .background(Color(pos.block.bgColorArgb).copy(alpha = TRANSLATION_BOX_ALPHA))
             .padding(horizontal = 4.dp, vertical = 2.dp),
         contentAlignment = Alignment.Center,
     ) {
