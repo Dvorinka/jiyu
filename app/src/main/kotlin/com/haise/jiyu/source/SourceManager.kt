@@ -63,6 +63,7 @@ import com.haise.jiyu.source.hachirumi.HachirumiSource
 import com.haise.jiyu.source.kingofshojo.KingofshojoSource
 import com.haise.jiyu.source.manga18fx.Manga18fxSource
 import com.haise.jiyu.source.hentai20.Hentai20Source
+import com.haise.jiyu.source.demonicscans.DemonicScansSource
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -143,6 +144,7 @@ class SourceManager @Inject constructor(
     kingofshojoSource: KingofshojoSource,
     manga18fxSource: Manga18fxSource,
     hentai20Source: Hentai20Source,
+    demonicScansSource: DemonicScansSource,
     private val customSourceDao: CustomSourceDao,
     private val client: OkHttpClient,
 ) {
@@ -217,7 +219,9 @@ class SourceManager @Inject constructor(
         MadaraSource("ranovel",       "Ranovel",            "https://ranovel.com",          client, contentTypeOverride = "NOVEL"),
         // ── Manhwa — další populární scanlace ───────────────────────────────
         MadaraSource("azuremanga",    "Azure Manga",        "https://azuremanga.com",       client, contentTypeOverride = "MANHWA"),
-        MadaraSource("demonscans",    "Demon Scans",        "https://demonscans.net",       client, contentTypeOverride = "MANHWA"),
+        // "demonscans" (demonscans.net) odstraneno 2026-07-24 - domena uplne prestala
+        // existovat (DNS nerozresolvuje), nahrazeno DemonicScansSource (jiny tym/branding,
+        // vlastni sablona - viz komentar ve tride).
         MadaraSource("disasterscans", "Disaster Scans",     "https://disasterscans.com",    client, contentTypeOverride = "MANHWA"),
         MadaraSource("freakscans",    "Freak Scans",        "https://freakscans.com",       client, contentTypeOverride = "MANHWA"),
         MadaraSource("hivecomic",     "Hive Scans",         "https://hivescans.com",        client, contentTypeOverride = "MANHWA"),
@@ -326,6 +330,7 @@ class SourceManager @Inject constructor(
         // na chapter readeru (na rozdil od trvale zamitnutych ComicLand/VyManga).
         manga18fxSource,
         hentai20Source,
+        demonicScansSource,
         MadaraSource(
             "webtoonxyz", "Webtoon XYZ", "https://www.webtoon.xyz", client,
             contentTypeOverride = "MANHWA",
