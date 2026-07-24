@@ -28,7 +28,34 @@ data class RawTextBlock(
     val lineCount: Int = 1,
     /** Barva pozadí bubliny nasamplovaná z bitmapy - viz [OcrEngine.sampleBackgroundColor]. */
     val bgColorArgb: Int = DEFAULT_BUBBLE_BG_ARGB,
+    /** Skutečný obrys bubliny (flood-fill) - viz [BubbleShapeDetector]. Null = detekce selhala, render použije heuristický obdélník. */
+    val shape: List<BubbleShapePoint>? = null,
 )
+
+/**
+ * Čistá funkce (bez Bitmap) - body na obvodu OCR boxu s okrajem [margin], odkud je
+ * bezpečné startovat flood-fill (jsou to body na pozadí bubliny, ne na textu). Testováno
+ * v OcrRingSeedsTest.
+ */
+internal fun ringSeeds(leftF: Float, topF: Float, rightF: Float, bottomF: Float, w: Int, h: Int, margin: Int = 4): List<Pair<Int, Int>> {
+    val left = (leftF * w).toInt()
+    val top = (topF * h).toInt()
+    val right = (rightF * w).toInt()
+    val bottom = (bottomF * h).toInt()
+    val midX = ((left + right) / 2).coerceIn(0, w - 1)
+    val midY = ((top + bottom) / 2).coerceIn(0, h - 1)
+    return listOf(
+        midX to (top - margin).coerceIn(0, h - 1),
+        midX to (bottom + margin).coerceIn(0, h - 1),
+        (left - margin).coerceIn(0, w - 1) to midY,
+        (right + margin).coerceIn(0, w - 1) to midY,
+    )
+}
+
+/** Obaluje Bitmap do [PixelSource] pro [BubbleShapeDetector] - jediné místo, kde algoritmus vidí Android typ. */
+private class BitmapPixelSource(private val bitmap: Bitmap) : PixelSource {
+    override fun colorAt(x: Int, y: Int): Int = bitmap.getPixel(x, y)
+}
 
 @Singleton
 class OcrEngine @Inject constructor(
@@ -86,9 +113,21 @@ class OcrEngine @Inject constructor(
                 bottomF = (box.bottom / h).coerceIn(0f, 1f),
             )
         }
-        // Sampling barvy pozadí potřebuje ještě živou bitmapu, proto běží tady a ne až
-        // v TranslateRepository, kam se bitmapa vůbec nedostane (jen relativní souřadnice).
-        mergeNearbyLines(lines).map { it.copy(bgColorArgb = sampleBackgroundColor(bitmap, it)) }
+        // Sampling barvy pozadí i detekce tvaru bubliny potřebují ještě živou bitmapu,
+        // proto běží tady a ne až v TranslateRepository, kam se bitmapa vůbec nedostane
+        // (jen relativní souřadnice).
+        val pixelSource = BitmapPixelSource(bitmap)
+        mergeNearbyLines(lines).map { block ->
+            val bg = sampleBackgroundColor(bitmap, block)
+            val shape = BubbleShapeDetector.detectShape(
+                source = pixelSource,
+                width = bitmap.width,
+                height = bitmap.height,
+                seeds = ringSeeds(block.leftF, block.topF, block.rightF, block.bottomF, bitmap.width, bitmap.height),
+                bgColorArgb = bg,
+            )
+            block.copy(bgColorArgb = bg, shape = shape)
+        }
     }
 
     /**

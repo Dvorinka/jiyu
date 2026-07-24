@@ -336,11 +336,12 @@ class OcrRingSeedsTest {
 
     @Test
     fun `produces four seed points around the block with margin`() {
+        // left=20, top=6, right=80, bottom=30 (leftF*w atd.), midX=50, midY=18
         val seeds = ringSeeds(leftF = 0.2f, topF = 0.1f, rightF = 0.8f, bottomF = 0.5f, w = 100, h = 60, margin = 4)
 
         assertEquals(4, seeds.size)
-        // Top mid: x = (20+80)/2 = 50, y = 10 - 4 = 6
-        assertTrue(seeds.contains(50 to 6))
+        // Top mid: x = (20+80)/2 = 50, y = 6 - 4 = 2
+        assertTrue(seeds.contains(50 to 2))
         // Bottom mid: x = 50, y = 30 + 4 = 34
         assertTrue(seeds.contains(50 to 34))
         // Left mid: x = 20 - 4 = 16, y = (6+30)/2 = 18
