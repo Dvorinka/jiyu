@@ -131,6 +131,30 @@ class OcrEngine @Inject constructor(
     }
 
     /**
+     * Dopočítá jen tvar bubliny pro už přeložené bloky ze starého cache formátu
+     * (shape == null), bez nového OCR/ML Kit volání - viz TranslateRepository.getCachedPage
+     * migrace. Blok, který už tvar má, nebo je SFX (nemá box vůbec), se přeskočí beze změny.
+     */
+    suspend fun detectShapesOnly(pageUrl: String, blocks: List<TranslatedBlock>): List<TranslatedBlock> = withContext(Dispatchers.IO) {
+        val bitmap = loadBitmap(pageUrl) ?: return@withContext blocks
+        val w = bitmap.width
+        val h = bitmap.height
+        if (w == 0 || h == 0) return@withContext blocks
+        val pixelSource = BitmapPixelSource(bitmap)
+        blocks.map { tb ->
+            if (tb.shape != null || tb.isSfx) return@map tb
+            val shape = BubbleShapeDetector.detectShape(
+                source = pixelSource,
+                width = w,
+                height = h,
+                seeds = ringSeeds(tb.leftF, tb.topF, tb.rightF, tb.bottomF, w, h),
+                bgColorArgb = tb.bgColorArgb,
+            )
+            tb.copy(shape = shape)
+        }
+    }
+
+    /**
      * Spojí OCR řádky, které leží blízko sebe (malá svislá mezera vůči výšce písma a
      * vodorovné překrytí/blízkost), do jednoho bloku - to bývá jedna bublina s víc řádky.
      * Union-Find nad dvojicovým testem [shouldMerge]: O(n²), ale n (řádků na stránku)

@@ -17,6 +17,11 @@ const val DEFAULT_BUBBLE_BG_ARGB: Int = android.graphics.Color.WHITE
  * @param isSfx zvukový efekt - viz [BubbleClassifier]; render mu nedává box, jen ho nechá být.
  * @param lineCount kolik OCR řádků bylo sloučeno do téhle bubliny - signál pro
  *   [layoutTranslationBlocks], jestli má smysl box roztahovat nahoru (viz [PositionedTranslationBlock.minTopF]).
+ * @param shape skutečný obrys bubliny (flood-fill) - viz [BubbleShapeDetector]. Null =
+ *   detekce selhala nebo starý cache formát, [layoutTranslationBlocks] pak použije
+ *   heuristický obdélník místo přesného tvaru.
+ * @param bubbleType typ bubliny (SPEECH/SHOUT/THOUGHT/...) - viz [BubbleClassifier]. Určuje
+ *   řez písma v ReaderScreen.kt (fontFamilyFor).
  */
 data class TranslatedBlock(
     val originalText: String,
@@ -29,4 +34,6 @@ data class TranslatedBlock(
     val bgColorArgb: Int = DEFAULT_BUBBLE_BG_ARGB,
     val isSfx: Boolean = false,
     val lineCount: Int = 1,
+    val shape: List<BubbleShapePoint>? = null,
+    val bubbleType: BubbleType = BubbleType.SPEECH,
 )

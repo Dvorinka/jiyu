@@ -36,7 +36,7 @@ class TranslateRepository @Inject constructor(
         targetLanguage: String = "Czech",
         sourceLanguage: String = "Auto",
     ): List<TranslatedBlock> {
-        getCachedPage(chapterId, pageIndex, targetLanguage, sourceLanguage)?.let { return it }
+        getCachedPage(chapterId, pageIndex, targetLanguage, sourceLanguage, pageUrl)?.let { return it }
 
         val rawBlocks = ocrEngine.recognize(pageUrl, sourceLanguage)
         if (rawBlocks.isEmpty()) return emptyList()
@@ -86,6 +86,8 @@ class TranslateRepository @Inject constructor(
                 bgColorArgb = c.raw.bgColorArgb,
                 isSfx = false,
                 lineCount = c.lineCount,
+                shape = c.raw.shape,
+                bubbleType = c.bubbleType,
             )
         }
         return result.ifEmpty { null }
@@ -125,6 +127,8 @@ class TranslateRepository @Inject constructor(
                     bgColorArgb = c.raw.bgColorArgb,
                     isSfx = false,
                     lineCount = c.lineCount,
+                    shape = c.raw.shape,
+                    bubbleType = c.bubbleType,
                 )
             }
         }
@@ -142,16 +146,35 @@ class TranslateRepository @Inject constructor(
         bgColorArgb = c.raw.bgColorArgb,
         isSfx = true,
         lineCount = c.lineCount,
+        shape = c.raw.shape,
+        bubbleType = c.bubbleType,
     )
 
-    /** Vrátí výsledek z Room cache bez volání API; null = není v cache */
+    /**
+     * Vrátí výsledek z Room cache bez volání překladového API; null = není v cache.
+     * @param pageUrl když je zadané a cache záznam ještě nemá dopočítaný tvar bubliny
+     *   (starý formát), dopočítá se tvar (bez nového OCR/překladu) a cache se přepíše -
+     *   viz OcrEngine.detectShapesOnly. Bez pageUrl (starší volající, co ho nemají po ruce)
+     *   se migrace přeskočí a bloky zůstanou s shape=null (heuristický fallback v layoutu).
+     */
     suspend fun getCachedPage(
         chapterId: String,
         pageIndex: Int,
         targetLanguage: String,
         sourceLanguage: String = "Auto",
-    ): List<TranslatedBlock>? =
-        dao.getById(cacheId(chapterId, pageIndex, targetLanguage, sourceLanguage))?.deserialize()
+        pageUrl: String? = null,
+    ): List<TranslatedBlock>? {
+        val id = cacheId(chapterId, pageIndex, targetLanguage, sourceLanguage)
+        val cached = dao.getById(id)?.deserialize() ?: return null
+        if (pageUrl == null) return cached
+
+        val needsShapeMigration = cached.any { !it.isSfx && it.shape == null }
+        if (!needsShapeMigration) return cached
+
+        val migrated = ocrEngine.detectShapesOnly(pageUrl, cached)
+        dao.upsert(TranslatedPageEntity(id = id, blocksJson = migrated.serialize()))
+        return migrated
+    }
 
     private fun cacheId(chapterId: String, pageIndex: Int, targetLanguage: String, sourceLanguage: String) =
         "$chapterId::$pageIndex::$sourceLanguage::$targetLanguage"
@@ -229,6 +252,14 @@ class TranslateRepository @Inject constructor(
                 put("bg", b.bgColorArgb)
                 put("sfx", b.isSfx)
                 put("lc", b.lineCount)
+                put("type", b.bubbleType.name)
+                b.shape?.let { shape ->
+                    put("shape", JSONArray().apply {
+                        shape.forEach { p ->
+                            put(JSONArray().apply { put(p.yF.toDouble()); put(p.leftF.toDouble()); put(p.rightF.toDouble()) })
+                        }
+                    })
+                }
                 // put(String, float) na Android org.json.JSONObject neexistuje (jen desktopová
                 // verze knihovny) -> NoSuchMethodError za běhu. Double overload existuje vždy.
                 put("l", b.leftF.toDouble())
@@ -239,12 +270,19 @@ class TranslateRepository @Inject constructor(
         }
     }.toString()
 
-    /** disp/bg/sfx/lc chybí ve starších cache záznamech (před přidáním klasifikace bublin) - optXxx s výchozí hodnotou stejnou jako [TranslatedBlock] defaults, ať se nic nerozbije. */
+    /** disp/bg/sfx/lc/shape/type chybí ve starších cache záznamech - optXxx s výchozí hodnotou stejnou jako [TranslatedBlock] defaults, ať se nic nerozbije. */
     private fun TranslatedPageEntity.deserialize(): List<TranslatedBlock> = try {
         val arr = JSONArray(blocksJson)
         List(arr.length()) { i ->
             val o = arr.getJSONObject(i)
             val translated = o.getString("trans")
+            val shapeArr = o.optJSONArray("shape")
+            val shape = if (shapeArr != null) {
+                List(shapeArr.length()) { j ->
+                    val p = shapeArr.getJSONArray(j)
+                    BubbleShapePoint(yF = p.getDouble(0).toFloat(), leftF = p.getDouble(1).toFloat(), rightF = p.getDouble(2).toFloat())
+                }
+            } else null
             TranslatedBlock(
                 originalText = o.getString("orig"),
                 translatedText = translated,
@@ -256,6 +294,8 @@ class TranslateRepository @Inject constructor(
                 bgColorArgb = if (o.has("bg")) o.getInt("bg") else DEFAULT_BUBBLE_BG_ARGB,
                 isSfx = o.optBoolean("sfx", false),
                 lineCount = o.optInt("lc", 1),
+                shape = shape,
+                bubbleType = try { BubbleType.valueOf(o.optString("type", "SPEECH")) } catch (e: Exception) { BubbleType.SPEECH },
             )
         }
     } catch (e: Exception) { emptyList() }
