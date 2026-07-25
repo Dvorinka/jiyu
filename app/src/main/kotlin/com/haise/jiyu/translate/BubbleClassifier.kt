@@ -69,6 +69,13 @@ object BubbleClassifier {
         val core = trimmed.trim('*', '!', '?', '.', ' ')
         if (core.isEmpty()) return false
 
+        // Holé číslo bez jediného písmene - typicky číslo panelu/stránky vypálené do skenu
+        // (běžné u starších scanlation releasů jako MangaStream), ne replika. Skutečný dialog
+        // se nikdy nezúží na samotnou číslici bez okolního textu. Bez tohohle OCR box kolem
+        // takového čísla prochází i shape detekcí, kde floodfill z okolního bílého pozadí
+        // často "uteče" do sousední skutečné bubliny a vytvoří tvar mimo obě.
+        if (letters.isEmpty() && core.all { it.isDigit() }) return true
+
         // Krátký ALL CAPS text bez mezer (typicky zvuk, ne věta) - "BOOM!!!" ale ne "NO WAY"
         if (letters.length in 1..6 && letters.all { it.isUpperCase() } && !core.contains(' ')) return true
 
