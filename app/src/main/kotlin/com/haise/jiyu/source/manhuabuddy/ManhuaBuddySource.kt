@@ -1,0 +1,126 @@
+package com.haise.jiyu.source.manhuabuddy
+
+import com.haise.jiyu.source.MangaFilter
+import com.haise.jiyu.source.MangaSource
+import com.haise.jiyu.source.Page
+import com.haise.jiyu.source.SChapter
+import com.haise.jiyu.source.SManga
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import org.json.JSONObject
+import org.jsoup.Jsoup
+import org.jsoup.nodes.Document
+import java.net.URLEncoder
+import java.time.OffsetDateTime
+import javax.inject.Inject
+import javax.inject.Singleton
+
+/**
+ * ManhuaBuddy (manhuabuddy.com) - vlastni PHP frontend, nikdy nebylo Madara.
+ * Kapitoly se beru ze schema.org JSON-LD `ItemList` bloku na detailu titulu
+ * (`<script type="application/ld+json">`) - obsahuje kompletni seznam se
+ * spravnymi cisly a daty, na rozdil od HTML seznamu je uplny a stabilnejsi
+ * nez CSS selektory.
+ */
+@Singleton
+class ManhuaBuddySource @Inject constructor(private val client: OkHttpClient) : MangaSource {
+
+    override val id = "manhuabuddy"
+    override val name = "ManhuaBuddy"
+    override val contentType: String get() = "MANHWA"
+    override val homepageUrl get() = base
+    private val base = "https://manhuabuddy.com"
+
+    private fun get(url: String): Document {
+        val req = Request.Builder().url(url)
+            .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+            .build()
+        val html = client.newCall(req).execute().use { it.body?.string() ?: "" }
+        return Jsoup.parse(html)
+    }
+
+    private fun parseList(doc: Document): List<SManga> =
+        doc.select("div.visual").mapNotNull { el ->
+            val link = el.selectFirst("a[href]") ?: return@mapNotNull null
+            val href = link.attr("href").ifBlank { return@mapNotNull null }
+            val title = el.parent()?.selectFirst("h3.title")?.text()?.trim().orEmpty()
+                .ifBlank { link.selectFirst("img")?.attr("alt")?.trim().orEmpty() }
+                .ifBlank { return@mapNotNull null }
+            val cover = link.selectFirst("img")?.attr("data-original")?.takeIf { it.startsWith("http") }
+            SManga(sourceId = id, url = href, title = title, coverUrl = cover)
+        }
+
+    override suspend fun getPopular(page: Int, filter: MangaFilter): List<SManga> = withContext(Dispatchers.IO) {
+        try { parseList(get("$base/popular?page=$page")) } catch (_: Exception) { emptyList() }
+    }
+
+    override suspend fun search(query: String, page: Int, filter: MangaFilter): List<SManga> = withContext(Dispatchers.IO) {
+        try {
+            val q = URLEncoder.encode(query, "UTF-8")
+            parseList(get("$base/search?s=$q&page=$page"))
+        } catch (_: Exception) { emptyList() }
+    }
+
+    private fun lineContent(doc: Document, label: String): String? =
+        doc.select("span.line-text").firstOrNull { it.text().trim().trimEnd(':').equals(label, ignoreCase = true) }
+            ?.nextElementSibling()?.text()?.trim()
+
+    override suspend fun getMangaDetails(manga: SManga): SManga = withContext(Dispatchers.IO) {
+        try {
+            val doc = get(manga.url)
+            val genresSpan = doc.select("span.line-text").firstOrNull { it.text().trim() == "Genres" }?.nextElementSibling()
+            manga.copy(
+                title = doc.selectFirst("h1")?.text()?.trim() ?: manga.title,
+                description = doc.selectFirst("meta[name=twitter:description]")?.attr("content")?.trim()?.takeIf { it.isNotBlank() },
+                status = lineContent(doc, "Status"),
+                genres = genresSpan?.select("a.item-tag")?.map { it.text().trim() }?.filter { it.isNotBlank() } ?: emptyList(),
+            )
+        } catch (_: Exception) { manga }
+    }
+
+    override suspend fun getChapterList(manga: SManga): List<SChapter> = withContext(Dispatchers.IO) {
+        try {
+            val doc = get(manga.url)
+            val json = doc.selectFirst("script[type=application/ld+json]")?.data() ?: return@withContext emptyList()
+            val graph = JSONObject(json).optJSONArray("@graph") ?: return@withContext emptyList()
+            var items: org.json.JSONArray? = null
+            for (i in 0 until graph.length()) {
+                val node = graph.getJSONObject(i)
+                if (node.optString("@type") == "ItemList") {
+                    items = node.optJSONArray("itemListElement")
+                    break
+                }
+            }
+            items ?: return@withContext emptyList()
+            (0 until items.length()).mapNotNull { i ->
+                val entry = items.getJSONObject(i).optJSONObject("item") ?: return@mapNotNull null
+                val href = entry.optString("url").ifBlank { return@mapNotNull null }
+                val chName = entry.optString("name").ifBlank { "Chapter" }
+                val num = Regex("""(\d+(?:\.\d+)?)""").find(chName)?.groupValues?.get(1)?.toFloatOrNull() ?: 0f
+                SChapter(
+                    sourceId = id,
+                    mangaUrl = manga.url,
+                    url = href,
+                    name = chName,
+                    chapterNumber = num,
+                    dateUpload = parseIsoDate(entry.optString("datePublished")),
+                )
+            }
+        } catch (_: Exception) { emptyList() }
+    }
+
+    private fun parseIsoDate(text: String): Long = try {
+        OffsetDateTime.parse(text).toInstant().toEpochMilli()
+    } catch (_: Exception) { 0L }
+
+    override suspend fun getPageList(chapter: SChapter): List<Page> = withContext(Dispatchers.IO) {
+        try {
+            get(chapter.url).select("div.chapter-content div.item-photo img").mapIndexedNotNull { i, img ->
+                val url = img.attr("src").takeIf { it.startsWith("http") } ?: return@mapIndexedNotNull null
+                Page(i, url, url)
+            }
+        } catch (_: Exception) { emptyList() }
+    }
+}

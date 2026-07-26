@@ -2,6 +2,13 @@ package com.haise.jiyu.source
 
 import com.haise.jiyu.data.db.CustomSourceDao
 import com.haise.jiyu.source.batoto.BatoToSource
+import com.haise.jiyu.source.comizy.ComizySource
+import com.haise.jiyu.source.hivetoons.HiveToonsSource
+import com.haise.jiyu.source.mangaworld.MangaWorldSource
+import com.haise.jiyu.source.voidscans.VoidScansSource
+import com.haise.jiyu.source.hostednovel.HostedNovelSource
+import com.haise.jiyu.source.manhuabuddy.ManhuaBuddySource
+import com.haise.jiyu.source.woopread.WoopReadSource
 import com.haise.jiyu.source.comick.ComicKSource
 import com.haise.jiyu.source.dynasty.DynastySource
 import com.haise.jiyu.source.hitomi.HitomiSource
@@ -12,8 +19,6 @@ import com.haise.jiyu.source.mangaboomers.MangaBoomersSource
 import com.haise.jiyu.source.mangago.MangagoSource
 import com.haise.jiyu.source.asurascans.AsuraScansSource
 import com.haise.jiyu.source.flamecomics.FlameComicsSource
-import com.haise.jiyu.source.reaperscans.ReaperScansSource
-import com.haise.jiyu.source.mangalek.MangaLekSource
 import com.haise.jiyu.source.rawkuma.RawKumaSource
 import com.haise.jiyu.source.comic.ComicBookPlusSource
 import com.haise.jiyu.source.comic.ReadFreeComicsOnlineSource
@@ -30,17 +35,12 @@ import com.haise.jiyu.source.manganato.MangaNatoSource
 import com.haise.jiyu.source.royalroad.RoyalRoadSource
 import com.haise.jiyu.source.scribblehub.ScribbleHubSource
 import com.haise.jiyu.source.mangahub.MangaHubSource
-import com.haise.jiyu.source.mangafreak.MangaFreakSource
 import com.haise.jiyu.source.weebcentral.WeebCentralSource
 import com.haise.jiyu.source.vortexscans.VortexScansSource
 import com.haise.jiyu.source.mangak.MangaKSource
 import com.haise.jiyu.source.i18n.JapscanSource
-import com.haise.jiyu.source.i18n.AnimeSamaSource
 import com.haise.jiyu.source.i18n.ScanVFSource
-import com.haise.jiyu.source.i18n.TMOSource
 import com.haise.jiyu.source.i18n.InMangaSource
-import com.haise.jiyu.source.i18n.MangaLeerSource
-import com.haise.jiyu.source.i18n.UnionMangasSource
 import com.haise.jiyu.source.mangadotnet.MangaDotNetSource
 import com.haise.jiyu.source.kaliscan.KaliScanSource
 import com.haise.jiyu.source.mangacloud.MangaCloudSource
@@ -101,8 +101,6 @@ class SourceManager @Inject constructor(
     mangagoSource: MangagoSource,
     asuraScansSource: AsuraScansSource,
     flameComicsSource: FlameComicsSource,
-    reaperScansSource: ReaperScansSource,
-    mangaLekSource: MangaLekSource,
     rawKumaSource: RawKumaSource,
     comicBookPlusSource: ComicBookPlusSource,
     readFreeComicsOnlineSource: ReadFreeComicsOnlineSource,
@@ -111,17 +109,12 @@ class SourceManager @Inject constructor(
     royalRoadSource: RoyalRoadSource,
     scribbleHubSource: ScribbleHubSource,
     mangaHubSource: MangaHubSource,
-    mangaFreakSource: MangaFreakSource,
     weebCentralSource: WeebCentralSource,
     vortexScansSource: VortexScansSource,
     mangaKSource: MangaKSource,
     japscanSource: JapscanSource,
-    animeSamaSource: AnimeSamaSource,
     scanVFSource: ScanVFSource,
-    tmoSource: TMOSource,
     inMangaSource: InMangaSource,
-    mangaLeerSource: MangaLeerSource,
-    unionMangasSource: UnionMangasSource,
     mangaDotNetSource: MangaDotNetSource,
     kaliScanSource: KaliScanSource,
     mangaCloudSource: MangaCloudSource,
@@ -145,6 +138,13 @@ class SourceManager @Inject constructor(
     manga18fxSource: Manga18fxSource,
     hentai20Source: Hentai20Source,
     demonicScansSource: DemonicScansSource,
+    comizySource: ComizySource,
+    hiveToonsSource: HiveToonsSource,
+    mangaWorldSource: MangaWorldSource,
+    voidScansSource: VoidScansSource,
+    hostedNovelSource: HostedNovelSource,
+    manhuaBuddySource: ManhuaBuddySource,
+    woopReadSource: WoopReadSource,
     private val customSourceDao: CustomSourceDao,
     private val client: OkHttpClient,
 ) {
@@ -169,8 +169,6 @@ class SourceManager @Inject constructor(
         mangagoSource,
         asuraScansSource,
         flameComicsSource,
-        reaperScansSource,
-        mangaLekSource,
         rawKumaSource,
         comicBookPlusSource,
         readFreeComicsOnlineSource,
@@ -179,76 +177,63 @@ class SourceManager @Inject constructor(
         royalRoadSource,
         scribbleHubSource,
         mangaHubSource,
-        mangaFreakSource,
         weebCentralSource,
         vortexScansSource,
         mangaKSource,
         // ── Manhua (čínské komiksy) ──────────────────────────────────────────
         MadaraSource("manhuafast",    "ManhuaFast",         "https://manhuafast.com",       client, contentTypeOverride = "MANHUA"),
         MadaraSource("manhuaplus",    "Manhuaplus",         "https://manhuaplus.com",       client, contentTypeOverride = "MANHUA"),
-        MadaraSource("zinmanga",      "ZinManga",           "https://zinmanga.com",         client, contentTypeOverride = "MANHUA"),
-        MadaraSource("manhuaes",      "ManhuaES",           "https://manhuaes.com",         client, contentTypeOverride = "MANHUA"),
         MadaraSource("kunmanga",      "Kunmanga",           "https://kunmanga.com",         client, contentTypeOverride = "MANHUA"),
-        MadaraSource("manhuascan",    "ManhuaScan",         "https://manhuascan.com",       client, contentTypeOverride = "MANHUA"),
-        MadaraSource("mangayo",       "MangaYo",            "https://mangayo.com",          client, contentTypeOverride = "MANHUA"),
-        MadaraSource("manhuarock",    "ManhuaRock",         "https://manhuarock.cc",        client, contentTypeOverride = "MANHUA"),
         MadaraSource("manhuaus",      "ManhuaUS",           "https://manhuaus.com",         client, contentTypeOverride = "MANHUA"),
         // ── Manhwa scanlation skupiny ────────────────────────────────────────
-        MadaraSource("cosmicscans",   "Cosmic Scans",       "https://cosmicscans.org",      client, contentTypeOverride = "MANHWA"),
-        MadaraSource("nightscans",    "Night Scans",        "https://nightscans.net",       client, contentTypeOverride = "MANHWA"),
         MadaraSource("manhwatop",     "Manhwatop",          "https://manhwatop.com",        client, contentTypeOverride = "MANHWA"),
-        MadaraSource("voidscans",     "Void Scans",         "https://voidscans.net",        client, contentTypeOverride = "MANHWA"),
-        MadaraSource("drakescans",    "Drake Scans",        "https://drakescans.com",       client, contentTypeOverride = "MANHWA"),
-        MadaraSource("realmscans",    "Realm Scans",        "https://realmscans.xyz",       client, contentTypeOverride = "MANHWA"),
-        MadaraSource("leviathanscans","Leviathan Scans",    "https://leviathanscans.com",   client, contentTypeOverride = "MANHWA"),
         MadaraSource("immortalupdates","Immortal Updates",  "https://immortalupdates.com",  client, contentTypeOverride = "MANHWA"),
-        MadaraSource("astrascan",     "Astra Scans",        "https://astra-scans.net",      client, contentTypeOverride = "MANHWA"),
-        MadaraSource("mangaeffects",  "MangaEffects",       "https://mangaeffects.com",     client, contentTypeOverride = "MANHWA"),
-        MadaraSource("isekaiscan",    "IsekaiScan",         "https://isekaiscan.eu",        client, contentTypeOverride = "MANHWA"),
-        MadaraSource("infernalvoid",  "Infernal Void Scans","https://infernalvoidscans.com",client, contentTypeOverride = "MANHWA"),
-        MadaraSource("zeroscans",     "Zero Scans",         "https://zeroscans.com",        client, contentTypeOverride = "MANHWA"),
-        // ── Manga agregátory a scanlation ────────────────────────────────────
-        MadaraSource("mangatx",       "MangaTx",            "https://mangatx.com",          client, contentTypeOverride = "MANGA"),
-        MadaraSource("mangakiss",     "MangaKiss",          "https://mangakiss.net",        client, contentTypeOverride = "MANGA"),
-        MadaraSource("manga68",       "Manga68",            "https://manga68.com",          client, contentTypeOverride = "MANGA"),
-        MadaraSource("mangabuddy",    "MangaBuddy",         "https://mangabuddy.com",       client, contentTypeOverride = "MANGA"),
         // ── Novely (Madara/WordPress varianta) ───────────────────────────────
         MadaraSource("foxaholic",     "Foxaholic",          "https://foxaholic.com",        client, contentTypeOverride = "NOVEL"),
-        MadaraSource("hostednovel",   "HostedNovel",        "https://hostednovel.com",      client, contentTypeOverride = "NOVEL"),
-        MadaraSource("creativenovels","Creative Novels",    "https://creativenovels.com",   client, contentTypeOverride = "NOVEL"),
         MadaraSource("wuxiaworldsite","Wuxiaworld.site",    "https://wuxiaworld.site",      client, contentTypeOverride = "NOVEL"),
         MadaraSource("ranovel",       "Ranovel",            "https://ranovel.com",          client, contentTypeOverride = "NOVEL"),
-        // ── Manhwa — další populární scanlace ───────────────────────────────
-        MadaraSource("azuremanga",    "Azure Manga",        "https://azuremanga.com",       client, contentTypeOverride = "MANHWA"),
         // "demonscans" (demonscans.net) odstraneno 2026-07-24 - domena uplne prestala
         // existovat (DNS nerozresolvuje), nahrazeno DemonicScansSource (jiny tym/branding,
         // vlastni sablona - viz komentar ve tride).
-        MadaraSource("disasterscans", "Disaster Scans",     "https://disasterscans.com",    client, contentTypeOverride = "MANHWA"),
-        MadaraSource("freakscans",    "Freak Scans",        "https://freakscans.com",       client, contentTypeOverride = "MANHWA"),
-        MadaraSource("hivecomic",     "Hive Scans",         "https://hivescans.com",        client, contentTypeOverride = "MANHWA"),
-        MadaraSource("magicscans",    "Magic Scans",        "https://magicscans.net",       client, contentTypeOverride = "MANHWA"),
-        MadaraSource("mangamotto",    "MangaMotto",         "https://mangamoto.com",        client, contentTypeOverride = "MANHWA"),
-        MadaraSource("mm-scans",      "MM Scans",           "https://mm-scans.org",         client, contentTypeOverride = "MANHWA"),
-        MadaraSource("reaperscanseu", "Reaper Scans EU",    "https://reapercomics.com",     client, contentTypeOverride = "MANHWA"),
-        MadaraSource("suryascans",    "Surya Scans",        "https://suryascans.com",       client, contentTypeOverride = "MANHWA"),
-        MadaraSource("tempestmanga",  "Tempest Manga",      "https://tempestmanga.com",     client, contentTypeOverride = "MANHWA"),
-        MadaraSource("trillerscans",  "Triller Scans",      "https://trillercans.com",      client, contentTypeOverride = "MANHWA"),
-        MadaraSource("xcalibrscans",  "Xcalibr Scans",      "https://xcalibrscans.com",     client, contentTypeOverride = "MANHWA"),
-        // ── Manhua — další ────────────────────────────────────────────────────
-        MadaraSource("manhuabuddy",   "ManhuaBuddy",        "https://manhuabuddy.com",      client, contentTypeOverride = "MANHUA"),
+        //
+        // Audit 2026-07-26: 48 z 73 Madara zdrojů odstraněno po plošné kontrole (curl +
+        // ruční ověření obsahu). Kategorie:
+        //  1) DNS/timeout mrtvé domény: astrascan, cosmicscans, isekaiscan, magicscans,
+        //     mangaeffects, mangafuture, mangakiss, mangapt, mangarosie, manhuaonline,
+        //     manhuarock, okumangas, trillerscans, tempestmanga
+        //  2) Zaparkované domény / affiliate redirect (Sedo parking, ad-lander, meta-refresh
+        //     na mrtvý cíl): azuremanga, mangayo, mangatube, zeroscans, mangamotto, manhwade
+        //  3) Doména žije, ale vrací malvertising/anti-adblock "Redirecting..." nebo JS
+        //     bot-gate stránku místo Madara obsahu (proto appka hlásila chybu při otevření):
+        //     zinmanga, manhuaes, manhuascan, drakescans, realmscans, leviathanscans,
+        //     infernalvoid, manga68, topmanhua, disasterscans, freakscans, mm-scans,
+        //     reaperscanseu, suryascans, mangatx, manhuacat
+        //  4) Web žije a má reálný obsah, ale přestal používat Madara šablonu (redesign na
+        //     vlastní frontend) - generické Madara selektory proto nic nenašly ("tu nic
+        //     není"). Vyřešeno vlastními MangaSource třídami: mangabuddy -> comizy.io,
+        //     hivecomic -> hivetoons.org, mangaworld -> mangaworld.mx, voidscans,
+        //     hostednovel, manhuabuddy a woopread, viz ComizySource / HiveToonsSource /
+        //     MangaWorldSource / VoidScansSource / HostedNovelSource /
+        //     ManhuaBuddySource / WoopReadSource.
+        //     mangadenizi (mangadenizi.net) zůstává neimplementováno - čistě
+        //     klientsky renderované Nuxt SPA (žádná data v syrovém HTML) plus
+        //     agresivní rate-limiting (HTTP 429), potřebovalo by JS
+        //     execution/reverse-engineering interního API, ne jen Jsoup scraper.
+        //  5) Doplňkový audit 2026-07-26 při hledání náhrad ke skupině 4 odhalil další
+        //     nebezpečné/mrtvé případy, odstraněny bez náhrady:
+        //     creativenovels (creativenovels.com) - kompromitovaný web: listing
+        //     stránky (/browse-new/, /latest-releases/) servírují gambling spam
+        //     (title "PANENTOTO"/"EMON777") místo obsahu, i když jednotlivé
+        //     /novel/{slug}/ stránky ještě fungují.
+        //     xcalibrscans (xcalibrscans.com) - stejný "Redirecting..." malvertising
+        //     vzor jako skupina 3 výše (Windows Defender obsah karanténoval).
+        //     mangatoto (mangatoto.com) - doména vypršela a byla zabrána
+        //     spekulantem, teď je to obecný thajský WordPress SEO blog bez
+        //     jakéhokoliv manga obsahu.
         MadaraSource("manhuahot",     "Manhua Hot",         "https://manhuahot.com",        client, contentTypeOverride = "MANHUA"),
-        MadaraSource("manhuacat",     "ManhuaCat",          "https://manhuacat.com",        client, contentTypeOverride = "MANHUA"),
-        MadaraSource("manhuaonline",  "ManhuaOnline",       "https://manhuaonline.co",      client, contentTypeOverride = "MANHUA"),
-        MadaraSource("topmanhua",     "TopManhua",          "https://topmanhua.com",        client, contentTypeOverride = "MANHUA"),
         // Manhuarm - MTL (strojově přeložené) manhua, ale standardní Madara šablona.
         MadaraSource("manhuarm",      "Manhuarm",           "https://manhuarmtl.com",       client, contentTypeOverride = "MANHUA"),
         // ── Manga — další populární weby ─────────────────────────────────────
-        MadaraSource("mangarosie",    "MangaRosie",         "https://mangarosie.in",        client, contentTypeOverride = "MANGA"),
-        MadaraSource("mangapt",       "MangaPT",            "https://mangapt.com",          client, contentTypeOverride = "MANGA"),
-        MadaraSource("mangatoto",     "MangaToto",          "https://mangatoto.com",        client, contentTypeOverride = "MANGA"),
-        // WoopRead je textový light-novel web (ověřeno: kapitoly obsahují
-        // odstavce textu, ne obrázky) - contentType byl chybně "MANGA".
-        MadaraSource("woopread",      "WoopRead",           "https://woopread.com",         client, contentTypeOverride = "NOVEL"),
         MadaraSource("toonily",       "Toonily",            "https://toonily.com",          client, contentTypeOverride = "MANHWA"),
         MadaraSource("madaradex",     "MadaraDex",          "https://madaradex.org",        client, contentTypeOverride = "MANGA"),
         MadaraSource("mangazin",      "Mangazin",           "https://mangazin.org",         client, contentTypeOverride = "MANHUA"),
@@ -285,24 +270,22 @@ class SourceManager @Inject constructor(
             ),
             contentTypeOverride = "MANGA",
         ),
-        // ── Italské zdroje 🇮🇹 ───────────────────────────────────────────────
-        MadaraSource("mangaworld",    "MangaWorld (IT)",    "https://www.mangaworld.ac",    client, contentTypeOverride = "MANGA"),
-        MadaraSource("mangafuture",   "MangaFuture (IT)",   "https://www.mangafuture.it",   client, contentTypeOverride = "MANGA"),
-        // ── Německé zdroje 🇩🇪 ───────────────────────────────────────────────
-        MadaraSource("mangatube",     "MangaTube (DE)",     "https://www.mangatube.net",    client, contentTypeOverride = "MANGA"),
-        MadaraSource("manhwade",      "ManhwaDE",           "https://manhwa.de",            client, contentTypeOverride = "MANHWA"),
-        // ── Turecké zdroje 🇹🇷 ───────────────────────────────────────────────
-        MadaraSource("mangadenizi",   "MangaDenizi (TR)",   "https://mangadenizi.net",      client, contentTypeOverride = "MANGA"),
-        MadaraSource("okumangas",     "OkuManga (TR)",      "https://okumangas.com",        client, contentTypeOverride = "MANGA"),
         // ── Francouzské zdroje 🇫🇷 ──────────────────────────────────────────
+        // animesama (anime-sama.fr) odstraněno 2026-07-26 - doména mrtvá, nová
+        // anime-sama.to sice žije, ale web byl kompletně přepsán (Tailwind redesign,
+        // seznam kapitol se generuje přes JS document.write, ne v statickém HTML) -
+        // vyžaduje plný přepis scraperu, ne jen výměnu domény/selektorů.
         japscanSource,
-        animeSamaSource,
         scanVFSource,
         // ── Španělské a portugalské zdroje 🇪🇸🇧🇷 ──────────────────────────
-        tmoSource,
+        // tmo (lectortmo.com) odstraněno 2026-07-26 - doména mrtvá (DNS), nová
+        // lectortmo.net existuje ale je to čistě klientský SPA shell (Vite bundle) -
+        // obsah by šel získat jen přes JS/API, ne přes Jsoup HTML parsing.
+        // mangaleer (mangaleer.com) odstraněno 2026-07-26 - doména expirovala,
+        // přesměrovává na expireddomains.com marketplace nabídku.
+        // unionmangas (unionmangas.xyz) odstraněno 2026-07-26 - zaparkovaná doména,
+        // reklamní JS redirect na "/lander".
         inMangaSource,
-        mangaLeerSource,
-        unionMangasSource,
         // ── Noví kandidáti (jednoduchý vlastní scraping) ─────────────────────
         mangaDotNetSource,
         kaliScanSource,
@@ -332,6 +315,25 @@ class SourceManager @Inject constructor(
         manga18fxSource,
         hentai20Source,
         demonicScansSource,
+        // MangaBuddy (mangabuddy.com) prebrandovano 2026-07-26 na comizy.io -
+        // kompletni Next.js redesign, viz ComizySource (parsuje __NEXT_DATA__
+        // JSON misto HTML selektoru, viz docs/source-audit-2026-07-26.md).
+        comizySource,
+        // Hive Scans (hivescans.com) prebrandovano 2026-07-26 na hivetoons.org -
+        // kompletni redesign (Astro + schema.org microdata), viz HiveToonsSource.
+        hiveToonsSource,
+        // MangaWorld (IT, mangaworld.ac -> mangaworld.mx) nikdy nebylo Madara -
+        // vlastni Laravel frontend, viz MangaWorldSource.
+        mangaWorldSource,
+        // Void Scans (voidscans.net) - maly staticky Hugo web, nikdy nebyl Madara.
+        voidScansSource,
+        // HostedNovel (hostednovel.com) - vlastni Laravel/Vue frontend, nikdy Madara.
+        hostedNovelSource,
+        // ManhuaBuddy (manhuabuddy.com) - vlastni PHP frontend, nikdy nebylo Madara.
+        manhuaBuddySource,
+        // WoopRead (woopread.com) - textovy light-novel web, vlastni Next.js
+        // App Router frontend, nikdy nebyl Madara.
+        woopReadSource,
         MadaraSource(
             "webtoonxyz", "Webtoon XYZ", "https://www.webtoon.xyz", client,
             contentTypeOverride = "MANHWA",
