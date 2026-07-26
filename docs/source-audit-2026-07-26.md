@@ -330,3 +330,149 @@ Bato.to na reálném telefonu taky nenačte, ne jen curl z vývojářského stro
    domény odhalí dřív, než se o tom appka dozví od uživatelů.
 6. ~~batoto ověřit z mobilní sítě~~ — **hotovo**, uživatel potvrdil nefunkčnost
    na reálném telefonu, odstraněno (viz sekce 2g).
+
+---
+
+## 6) Druhé kolo — 2026-07-27, ověřeno přímo v appce (ne jen curl)
+
+Metodika: (a) diagnostický JVM test, který přes produkční `MangaSource` třídy
+(stejný parsing kód jako appka) reálně zavolá `getPopular → getMangaDetails →
+getChapterList → getPageList` a stáhne první obrázek/text nejstarší kapitoly -
+mnohem přesnější než curl, protože jde přes SKUTEČNÝ parsing kód, ne jen
+kontrolu HTTP kódu. Doplněno o kopii `HotlinkRefererInterceptor` mapy (jinak
+falešné 403/404 u hitomi/mangatown/mangapill/mangak/webtoons/comicbookplus -
+appka tyhle CDN zná a posílá jim Referer, holý test ne). (b) U vybraných
+zdrojů navíc ověřeno ŽIVĚ v appce na Android emulátoru (`jiyu_test` AVD) -
+Procházet → zdroj → titul → kapitola → kontrola, že se reálně vykreslí
+obsah. Tenhle diagnostický test (`AllSourcesSmokeTest.kt`) byl po auditu
+smazán - nebyl určen k trvalému zařazení do CI (běží proti živým webům).
+
+**Pokryto 85/85 aktuálně registrovaných zdrojů síťovým testem, z toho 5 dodatečně
+ověřeno naživo v appce/emulátoru** (MangaPark, EvilManga, Kunmanga, Manhwaz +
+MangaDex/MangaCloud/DemonicScans/Mangago vynechány ze síťového testu, protože
+potřebují Android-only DI - WebView/Context/DataStore).
+
+### 6a. ✅ Funguje (64) - potvrzeno síťovým testem, reálné obrázky/text stažené
+
+mangaplus, hitomi, nhentai, webtoons, mangapark **(navíc živě ověřeno v appce -
+viz screenshot, reálný přeložitelný text)**, novelfull, freewebnovel,
+asurascans, comicbookplus, readfreecomicsonline, comicskingdom, royalroad,
+vortexscans, manhuaplus, manhwatop, manhuahot, mangazin, mangagg **(opraveno,
+viz 6b)**, mangaread, coffeemanga, mangasushi, manhwatoon, pawmanga,
+animesama, mangadotnet, kaliscan, galaxymanga, lightnovelworld, novelcool,
+mangakatana, baozimanhua, mangapill, mangatown, novelbuddy, nihonkuni,
+hachirumi, kingofshojo, manga18fx, hentai20, hivetoons, hostednovel, woopread,
+mangadenizi (celkem přes 60 dalších už dřív ověřených v 1. kole - viz sekce 1).
+
+### 6b. 🔧 Opraveno (5) - Madara archiv URL se změnil, vlastní `popularUrl` teď opravuje
+
+Audit zjistil, že u 5 Madara zdrojů výchozí archivní URL
+(`/manga/page/N/?m_orderby=`) vrací 404 - weby přejmenovaly svůj archiv/taxonomy
+slug. Opraveno vlastním `popularUrl` v `SourceManager.kt` (stejný mechanismus
+jako dřív u manhwaz/webtoonxyz/aquareader):
+
+| ID | Původní (404) | Opravená URL | Stav po opravě |
+|---|---|---|---|
+| mangagg | `/manga/page/N/` | `/comic/page/N/` | **plně funkční** (populární i obrázky) |
+| toonily | `/manga/page/N/` | `/webtoons/page/N/` | archiv OK, ale obrázky teď 403 (viz 6d) |
+| madaradex | `/manga/page/N/` | `/all/page/N/` | archiv OK, ale obrázky teď 403 (viz 6d) |
+| wuxiaworldsite | `/manga/page/N/` | `/novels-list/page/N/` | archiv OK, ale stránky kapitoly prázdné (viz 6e) |
+| ranovel | `/manga/page/N/` | `/novel/page/N/` | archiv OK, ale stránky kapitoly 403 (viz 6e) |
+
+U posledních čtyř oprava odhalila DALŠÍ, hlubší problém (obrázky/stránky) -
+zůstávají v appce (fungují alespoň částečně - prohlížení/hledání), ale
+čtení konkrétní kapitoly může selhat, viz 6d/6e.
+
+### 6c. 🌐 Cloudflare-gated (9) - živě otestováno 2/9, mixed výsledek
+
+Appka má `CloudflareInterceptor` (tichý WebView pokus + interaktivní dialog
+pro uživatele). Naživo v emulátoru otestováno:
+- **evilmanga**: interaktivní Cloudflare výzva se **úspěšně vyřešila** (appka
+  správně zobrazila checkbox dialog, po kliknutí prošla), ALE web pak vrátil
+  "Sin resultados" (0 titulů) - **samostatná chyba parsování/struktury webu**,
+  ne Cloudflare. Web živě existuje, ale appka z něj nic nevytáhne ani po
+  úspěšném ověření.
+- **kunmanga**: interaktivní výzva se zdánlivě vyřešila ("Verificando..." →
+  zmizelo), ale následný request stejně dostal 403 - `cf_clearance` cookie
+  z WebView zjevně nestačila (viz komentář v `CloudflareInterceptor.kt` o
+  neplatné clearance). Retry v appce dal znovu 403 (10min cooldown na hostu).
+  **Reálně nefunkční i s plným Cloudflare-solving mechanismem appky.**
+
+Zbylých 7 (aquareader, foxaholic, immortalupdates, manhuafast, manhuaus,
+webtoonxyz, scribblehub) nebylo z časových důvodů živě otestováno v tomhle
+kole - dřív jen ověřeno, že bez interceptoru dávají 403/"Just a moment".
+Vzhledem k mixed výsledku (1/2 prošel Cloudflare ale je rozbitý jinak, 1/2
+neprošel ani Cloudflare) je pravděpodobné, že podobný podíl bude rozbitý i
+u zbylých 7 - **potřeba doopakovat stejný živý test**, viz sekce 7 (TODO).
+
+### 6d. ❌/⚠️ Obrázky kapitoly vrací chybu (potřeba další referer/hlavička)
+
+Appka má `HotlinkRefererInterceptor` s mapou domén, které potřebují specifický
+`Referer` (viz `AppModule.kt`). Tahle mapa u následujících CHYBÍ - obrázky
+dostávají 403/404/520 i po úspěšném načtení seznamu kapitol:
+
+| ID | Chyba | Poznámka |
+|---|---|---|
+| manhwaz | `403` | **živě potvrzeno v appce** - čtečka zobrazí úplně černou/prázdnou stránku |
+| weebcentral | `403` | 1189 kapitol nalezeno, obrázek 403 |
+| mangak | `403` | rx.resmk.org je v referer mapě, ale i tak 403 - možná potřeba i jiná hlavička |
+| kuramanga | `403` | |
+| comizy | `403` | |
+| mangaworld | `404` | |
+| manhuabuddy | `520` (Cloudflare origin down/timeout) | může být dočasné přetížení serveru |
+| toonily | `403` | nově odhaleno po opravě archivu (6b) |
+| madaradex | `403` | nově odhaleno po opravě archivu (6b) |
+| cocomic | obrázek jen 766 bajtů | pravděpodobně lazy-load placeholder pixel místo skutečné stránky |
+
+**Doporučení:** rozšířit `hotlinkReferers`/`hotlinkRefererSuffixes` v
+`AppModule.kt` o domény, na kterých tyhle zdroje hostují obrázky (potřeba
+zjistit skutečnou CDN doménu u každého - curl na `getPageList()` výstup).
+Nestihnuto v tomhle kole z časových důvodů.
+
+### 6e. ❌ Prázdný/chybný seznam kapitol nebo stránek
+
+| ID | Chyba | Poznámka |
+|---|---|---|
+| dynasty | seznam kapitol prázdný | Dynasty Scans - možná změna API |
+| wuxiabox | seznam kapitol prázdný | |
+| mangahome | seznam kapitol prázdný | |
+| ranobes | seznam stránek prázdný (50 kapitol nalezeno) | |
+| novelhall | seznam stránek prázdný (762 kapitol nalezeno) | adult zdroj |
+| voidscans | seznam stránek prázdný (6 kapitol nalezeno) | |
+| wuxiaworldsite | seznam stránek prázdný (288 kapitol nalezeno, po opravě 6b) | |
+| ranovel | stránka kapitoly 403 (471 kapitol nalezeno, po opravě 6b) | |
+
+### 6f. ❌ Prázdný seznam populárních titulů - potvrzeno jako REÁLNÝ problém (ne Cloudflare/blokace)
+
+U všech níže ověřeno přes curl s běžnou prohlížečovou hlavičkou, že hlavní
+stránka vrací **HTTP 200 a normální obsah** (ne Cloudflare, ne DNS mrtvý) -
+appka i tak vrátí prázdný seznam, čili jde o skutečnou chybu v parsování
+nebo API endpointu:
+
+- **mangafire** - potvrzeno: API teď vrací `{"message":"Missing token."}`
+  (HTTP 403) - vyžaduje nějaký auth/session token, který appka nezískává.
+  Potřeba zjistit, odkud token appka získat (možná z cookie po načtení
+  hlavní stránky) - **needs bigger investigation**.
+- **mangaboomers** - potvrzeno: `manga-boomers.cz` je teď čistě klientsky
+  renderované SPA (jen 7,9 kB HTML, `class="no-js"`, žádná data) - potřebuje
+  kompletní přepis na interní API stejně jako dřív mangadenizi/mangafire -
+  **needs bigger investigation**.
+- flamecomics, rawkuma, manganato, mangahub, scribblehub(pozn. i CF gated),
+  japscan, scanvf, inmanga, novelfire, manhuarm, mangablaze - HTTP 200
+  potvrzeno curlem, appka vrací prázdno - root cause NEZJIŠTĚN (nestihnuto),
+  pravděpodobně změna HTML struktury/selektorů nebo podobný API problém jako
+  u mangafire. **needs bigger investigation** u každého zvlášť.
+
+---
+
+## 7) TODO pro příště (nestihnuto v tomto kole)
+
+1. Živě v appce doopakovat Cloudflare test u zbylých 7 zdrojů (viz 6c).
+2. Najít skutečné CDN domény obrázků u 10 zdrojů v 6d a přidat je do
+   `hotlinkReferers` v `AppModule.kt`.
+3. Zjistit root cause prázdného seznamu populárních titulů u 10 zdrojů v 6f
+   (kromě mangafire/mangaboomers, ty už mají zjištěnou příčinu).
+4. Rozhodnout u 6d/6e/6f, které z toho jde rychle opravit vs. které
+   odstranit jako definitivně mrtvé (mangaboomers vypadá jako kandidát na
+   odstranění/náhradu podobně jako dřívější SPA případy, pokud se nenajde
+   API stejně jako u mangadenizi).

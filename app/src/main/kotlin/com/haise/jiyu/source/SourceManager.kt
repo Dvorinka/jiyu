@@ -200,8 +200,18 @@ class SourceManager @Inject constructor(
         MadaraSource("immortalupdates","Immortal Updates",  "https://immortalupdates.com",  client, contentTypeOverride = "MANHWA"),
         // ── Novely (Madara/WordPress varianta) ───────────────────────────────
         MadaraSource("foxaholic",     "Foxaholic",          "https://foxaholic.com",        client, contentTypeOverride = "NOVEL"),
-        MadaraSource("wuxiaworldsite","Wuxiaworld.site",    "https://wuxiaworld.site",      client, contentTypeOverride = "NOVEL"),
-        MadaraSource("ranovel",       "Ranovel",            "https://ranovel.com",          client, contentTypeOverride = "NOVEL"),
+        // wuxiaworldsite/ranovel: audit 2026-07-27 zjistil, ze vychozi "/manga/page/N/"
+        // archiv vraci 404 - oba weby maji vlastni taxonomy slug pro novely.
+        MadaraSource(
+            "wuxiaworldsite", "Wuxiaworld.site", "https://wuxiaworld.site", client,
+            contentTypeOverride = "NOVEL",
+            popularUrl = { root, page, orderby -> "$root/novels-list/page/$page/?m_orderby=$orderby" },
+        ),
+        MadaraSource(
+            "ranovel", "Ranovel", "https://ranovel.com", client,
+            contentTypeOverride = "NOVEL",
+            popularUrl = { root, page, orderby -> "$root/novel/page/$page/?m_orderby=$orderby" },
+        ),
         // "demonscans" (demonscans.net) odstraneno 2026-07-24 - domena uplne prestala
         // existovat (DNS nerozresolvuje), nahrazeno DemonicScansSource (jiny tym/branding,
         // vlastni sablona - viz komentar ve tride).
@@ -241,11 +251,25 @@ class SourceManager @Inject constructor(
         // Manhuarm - MTL (strojově přeložené) manhua, ale standardní Madara šablona.
         MadaraSource("manhuarm",      "Manhuarm",           "https://manhuarmtl.com",       client, contentTypeOverride = "MANHUA"),
         // ── Manga — další populární weby ─────────────────────────────────────
-        MadaraSource("toonily",       "Toonily",            "https://toonily.com",          client, contentTypeOverride = "MANHWA"),
-        MadaraSource("madaradex",     "MadaraDex",          "https://madaradex.org",        client, contentTypeOverride = "MANGA"),
+        // toonily/madaradex/mangagg: audit 2026-07-27 zjistil, ze vychozi "/manga/page/N/"
+        // archiv vraci 404 - vlastni taxonomy slug ("/webtoons/", "/all/", "/comic/").
+        MadaraSource(
+            "toonily", "Toonily", "https://toonily.com", client,
+            contentTypeOverride = "MANHWA",
+            popularUrl = { root, page, orderby -> "$root/webtoons/page/$page/?m_orderby=$orderby" },
+        ),
+        MadaraSource(
+            "madaradex", "MadaraDex", "https://madaradex.org", client,
+            contentTypeOverride = "MANGA",
+            popularUrl = { root, page, orderby -> "$root/all/page/$page/?m_orderby=$orderby" },
+        ),
         MadaraSource("mangazin",      "Mangazin",           "https://mangazin.org",         client, contentTypeOverride = "MANHUA"),
         MadaraSource("cocomic",       "Cocomic",            "https://cocomic.co",           client, contentTypeOverride = "MANHWA"),
-        MadaraSource("mangagg",       "MangaGG",            "https://mangagg.com",          client, contentTypeOverride = "MANHUA"),
+        MadaraSource(
+            "mangagg", "MangaGG", "https://mangagg.com", client,
+            contentTypeOverride = "MANHUA",
+            popularUrl = { root, page, orderby -> "$root/comic/page/$page/?m_orderby=$orderby" },
+        ),
         MadaraSource("mangaread",     "MangaRead",          "https://www.mangaread.org",    client, contentTypeOverride = "MANGA"),
         MadaraSource("mangablaze",    "MangaBlaze",         "https://mangablaze.com",       client, contentTypeOverride = "MANGA"),
         MadaraSource("coffeemanga",   "CoffeManga",         "https://coffeemanga.ink",      client, contentTypeOverride = "MANGA"),
