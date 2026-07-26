@@ -360,6 +360,29 @@ class ReaderViewModel @Inject constructor(
     private val _showOriginal = MutableStateFlow(false)
     val showOriginal: StateFlow<Boolean> = _showOriginal.asStateFlow()
 
+    // ── Viditelnost ovládacích prvků (auto-hide po 3s) ───────────────────────
+    // Dřív žila jako rememberSaveable přímo v ReaderContent (Composable) - přesunuto sem,
+    // aby ReaderContent zůstal čistě parametrický a auto-hide časovač šel testovat/sledovat
+    // nezávisle na Compose lifecycle.
+    private val _controlsVisible = MutableStateFlow(true)
+    val controlsVisible: StateFlow<Boolean> = _controlsVisible.asStateFlow()
+    private var controlsHideJob: Job? = null
+
+    fun toggleControlsVisible() {
+        _controlsVisible.value = !_controlsVisible.value
+        scheduleControlsAutoHide()
+    }
+
+    private fun scheduleControlsAutoHide() {
+        controlsHideJob?.cancel()
+        if (_controlsVisible.value) {
+            controlsHideJob = viewModelScope.launch {
+                delay(3_000L)
+                _controlsVisible.value = false
+            }
+        }
+    }
+
     fun clearTranslationError() { _translationError.value = null }
 
     fun startSleepTimer(minutes: Int, onFinish: () -> Unit) =
@@ -422,6 +445,7 @@ class ReaderViewModel @Inject constructor(
     private var lastPageChangeMs = 0L
 
     init {
+        scheduleControlsAutoHide()
         viewModelScope.launch { loadChapter(chapterEntityId) }
         viewModelScope.launch {
             _sourceLanguage.value = settings.sourceLanguage.first()
