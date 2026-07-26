@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
@@ -47,6 +48,7 @@ object SettingsKeys {
     val PRELOAD_NEXT_NOVEL_CHAPTER = booleanPreferencesKey("preload_next_novel_chapter")
     val PRELOAD_NEXT_CHAPTER_MANGA = booleanPreferencesKey("preload_next_chapter_manga")
     val PRELOAD_NEXT_CHAPTER_WIFI_ONLY = booleanPreferencesKey("preload_next_chapter_wifi_only")
+    val FAVORITE_SOURCE_IDS    = stringSetPreferencesKey("favorite_source_ids")
     val SAVED_SEARCHES         = stringPreferencesKey("saved_searches")
     val CROP_BORDERS           = booleanPreferencesKey("crop_borders")
     val LIBRARY_GRID_MODE      = booleanPreferencesKey("library_grid_mode")
@@ -296,6 +298,17 @@ class SettingsRepository @Inject constructor(
 
     suspend fun setPreloadNextChapterWifiOnly(enabled: Boolean) =
         dataStore.edit { it[SettingsKeys.PRELOAD_NEXT_CHAPTER_WIFI_ONLY] = enabled }
+
+    // ── Oblíbené zdroje (Procházet) ───────────────────────────────────────────
+    // MangaSource je rozhraní za natvrdo zapsanými singletony (ne Room entita), takže
+    // "oblíbenost" žije jen jako množina ID v DataStore, ne jako pole na samotném zdroji.
+    val favoriteSourceIds: Flow<Set<String>> =
+        dataStore.data.map { it[SettingsKeys.FAVORITE_SOURCE_IDS] ?: emptySet() }
+
+    suspend fun toggleFavoriteSource(sourceId: String) = dataStore.edit { prefs ->
+        val current = prefs[SettingsKeys.FAVORITE_SOURCE_IDS] ?: emptySet()
+        prefs[SettingsKeys.FAVORITE_SOURCE_IDS] = if (sourceId in current) current - sourceId else current + sourceId
+    }
 
     val savedSearches: Flow<List<String>> =
         dataStore.data.map { prefs ->

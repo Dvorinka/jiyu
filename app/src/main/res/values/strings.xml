@@ -45,6 +45,7 @@
     <string name="common_cancel">Zrušit</string>
     <string name="common_ok">OK</string>
     <string name="common_save">Uložit</string>
+    <string name="common_send">Odeslat</string>
     <string name="common_delete">Smazat</string>
     <string name="common_remove">Odebrat</string>
     <string name="common_add">Přidat</string>
@@ -620,6 +621,17 @@
     <string name="browse_filter_comics">Komiksy</string>
     <string name="browse_lang_all">🌐 Vše</string>
     <string name="browse_no_sources_match">Žádné zdroje neodpovídají filtru</string>
+    <string name="browse_source_menu_desc">Možnosti zdroje</string>
+    <string name="browse_source_favorite">Přidat do oblíbených</string>
+    <string name="browse_source_unfavorite">Odebrat z oblíbených</string>
+    <string name="browse_source_report">Nahlásit problém</string>
+    <string name="browse_report_title">Nahlásit problém: %1$s</string>
+    <string name="browse_report_problem_titles">Zdroj nenačítá tituly</string>
+    <string name="browse_report_problem_chapters">Kapitoly se nenačítají</string>
+    <string name="browse_report_problem_error">Chyba (error)</string>
+    <string name="browse_report_problem_other">Jiný problém</string>
+    <string name="browse_report_details_placeholder">Popiš problém…</string>
+    <string name="browse_report_chooser_title">Odeslat report přes…</string>
     <string name="browse_source_type_manga">Manga</string>
     <string name="browse_source_type_manhwa">Manhwa</string>
     <string name="browse_source_type_manhua">Manhua</string>

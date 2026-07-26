@@ -3,6 +3,8 @@ package com.haise.jiyu.ui.browse
 import compose.icons.TablerIcons
 import compose.icons.tablericons.*
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -32,10 +34,18 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -53,6 +63,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -90,6 +101,7 @@ fun BrowseScreen(
     val contentTypeFilter by viewModel.contentTypeFilter.collectAsState()
     val languageFilter    by viewModel.languageFilter.collectAsState()
     val sourceNameFilter  by viewModel.sourceNameFilter.collectAsState()
+    val favoriteSourceIds by viewModel.favoriteSourceIds.collectAsState()
 
     // false = hledat TITUL napříč všemi zdroji (otevře GlobalSearch, beze změny chování),
     // true = hledat přímo podle NÁZVU ZDROJE (jen lokálně filtruje mřížku níže) - pro
@@ -215,15 +227,24 @@ fun BrowseScreen(
                 Text(stringResource(R.string.browse_no_sources_match), color = TextSecondary, style = MaterialTheme.typography.bodyMedium)
             }
         } else {
+            // weight(1f), ne fillMaxSize() - garantuje, že mřížka dostane přesně ZBÝVAJÍCÍ
+            // prostor pod hlavičkou/filtry (ty se měří první na svou přirozenou výšku) a
+            // jen ONA sama scrolluje, ne celá obrazovka - hlavička s filtry zůstává
+            // připevněná nahoře při scrollování mřížky.
             LazyVerticalGrid(
                 columns = GridCells.Fixed(3),
                 contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 12.dp, bottom = 16.dp + navBottom),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.weight(1f).fillMaxWidth(),
             ) {
                 items(sources, key = { it.id }) { source ->
-                    SourceCard(source = source, onClick = { onOpenSource(source.id) })
+                    SourceCard(
+                        source = source,
+                        onClick = { onOpenSource(source.id) },
+                        isFavorite = source.id in favoriteSourceIds,
+                        onToggleFavorite = { viewModel.toggleFavoriteSource(source.id) },
+                    )
                 }
             }
         }
@@ -322,7 +343,13 @@ private fun faviconUrlFor(homepageUrl: String): String {
 
 /** Karta zdroje - monogram (barevně odlišený, viz [accentFor]), název, typ obsahu a jazyk. */
 @Composable
-private fun SourceCard(source: MangaSource, onClick: () -> Unit) {
+private fun SourceCard(
+    source: MangaSource,
+    onClick: () -> Unit,
+    isFavorite: Boolean,
+    onToggleFavorite: () -> Unit,
+) {
+    val context = LocalContext.current
     val initials = remember(source.name) {
         source.name.trim().split(" ")
             .mapNotNull { word -> word.firstOrNull { it.isLetterOrDigit() }?.uppercaseChar() }
@@ -330,6 +357,8 @@ private fun SourceCard(source: MangaSource, onClick: () -> Unit) {
             .joinToString("")
     }
     val accent = remember(source.id) { accentFor(source.id) }
+    var showMenu by remember { mutableStateOf(false) }
+    var showReportDialog by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -380,13 +409,48 @@ private fun SourceCard(source: MangaSource, onClick: () -> Unit) {
                 }
             }
             Spacer(Modifier.weight(1f))
-            // Zatím jen vizuální placeholder (bez funkce) - viz zadání redesignu.
-            Icon(
-                TablerIcons.DotsVertical,
-                contentDescription = null,
-                tint = TextSecondary,
-                modifier = Modifier.size(14.dp),
-            )
+            if (isFavorite) {
+                Icon(
+                    TablerIcons.Heart,
+                    contentDescription = null,
+                    tint = Pink,
+                    modifier = Modifier.size(12.dp).padding(end = 4.dp),
+                )
+            }
+            Box {
+                // IconButton (ne holý Icon) - vlastní clickable zastaví tap dřív, než se
+                // dostane ke klikatelnému Column celé karty (jinak by klik na tři tečky
+                // rovnou otevřel zdroj místo menu).
+                IconButton(onClick = { showMenu = true }, modifier = Modifier.size(20.dp)) {
+                    Icon(
+                        TablerIcons.DotsVertical,
+                        contentDescription = stringResource(R.string.browse_source_menu_desc),
+                        tint = TextSecondary,
+                        modifier = Modifier.size(14.dp),
+                    )
+                }
+                DropdownMenu(
+                    expanded = showMenu,
+                    onDismissRequest = { showMenu = false },
+                    modifier = Modifier.background(NightBlue),
+                ) {
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                stringResource(if (isFavorite) R.string.browse_source_unfavorite else R.string.browse_source_favorite),
+                                color = TextPrimary,
+                            )
+                        },
+                        leadingIcon = { Icon(TablerIcons.Heart, contentDescription = null, tint = if (isFavorite) Pink else TextSecondary) },
+                        onClick = { onToggleFavorite(); showMenu = false },
+                    )
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.browse_source_report), color = TextPrimary) },
+                        leadingIcon = { Icon(TablerIcons.AlertCircle, contentDescription = null, tint = TextSecondary) },
+                        onClick = { showMenu = false; showReportDialog = true },
+                    )
+                }
+            }
         }
         Spacer(Modifier.height(6.dp))
         Text(
@@ -418,5 +482,117 @@ private fun SourceCard(source: MangaSource, onClick: () -> Unit) {
                 fontSize = 10.sp,
             )
         }
+    }
+
+    if (showReportDialog) {
+        val chooserTitle = stringResource(R.string.browse_report_chooser_title)
+        ReportSourceDialog(
+            sourceName = source.name,
+            onDismiss = { showReportDialog = false },
+            onSend = { problemType, details ->
+                val intent = buildSourceReportIntent(source.name, source.id, problemType, details)
+                context.startActivity(Intent.createChooser(intent, chooserTitle))
+                showReportDialog = false
+            },
+        )
+    }
+}
+
+/**
+ * Dialog s výběrem typu problému (rádiová volba) - "jiný" navíc odkryje textové pole pro
+ * volný popis. Odeslání sestaví e-mail (viz [buildSourceReportIntent]) - appka nemá vlastní
+ * backend na reporty, takže se pošle přes uživatelův vlastní e-mailový klient, stejně jako
+ * existující "sdílet stránku" v čtečce.
+ */
+@Composable
+private fun ReportSourceDialog(
+    sourceName: String,
+    onDismiss: () -> Unit,
+    onSend: (problemType: String, details: String) -> Unit,
+) {
+    var selectedProblem by remember { mutableStateOf("titles") }
+    var details by remember { mutableStateOf("") }
+    val problems = listOf(
+        "titles" to stringResource(R.string.browse_report_problem_titles),
+        "chapters" to stringResource(R.string.browse_report_problem_chapters),
+        "error" to stringResource(R.string.browse_report_problem_error),
+        "other" to stringResource(R.string.browse_report_problem_other),
+    )
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.browse_report_title, sourceName), color = TextPrimary) },
+        text = {
+            Column {
+                problems.forEach { (key, label) ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null,
+                                onClick = { selectedProblem = key },
+                            )
+                            .padding(vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        RadioButton(
+                            selected = selectedProblem == key,
+                            onClick = { selectedProblem = key },
+                            colors = RadioButtonDefaults.colors(selectedColor = Violet, unselectedColor = TextSecondary),
+                        )
+                        Text(label, color = TextPrimary, fontSize = 14.sp)
+                    }
+                }
+                if (selectedProblem == "other") {
+                    TextField(
+                        value = details,
+                        onValueChange = { details = it },
+                        placeholder = { Text(stringResource(R.string.browse_report_details_placeholder), color = TextSecondary, fontSize = 13.sp) },
+                        modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                        colors = TextFieldDefaults.colors(
+                            focusedTextColor = TextPrimary, unfocusedTextColor = TextPrimary,
+                            focusedContainerColor = Color.White.copy(alpha = 0.06f), unfocusedContainerColor = Color.White.copy(alpha = 0.06f),
+                        ),
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { onSend(selectedProblem, details) },
+                enabled = selectedProblem != "other" || details.isNotBlank(),
+            ) { Text(stringResource(R.string.common_send), color = Violet) }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel), color = TextSecondary) }
+        },
+        containerColor = NightBlue,
+    )
+}
+
+/**
+ * Appka nemá vlastní backend na sběr reportů o nefunkčních zdrojích - report se pošle jako
+ * e-mail přes uživatelův vlastní e-mailový klient (ACTION_SENDTO, stejný vzor jako sdílení
+ * stránky v čtečce), ne automaticky na pozadí bez jeho vědomí.
+ */
+private fun buildSourceReportIntent(sourceName: String, sourceId: String, problemType: String, details: String): Intent {
+    val problemLabel = when (problemType) {
+        "titles" -> "Zdroj nenačítá tituly"
+        "chapters" -> "Kapitoly se nenačítají"
+        "error" -> "Chyba (error)"
+        else -> "Jiný problém"
+    }
+    val body = buildString {
+        append("Zdroj: $sourceName ($sourceId)\n")
+        append("Problém: $problemLabel\n")
+        if (details.isNotBlank()) append("\nPopis:\n$details")
+    }
+    return Intent(Intent.ACTION_SENDTO).apply {
+        data = Uri.parse("mailto:")
+        putExtra(Intent.EXTRA_EMAIL, arrayOf("biketrialradim@gmail.com"))
+        putExtra(Intent.EXTRA_SUBJECT, "[Jiyu] Problém se zdrojem: $sourceName")
+        putExtra(Intent.EXTRA_TEXT, body)
     }
 }

@@ -2,6 +2,7 @@ package com.haise.jiyu.ui.browse
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.haise.jiyu.settings.SettingsRepository
 import com.haise.jiyu.source.MangaSource
 import com.haise.jiyu.source.SourceManager
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -11,6 +12,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /**
@@ -21,6 +23,7 @@ import javax.inject.Inject
 @HiltViewModel
 class BrowseViewModel @Inject constructor(
     sourceManager: SourceManager,
+    private val settings: SettingsRepository,
 ) : ViewModel() {
 
     private val _allSources: StateFlow<List<MangaSource>> = sourceManager.observeAll()
@@ -52,6 +55,14 @@ class BrowseViewModel @Inject constructor(
     fun setContentTypeFilter(type: String) { _contentTypeFilter.value = type }
     fun setLanguageFilter(lang: String) { _languageFilter.value = lang }
     fun setSourceNameFilter(query: String) { _sourceNameFilter.value = query }
+
+    // ── Oblíbené zdroje (menu na kartě zdroje) ────────────────────────────────
+    val favoriteSourceIds: StateFlow<Set<String>> = settings.favoriteSourceIds
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptySet())
+
+    fun toggleFavoriteSource(sourceId: String) {
+        viewModelScope.launch { settings.toggleFavoriteSource(sourceId) }
+    }
 
     private fun matchesContentType(sourceType: String, filter: String): Boolean = when (filter) {
         "ALL" -> true
