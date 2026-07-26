@@ -19,6 +19,7 @@ import javax.inject.Singleton
 @Singleton
 class TranslateRepository @Inject constructor(
     private val ocrEngine: OcrEngine,
+    private val pageBitmapLoader: PageBitmapLoader,
     private val groqClient: GroqTranslateClient,
     private val geminiClient: GeminiTranslateClient,
     private val glossaryRepository: GlossaryRepository,
@@ -45,7 +46,8 @@ class TranslateRepository @Inject constructor(
     ): List<TranslatedBlock> {
         getCachedPage(chapterId, pageIndex, targetLanguage, sourceLanguage, pageUrl)?.let { return it }
 
-        val rawBlocks = ocrEngine.recognize(pageUrl, sourceLanguage)
+        val bitmap = pageBitmapLoader.load(pageUrl) ?: return emptyList()
+        val rawBlocks = ocrEngine.recognize(bitmap, sourceLanguage)
         if (rawBlocks.isEmpty()) return emptyList()
 
         val glossary = glossaryFor(mangaId, targetLanguage)
@@ -126,17 +128,19 @@ class TranslateRepository @Inject constructor(
 
         val glossary = glossaryFor(mangaId, targetLanguage)
 
-        // OCR paralelně, ale s omezenou souběžností - recognizery v OcrEngine jsou sdílené
-        // instance a plné rozlišení víc manga stránek najednou v paměti by zbytečně riskovalo
-        // OOM na slabších telefonech.
+        // Stahování bitmap (síť, viz PageBitmapLoader) a OCR (ML Kit, viz OcrEngine) mají
+        // rozdílnou povahu souběžnosti - stahování je I/O čekání, snese víc paralelních
+        // požadavků najednou; OCR recognizery jsou sdílené instance a plné rozlišení víc
+        // stránek v paměti najednou by zbytečně riskovalo OOM na slabších telefonech, proto
+        // má vlastní, přísnější limit.
+        val bitmapLoadSemaphore = Semaphore(BITMAP_LOAD_PARALLELISM)
         val ocrSemaphore = Semaphore(OCR_PARALLELISM)
         val bubblesByPage: Map<Int, List<ClassifiedBubble>> = coroutineScope {
             uncached.map { pageIndex ->
                 async(Dispatchers.IO) {
-                    ocrSemaphore.withPermit {
-                        pageIndex to ocrEngine.recognize(pages[pageIndex], sourceLanguage)
-                            .map { raw -> BubbleClassifier.classify(raw, raw.lineCount) }
-                    }
+                    val bitmap = bitmapLoadSemaphore.withPermit { pageBitmapLoader.load(pages[pageIndex]) }
+                    val raw = bitmap?.let { bmp -> ocrSemaphore.withPermit { ocrEngine.recognize(bmp, sourceLanguage) } } ?: emptyList()
+                    pageIndex to raw.map { r -> BubbleClassifier.classify(r, r.lineCount) }
                 }
             }.awaitAll()
         }.toMap()
@@ -320,8 +324,10 @@ class TranslateRepository @Inject constructor(
      * Vrátí výsledek z Room cache bez volání překladového API; null = není v cache.
      * @param pageUrl když je zadané a cache záznam ještě nemá dopočítaný tvar bubliny
      *   (starý formát), dopočítá se tvar (bez nového OCR/překladu) a cache se přepíše -
-     *   viz OcrEngine.detectShapesOnly. Bez pageUrl (starší volající, co ho nemají po ruce)
-     *   se migrace přeskočí a bloky zůstanou s shape=null (heuristický fallback v layoutu).
+     *   viz OcrEngine.detectShapesOnly. Bitmapa se stahuje (přes PageBitmapLoader) JEN když
+     *   je migrace opravdu potřeba, ne při každém cache-hitu. Bez pageUrl (starší volající,
+     *   co ho nemají po ruce) se migrace přeskočí a bloky zůstanou s shape=null (heuristický
+     *   fallback v layoutu). Selhání stažení bitmapy vrátí nezmigrované bloky, ne null.
      */
     suspend fun getCachedPage(
         chapterId: String,
@@ -337,7 +343,8 @@ class TranslateRepository @Inject constructor(
         val needsShapeMigration = cached.any { !it.isSfx && it.shape == null }
         if (!needsShapeMigration) return cached
 
-        val migrated = ocrEngine.detectShapesOnly(pageUrl, cached)
+        val bitmap = pageBitmapLoader.load(pageUrl) ?: return cached
+        val migrated = ocrEngine.detectShapesOnly(bitmap, cached)
         dao.upsert(TranslatedPageEntity(id = id, blocksJson = migrated.serialize()))
         return migrated
     }
@@ -361,6 +368,10 @@ class TranslateRepository @Inject constructor(
          *  sdílené instance a plné rozlišení víc stránek najednou v paměti by zbytečně
          *  riskovalo OOM na slabších telefonech. */
         private const val OCR_PARALLELISM = 3
+
+        /** Kolik stránek smí [translateChapter] stahovat (přes [PageBitmapLoader]) souběžně -
+         *  čistě síťové I/O čekání, snese vyšší souběžnost než samotné OCR ([OCR_PARALLELISM]). */
+        private const val BITMAP_LOAD_PARALLELISM = 5
     }
 
     // ── Light novel překlad (prostý text, ne obrázek) ────────────────────────

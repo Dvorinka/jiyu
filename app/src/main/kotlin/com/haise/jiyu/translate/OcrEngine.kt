@@ -1,7 +1,6 @@
 package com.haise.jiyu.translate
 
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.chinese.ChineseTextRecognizerOptions
@@ -11,8 +10,6 @@ import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
-import okhttp3.OkHttpClient
-import okhttp3.Request
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.coroutines.resume
@@ -57,10 +54,12 @@ private class BitmapPixelSource(private val bitmap: Bitmap) : PixelSource {
     override fun colorAt(x: Int, y: Int): Int = bitmap.getPixel(x, y)
 }
 
+/**
+ * Čistě on-device ML Kit OCR - nemá s HTTP nic společného, stahování/dekódování bitmapy
+ * stránky je zodpovědnost volajícího (viz [PageBitmapLoader]), ne tohohle enginu.
+ */
 @Singleton
-class OcrEngine @Inject constructor(
-    private val httpClient: OkHttpClient,
-) {
+class OcrEngine @Inject constructor() {
     // Lazy recognizers: CJK jazyky mají vlastní ML Kit model, ostatní spadají na latinkový výchozí
     private val japaneseRecognizer by lazy { TextRecognition.getClient(JapaneseTextRecognizerOptions.Builder().build()) }
     private val chineseRecognizer by lazy { TextRecognition.getClient(ChineseTextRecognizerOptions.Builder().build()) }
@@ -74,8 +73,7 @@ class OcrEngine @Inject constructor(
         else -> latinRecognizer
     }
 
-    suspend fun recognize(pageUrl: String, language: String = "Japanese"): List<RawTextBlock> = withContext(Dispatchers.IO) {
-        val bitmap = loadBitmap(pageUrl) ?: return@withContext emptyList()
+    suspend fun recognize(bitmap: Bitmap, language: String = "Japanese"): List<RawTextBlock> = withContext(Dispatchers.IO) {
         val w = bitmap.width.toFloat()
         val h = bitmap.height.toFloat()
         if (w == 0f || h == 0f) return@withContext emptyList()
@@ -135,8 +133,7 @@ class OcrEngine @Inject constructor(
      * (shape == null), bez nového OCR/ML Kit volání - viz TranslateRepository.getCachedPage
      * migrace. Blok, který už tvar má, nebo je SFX (nemá box vůbec), se přeskočí beze změny.
      */
-    suspend fun detectShapesOnly(pageUrl: String, blocks: List<TranslatedBlock>): List<TranslatedBlock> = withContext(Dispatchers.IO) {
-        val bitmap = loadBitmap(pageUrl) ?: return@withContext blocks
+    suspend fun detectShapesOnly(bitmap: Bitmap, blocks: List<TranslatedBlock>): List<TranslatedBlock> = withContext(Dispatchers.IO) {
         val w = bitmap.width
         val h = bitmap.height
         if (w == 0 || h == 0) return@withContext blocks
@@ -254,18 +251,4 @@ class OcrEngine @Inject constructor(
         return verticalGap < avgHeight * 0.9f && (horizontalOverlap > 0f || horizontalGap < avgHeight * 1.8f)
     }
 
-    private fun loadBitmap(url: String): Bitmap? = try {
-        if (url.startsWith("/") || url.startsWith("file://")) {
-            val path = url.removePrefix("file://")
-            BitmapFactory.decodeFile(path)
-        } else {
-            val cleanUrl = url.substringBeforeLast("#") // strip #mplus_key= fragment
-            val req = Request.Builder().url(cleanUrl).build()
-            httpClient.newCall(req).execute().use { resp ->
-                resp.body?.bytes()?.let { BitmapFactory.decodeByteArray(it, 0, it.size) }
-            }
-        }
-    } catch (e: Exception) {
-        null
-    }
 }
