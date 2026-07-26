@@ -693,39 +693,28 @@ class ReaderViewModel @Inject constructor(
             val pages = _pages.value
             val lang = _targetLanguage.value
             val chapterId = currentChapter?.id ?: return@launch
+            val mangaId = currentManga?.id ?: currentChapter?.mangaId ?: ""
 
-            pages.forEachIndexed { index, _ ->
-                if (_translatedPages.value[index] == null) {
-                    val cached = translateRepository.getCachedPage(chapterId, index, lang, _sourceLanguage.value)
-                    if (cached != null) {
-                        _translatedPages.value = _translatedPages.value + (index to cached)
-                    }
-                }
-            }
-
-            val uncached = pages.indices.filter { _translatedPages.value[it] == null }
-            if (uncached.isEmpty()) { _translationProgress.value = null; return@launch }
-
-            var done = pages.size - uncached.size
+            var done = 0
             _translationProgress.value = TranslationProgress(done, pages.size)
-
             try {
-                uncached.forEachIndexed { i, pageIndex ->
-                    if (i > 0) delay(2_000L)
-                    try {
-                        val blocks = translateRepository.translatePage(
-                            pageUrl = pages[pageIndex],
-                            chapterId = chapterId,
-                            mangaId = currentManga?.id ?: currentChapter?.mangaId ?: "",
-                            pageIndex = pageIndex,
-                            targetLanguage = lang,
-                            sourceLanguage = _sourceLanguage.value,
-                        )
-                        _translatedPages.value = _translatedPages.value + (pageIndex to blocks)
-                    } catch (_: Exception) { /* stránka selhala, pokračuj dál */ }
+                // translateChapter dávkuje víc stránek do jednoho API volání (viz
+                // TranslateRepository.translateChapter) - onPageReady se ale volá pro
+                // KAŽDOU stránku zvlášť, takže postupné zobrazování zůstává stejné jako
+                // dřív, jen s méně požadavky a bez umělé prodlevy mezi každou stránkou.
+                translateRepository.translateChapter(
+                    pages = pages,
+                    chapterId = chapterId,
+                    mangaId = mangaId,
+                    targetLanguage = lang,
+                    sourceLanguage = _sourceLanguage.value,
+                ) { pageIndex, blocks ->
+                    _translatedPages.value = _translatedPages.value + (pageIndex to blocks)
                     done++
                     _translationProgress.value = TranslationProgress(done, pages.size)
                 }
+            } catch (_: com.haise.jiyu.translate.RateLimitedException) {
+                _translationError.value = context.getString(R.string.reader_error_rate_limited)
             } finally {
                 _translationProgress.value = null
             }
@@ -746,53 +735,35 @@ class ReaderViewModel @Inject constructor(
             val pages = _pages.value
             val lang = _targetLanguage.value
             val chapterId = currentChapter?.id ?: run { _batchTranslating.value = false; return@launch }
+            val mangaId = currentManga?.id ?: currentChapter?.mangaId ?: ""
 
-            // isNullOrEmpty(), ne == null: dřívější neúspěšný pokus (přechodná chyba,
-            // rate limit...) nechává v mapě prázdný seznam, ne null - bez týhle podmínky
-            // by se taková stránka při dalším "Přeložit vše" navždy přeskakovala jako
-            // "už hotovo", i když ve skutečnosti nikdy nedostala překlad.
-            pages.forEachIndexed { index, _ ->
-                if (_translatedPages.value[index].isNullOrEmpty()) {
-                    val cached = translateRepository.getCachedPage(chapterId, index, lang, _sourceLanguage.value)
-                    if (cached != null) {
-                        _translatedPages.value = _translatedPages.value + (index to cached)
-                    }
-                }
-            }
-
-            val uncached = pages.indices.filter { _translatedPages.value[it].isNullOrEmpty() }
-            var done = pages.size - uncached.size
+            var done = 0
             _batchProgress.value = TranslationProgress(done, pages.size)
-
-            var isFirstAttempt = true
-            for (pageIndex in uncached) {
-                if (!isFirstAttempt) delay(2_000L)
-                isFirstAttempt = false
-                try {
-                    val blocks = translateRepository.translatePage(
-                        pageUrl = pages[pageIndex],
-                        chapterId = chapterId,
-                        mangaId = currentManga?.id ?: currentChapter?.mangaId ?: "",
-                        pageIndex = pageIndex,
-                        targetLanguage = lang,
-                        sourceLanguage = _sourceLanguage.value,
-                    )
+            try {
+                // translateChapter si samo ověří Room cache per stránku (viz
+                // TranslateRepository.translateChapter) - stránka s dřívějším neúspěšným
+                // pokusem (prázdný seznam v paměti, ale nic v cache) se tak automaticky
+                // zkusí znovu, stejně jako dřívější isNullOrEmpty() kontrola zajišťovala.
+                translateRepository.translateChapter(
+                    pages = pages,
+                    chapterId = chapterId,
+                    mangaId = mangaId,
+                    targetLanguage = lang,
+                    sourceLanguage = _sourceLanguage.value,
+                ) { pageIndex, blocks ->
                     _translatedPages.value = _translatedPages.value + (pageIndex to blocks)
-                } catch (_: com.haise.jiyu.translate.RateLimitedException) {
-                    // Dalsi pokusy by stejne selhaly na stejnem limitu - nema smysl
-                    // prohanet zbytek davky, jen ukazat srozumitelnou hlasku.
-                    _translationError.value = context.getString(R.string.reader_error_rate_limited)
-                    break
-                } catch (_: Exception) {
-                    // stránka selhala, pokračuj dál
+                    done++
+                    _batchProgress.value = TranslationProgress(done, pages.size)
                 }
-                done++
-                _batchProgress.value = TranslationProgress(done, pages.size)
+            } catch (_: com.haise.jiyu.translate.RateLimitedException) {
+                // Dalsi pokusy by stejne selhaly na stejnem limitu - nema smysl
+                // prohanet zbytek davky, jen ukazat srozumitelnou hlasku.
+                _translationError.value = context.getString(R.string.reader_error_rate_limited)
+            } finally {
+                _batchProgress.value = null
+                _batchTranslating.value = false
+                _translateMode.value = true
             }
-
-            _batchProgress.value = null
-            _batchTranslating.value = false
-            _translateMode.value = true
         }
     }
 

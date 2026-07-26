@@ -4,6 +4,13 @@ import com.haise.jiyu.data.db.TranslatedNovelDao
 import com.haise.jiyu.data.db.TranslatedPageDao
 import com.haise.jiyu.data.db.entity.TranslatedNovelEntity
 import com.haise.jiyu.data.db.entity.TranslatedPageEntity
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import org.json.JSONArray
 import org.json.JSONObject
 import javax.inject.Inject
@@ -80,6 +87,125 @@ class TranslateRepository @Inject constructor(
     }
 
     /**
+     * Přeloží celou kapitolu v omezeném počtu dávkových API volání místo jednoho volání na
+     * stránku (viz [translatePage]) - snižuje počet požadavků na proxy a odstraňuje potřebu
+     * prodlevy mezi KAŽDOU stránkou v ReaderViewModelu, protože jedno volání umí přeložit
+     * bubliny z více stránek najednou.
+     *
+     * Bublinám z více stránek se nepřidává žádné "page" pole do promptu ani JSON schématu -
+     * stránky se před odesláním jen spojí do jednoho plochého seznamu (stejné id-schéma jako
+     * [translatePage] pro jednu stránku, viz [GeminiUltraPrompt.buildUserPrompt] - "id" je
+     * pozice v předaném seznamu) a po odpovědi se podle známého počtu bublin na stránku
+     * rozdělí zpátky. Díky tomu tahle cesta nevyžaduje žádnou změnu [GeminiUltraPrompt] ani
+     * Edge Function proxy.
+     *
+     * Dávky mají omezenou velikost (viz [chunkPages]/[CHAPTER_CHUNK_CHAR_LIMIT]), aby výstup
+     * nepřekročil limit tokenů jednoho API volání - jedno volání na CELOU kapitolu by se u
+     * delší kapitoly snadno oříznulo v půlce JSON odpovědi a celá kapitola by neuspěla najednou.
+     *
+     * @param onPageReady zavolá se pro KAŽDOU stránku zvlášť, jakmile je hotová (i když šla
+     *   v dávce s ostatními) - zachovává postupné zobrazování stránek v ReaderViewModelu
+     *   místo čekání na celou kapitolu najednou.
+     * @throws RateLimitedException stejná sémantika jako [translatePage] - NEODCHYTÁVÁ se
+     *   tady, volající (ReaderViewModel) na to má vlastní hlášku a přeruší zbytek kapitoly.
+     */
+    suspend fun translateChapter(
+        pages: List<String>,
+        chapterId: String,
+        mangaId: String,
+        targetLanguage: String = "Czech",
+        sourceLanguage: String = "Auto",
+        onPageReady: suspend (pageIndex: Int, blocks: List<TranslatedBlock>) -> Unit,
+    ) {
+        val uncached = mutableListOf<Int>()
+        for (pageIndex in pages.indices) {
+            val cached = getCachedPage(chapterId, pageIndex, targetLanguage, sourceLanguage, pages[pageIndex])
+            if (cached != null) onPageReady(pageIndex, cached) else uncached += pageIndex
+        }
+        if (uncached.isEmpty()) return
+
+        val glossary = glossaryFor(mangaId, targetLanguage)
+
+        // OCR paralelně, ale s omezenou souběžností - recognizery v OcrEngine jsou sdílené
+        // instance a plné rozlišení víc manga stránek najednou v paměti by zbytečně riskovalo
+        // OOM na slabších telefonech.
+        val ocrSemaphore = Semaphore(OCR_PARALLELISM)
+        val bubblesByPage: Map<Int, List<ClassifiedBubble>> = coroutineScope {
+            uncached.map { pageIndex ->
+                async(Dispatchers.IO) {
+                    ocrSemaphore.withPermit {
+                        pageIndex to ocrEngine.recognize(pages[pageIndex], sourceLanguage)
+                            .map { raw -> BubbleClassifier.classify(raw, raw.lineCount) }
+                    }
+                }
+            }.awaitAll()
+        }.toMap()
+
+        val translatable = uncached.filter { bubblesByPage.getValue(it).isNotEmpty() }
+        for (pageIndex in uncached) {
+            if (pageIndex !in translatable) onPageReady(pageIndex, emptyList())
+        }
+        if (translatable.isEmpty()) return
+
+        chunkPages(translatable, bubblesByPage).forEachIndexed { chunkIndex, chunk ->
+            if (chunkIndex > 0) delay(800L)
+            val flatBubbles = chunk.flatMap { bubblesByPage.getValue(it) }
+
+            // Stejný fallback řetězec jako translatePage - viz komentář tam. Volá se přes
+            // sdílené translateWithGemini/translateWithGroq beze změny: obě funkce už dnes
+            // vždy vrací seznam přesně dlouhý jako vstupní "flatBubbles" (chybějící "id" v
+            // odpovědi se doplní originálem, nikdy se nezahodí), takže rozdělení jedné
+            // odpovědi zpátky po stránkách podle počtu bublin níž je bezpečné.
+            val blocks = if (targetLanguage == "Czech") {
+                translateWithGemini(flatBubbles, glossary, provider = "gemini")
+                    ?: translateWithGemini(flatBubbles, glossary, provider = "groq")
+                    ?: translateWithGemini(flatBubbles, glossary, provider = "openrouter")
+                    ?: translateWithGroq(flatBubbles, glossary, targetLanguage, sourceLanguage, provider = "groq")
+                    ?: translateWithGroq(flatBubbles, glossary, targetLanguage, sourceLanguage, provider = "openrouter")
+                    ?: emptyList()
+            } else {
+                translateWithGroq(flatBubbles, glossary, targetLanguage, sourceLanguage, provider = "groq")
+                    ?: translateWithGroq(flatBubbles, glossary, targetLanguage, sourceLanguage, provider = "openrouter")
+                    ?: emptyList()
+            }
+
+            var offset = 0
+            for (pageIndex in chunk) {
+                val count = bubblesByPage.getValue(pageIndex).size
+                val pageBlocks = if (blocks.isEmpty()) emptyList() else blocks.subList(offset, (offset + count).coerceAtMost(blocks.size))
+                offset += count
+                if (pageBlocks.isNotEmpty()) {
+                    dao.upsert(TranslatedPageEntity(id = cacheId(chapterId, pageIndex, targetLanguage, sourceLanguage), blocksJson = pageBlocks.serialize()))
+                }
+                onPageReady(pageIndex, pageBlocks)
+            }
+        }
+    }
+
+    /**
+     * Rozdělí stránky (v pořadí) do dávek, kde součet délky bublinových textů v jedné dávce
+     * nepřekročí [CHAPTER_CHUNK_CHAR_LIMIT] - jedna stránka je vždy atomická (nikdy se
+     * nerozdělí mezi dvě dávky), stejný princip jako [chunkParagraphs] u novel překladu.
+     */
+    private fun chunkPages(pageIndices: List<Int>, bubblesByPage: Map<Int, List<ClassifiedBubble>>): List<List<Int>> {
+        val chunks = mutableListOf<List<Int>>()
+        var current = mutableListOf<Int>()
+        var currentLen = 0
+        for (pageIndex in pageIndices) {
+            val len = bubblesByPage.getValue(pageIndex).sumOf { it.raw.text.length }
+            if (current.isNotEmpty() && currentLen + len > CHAPTER_CHUNK_CHAR_LIMIT) {
+                chunks += current
+                current = mutableListOf()
+                currentLen = 0
+            }
+            current += pageIndex
+            currentLen += len
+        }
+        if (current.isNotEmpty()) chunks += current
+        return chunks
+    }
+
+    /**
      * @param provider "gemini", "groq" nebo "openrouter" - viz [GeminiTranslateClient.translateBubbles].
      *   Všichni tři provideři používají STEJNÝ [GeminiUltraPrompt] (komprese, sylabické dělení),
      *   liší se jen upstream model, na který proxy request přepošle.
@@ -99,17 +225,22 @@ class TranslateRepository @Inject constructor(
         val response = geminiClient.translateBubbles(classified, glossary, provider) ?: return null
         val byId = response.bubbles.associateBy { it.id }
 
-        val result = classified.mapIndexedNotNull { i, c ->
-            if (c.isSfx) return@mapIndexedNotNull sfxBlock(c)
-            val t = byId[i] ?: return@mapIndexedNotNull null
+        // mapIndexed (ne mapIndexedNotNull) - chybějící "id" v odpovědi musí zůstat na svém
+        // místě jako blok s originálem místo zmizet, jinak by se posunula pozice ostatních
+        // bublin v seznamu, na které translateChapter spoléhá při rozdělování jedné dávky
+        // (víc stránek najednou) zpátky po stránkách podle počtu bublin.
+        val result = classified.mapIndexed { i, c ->
+            if (c.isSfx) return@mapIndexed sfxBlock(c)
+            val t = byId[i]
+            val translatedText = t?.translated ?: c.raw.text
             TranslatedBlock(
                 originalText = c.raw.text,
-                translatedText = t.translated,
+                translatedText = translatedText,
                 leftF = c.raw.leftF,
                 topF = c.raw.topF,
                 rightF = c.raw.rightF,
                 bottomF = c.raw.bottomF,
-                displayText = t.syllableBreaks.ifBlank { t.translated },
+                displayText = t?.syllableBreaks?.ifBlank { translatedText } ?: translatedText,
                 bgColorArgb = c.raw.bgColorArgb,
                 isSfx = false,
                 lineCount = c.lineCount,
@@ -217,6 +348,19 @@ class TranslateRepository @Inject constructor(
     companion object {
         /** Maximální počet znaků originálu na jedno API volání - drží výstup pod limitem max_tokens. */
         private const val NOVEL_CHUNK_CHAR_LIMIT = 2500
+
+        /**
+         * Maximální součet délky bublinových textů (přes všechny stránky v jedné dávce)
+         * pro [translateChapter]/[chunkPages] - nižší než [NOVEL_CHUNK_CHAR_LIMIT], protože
+         * odpověď na jednu bublinu nese original+translated+syllable_breaks+notes (několik
+         * násobků vstupní délky) plus JSON obálku, ne jen jeden přeložený odstavec.
+         */
+        private const val CHAPTER_CHUNK_CHAR_LIMIT = 1200
+
+        /** Kolik stránek smí [translateChapter] OCR-ovat souběžně - ML Kit recognizery jsou
+         *  sdílené instance a plné rozlišení víc stránek najednou v paměti by zbytečně
+         *  riskovalo OOM na slabších telefonech. */
+        private const val OCR_PARALLELISM = 3
     }
 
     // ── Light novel překlad (prostý text, ne obrázek) ────────────────────────
