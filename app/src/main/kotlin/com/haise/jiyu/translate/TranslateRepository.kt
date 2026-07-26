@@ -245,7 +245,8 @@ class TranslateRepository @Inject constructor(
                 rightF = c.raw.rightF,
                 bottomF = c.raw.bottomF,
                 displayText = t?.syllableBreaks?.ifBlank { translatedText } ?: translatedText,
-                bgColorArgb = c.raw.bgColorArgb,
+                bgColorArgb = c.raw.bgColorTopArgb,
+                bgColorBottomArgb = c.raw.bgColorBottomArgb,
                 isSfx = false,
                 lineCount = c.lineCount,
                 shape = c.raw.shape,
@@ -294,7 +295,8 @@ class TranslateRepository @Inject constructor(
                     rightF = c.raw.rightF,
                     bottomF = c.raw.bottomF,
                     displayText = translated,
-                    bgColorArgb = c.raw.bgColorArgb,
+                    bgColorArgb = c.raw.bgColorTopArgb,
+                    bgColorBottomArgb = c.raw.bgColorBottomArgb,
                     isSfx = false,
                     lineCount = c.lineCount,
                     shape = c.raw.shape,
@@ -313,7 +315,8 @@ class TranslateRepository @Inject constructor(
         rightF = c.raw.rightF,
         bottomF = c.raw.bottomF,
         displayText = c.raw.text,
-        bgColorArgb = c.raw.bgColorArgb,
+        bgColorArgb = c.raw.bgColorTopArgb,
+        bgColorBottomArgb = c.raw.bgColorBottomArgb,
         isSfx = true,
         lineCount = c.lineCount,
         shape = c.raw.shape,
@@ -440,6 +443,7 @@ class TranslateRepository @Inject constructor(
                 put("trans", b.translatedText)
                 put("disp", b.displayText)
                 put("bg", b.bgColorArgb)
+                put("bgBottom", b.bgColorBottomArgb)
                 put("sfx", b.isSfx)
                 put("lc", b.lineCount)
                 put("type", b.bubbleType.name)
@@ -482,6 +486,10 @@ class TranslateRepository @Inject constructor(
                 bottomF = o.getDouble("b").toFloat(),
                 displayText = o.optString("disp", translated),
                 bgColorArgb = if (o.has("bg")) o.getInt("bg") else DEFAULT_BUBBLE_BG_ARGB,
+                // Starší cache záznamy nemají "bgBottom" - fallback na horní barvu (stejné
+                // chování jako TranslatedBlock default), takže degradují na plnou barvu bez
+                // gradientu místo pádu, dokud se stránka znovu nepřeloží.
+                bgColorBottomArgb = o.optInt("bgBottom", if (o.has("bg")) o.getInt("bg") else DEFAULT_BUBBLE_BG_ARGB),
                 isSfx = o.optBoolean("sfx", false),
                 lineCount = o.optInt("lc", 1),
                 shape = shape,

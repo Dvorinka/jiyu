@@ -31,6 +31,21 @@ internal fun snapBubbleBg(argb: Int): Int {
 }
 
 /**
+ * Průměr dvou ARGB barev (kanál po kanálu) - používá se pro sloučení odděleně
+ * vzorkované horní/dolní barvy bubliny ([OcrEngine.sampleBackgroundColor]) do jedné
+ * hodnoty tam, kde gradient nedává smysl (referenční barva pro [BubbleShapeDetector],
+ * volba barvy textu podle jasu pozadí). Alfa kanál se bere z první barvy - obě strany
+ * gradientu mají v praxi vždy stejnou alfu (viz TRANSLATION_BOX_ALPHA).
+ */
+internal fun averageArgb(a: Int, b: Int): Int {
+    val alpha = (a ushr 24) and 0xFF
+    val r = (((a ushr 16) and 0xFF) + ((b ushr 16) and 0xFF)) / 2
+    val g = (((a ushr 8) and 0xFF) + ((b ushr 8) and 0xFF)) / 2
+    val bl = ((a and 0xFF) + (b and 0xFF)) / 2
+    return (alpha shl 24) or (r shl 16) or (g shl 8) or bl
+}
+
+/**
  * Sjednotí velikost písmen přeloženého textu s originálem, aby lettering vypadal jako
  * v původní bublině. Komiksový/manga lettering je konvenčně VELKÝMI PÍSMENY (viz reference
  * fotky: "IT'S OBVIOUS.", "I BET THEY'LL SAY..."), proto:

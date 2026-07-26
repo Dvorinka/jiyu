@@ -1,6 +1,9 @@
 package com.haise.jiyu.ui.reader
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.MutableTransitionState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
@@ -23,6 +26,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Path
@@ -50,6 +54,7 @@ import com.haise.jiyu.translate.BubbleShapePoint
 import com.haise.jiyu.translate.BubbleType
 import com.haise.jiyu.translate.PositionedTranslationBlock
 import com.haise.jiyu.translate.TranslatedBlock
+import com.haise.jiyu.translate.averageArgb
 import com.haise.jiyu.translate.layoutTranslationBlocks
 import com.haise.jiyu.translate.matchOriginalCase
 import com.haise.jiyu.translate.snapBubbleBg
@@ -201,44 +206,71 @@ fun TranslationOverlay(
     val minH = (imageRect.height * (effectiveMinBottomF - pos.minTopF)).dp.coerceAtLeast(0.dp) + bleed * 2
     val maxH = (imageRect.height * (pos.maxBottomF - pos.minTopF)).dp.coerceAtLeast(0.dp) + bleed * 2
     val clipShape = pos.block.shape?.let { BubbleClipShape(it, pos.minTopF, pos.maxBottomF) } ?: RoundedCornerShape(3.dp)
-    val snappedBg = snapBubbleBg(pos.block.bgColorArgb)
+    // Svislý gradient (horní/dolní polovina vzorkovaného prstence, viz OcrEngine.sampleBackgroundColor)
+    // místo jednolité barvy - obě strany se "přichytí" na bílou/černou nezávisle (snapBubbleBg),
+    // takže obyčejné bubliny zůstávají plnou barvou stejně jako dřív, gradient se projeví jen
+    // u barevných/stínovaných bublin, kde má reálný podklad.
+    val snappedBgTop = snapBubbleBg(pos.block.bgColorArgb)
+    val snappedBgBottom = snapBubbleBg(pos.block.bgColorBottomArgb)
     val displayText = matchOriginalCase(pos.block.displayText, pos.block.originalText)
 
-    Box(
-        modifier = Modifier
-            .offset(x = left, y = top)
-            // Pevná šířka + heightIn(min = minH): box musí vždy zakrýt aspoň vlastní OCR
-            // rozsah bubliny (jinak prosvítá originál), ale smí růst výš k maxH, jen když to
-            // text opravdu potřebuje - ne nutit box vyplnit celý (klidně prázdný) prostor
-            // až k dalšímu prvku na stránce.
-            .width(w)
-            .heightIn(min = minH)
-            .clip(clipShape)
-            .background(Color(snappedBg).copy(alpha = TRANSLATION_BOX_ALPHA))
-            // Tap = "flip" na originál (viz ReaderViewModel.toggleBubbleFlip). Konzumuje tap
-            // dřív, než se dostane k page-level gestům (tap-zóny/double-tap zoom/long-press
-            // sdílení v MangaReaderu) - vědomý kompromis, přesně nad bublinou chceme flip,
-            // ne zoom/navigaci.
-            .pointerInput(onTap) { detectTapGestures(onTap = { onTap() }) }
-            .padding(horizontal = TRANSLATION_TEXT_HORIZONTAL_PADDING, vertical = 2.dp),
-        contentAlignment = Alignment.Center,
+    // Entrance animace - MutableTransitionState začíná na false a rovnou cílí na true, takže
+    // AnimatedVisibility přehraje "enter" přesně jednou při prvním composnutí týhle bubliny
+    // (např. když se stránka přeloží nebo se do ní scrollne/naviguje zpět) a pak už zůstává
+    // viditelná, žádné "exit" se nikdy nespustí.
+    val entranceState = remember {
+        MutableTransitionState(false).apply { targetState = true }
+    }
+
+    AnimatedVisibility(
+        visibleState = entranceState,
+        enter = fadeIn(tween(200)) + scaleIn(initialScale = 0.92f, animationSpec = tween(200)),
     ) {
-        AnimatedContent(
-            targetState = isFlipped,
-            transitionSpec = {
-                (scaleIn(initialScale = 0.85f) + fadeIn())
-                    .togetherWith(scaleOut(targetScale = 0.85f) + fadeOut())
-            },
-            label = "bubble-flip",
-        ) { flipped ->
-            AutoFitTranslatedText(
-                text = if (flipped) pos.block.originalText else displayText,
-                bgColorArgb = snappedBg,
-                boxWidth = w,
-                maxHeight = maxH,
-                textScale = textScale,
-                bubbleType = pos.block.bubbleType,
-            )
+        Box(
+            modifier = Modifier
+                .offset(x = left, y = top)
+                // Pevná šířka + heightIn(min = minH): box musí vždy zakrýt aspoň vlastní OCR
+                // rozsah bubliny (jinak prosvítá originál), ale smí růst výš k maxH, jen když to
+                // text opravdu potřebuje - ne nutit box vyplnit celý (klidně prázdný) prostor
+                // až k dalšímu prvku na stránce.
+                .width(w)
+                .heightIn(min = minH)
+                .clip(clipShape)
+                .background(
+                    Brush.verticalGradient(
+                        listOf(
+                            Color(snappedBgTop).copy(alpha = TRANSLATION_BOX_ALPHA),
+                            Color(snappedBgBottom).copy(alpha = TRANSLATION_BOX_ALPHA),
+                        ),
+                    ),
+                )
+                // Tap = "flip" na originál (viz ReaderViewModel.toggleBubbleFlip). Konzumuje tap
+                // dřív, než se dostane k page-level gestům (tap-zóny/double-tap zoom/long-press
+                // sdílení v MangaReaderu) - vědomý kompromis, přesně nad bublinou chceme flip,
+                // ne zoom/navigaci.
+                .pointerInput(onTap) { detectTapGestures(onTap = { onTap() }) }
+                .padding(horizontal = TRANSLATION_TEXT_HORIZONTAL_PADDING, vertical = 2.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            AnimatedContent(
+                targetState = isFlipped,
+                transitionSpec = {
+                    (scaleIn(initialScale = 0.85f) + fadeIn())
+                        .togetherWith(scaleOut(targetScale = 0.85f) + fadeOut())
+                },
+                label = "bubble-flip",
+            ) { flipped ->
+                AutoFitTranslatedText(
+                    text = if (flipped) pos.block.originalText else displayText,
+                    // Volba barvy textu (podle jasu) potřebuje JEDNU barvu, ne gradient -
+                    // průměr obou stran je dost přesný odhad pro čitelnost přes celou bublinu.
+                    bgColorArgb = averageArgb(snappedBgTop, snappedBgBottom),
+                    boxWidth = w,
+                    maxHeight = maxH,
+                    textScale = textScale,
+                    bubbleType = pos.block.bubbleType,
+                )
+            }
         }
     }
 }

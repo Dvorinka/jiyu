@@ -31,6 +31,29 @@ class BubbleRenderStyleTest {
         assertEquals(0x80FFFFFF.toInt(), snapBubbleBg(translucentNearWhite))
     }
 
+    // ── averageArgb ─────────────────────────────────────────────────────────
+
+    @Test
+    fun `averages each color channel independently`() {
+        val white = 0xFFFFFFFF.toInt()
+        val black = 0xFF000000.toInt()
+        assertEquals(0xFF7F7F7F.toInt(), averageArgb(white, black))
+    }
+
+    @Test
+    fun `alpha channel comes from the first color`() {
+        val a = 0x80FF0000.toInt()
+        val b = 0xFF0000FF.toInt()
+        // alpha z a (0x80); r=(0xFF+0x00)/2=0x7F; g=(0x00+0x00)/2=0x00; b=(0x00+0xFF)/2=0x7F
+        assertEquals(0x807F007F.toInt(), averageArgb(a, b))
+    }
+
+    @Test
+    fun `averaging identical colors returns the same color`() {
+        val orange = 0xFFE8A030.toInt()
+        assertEquals(orange, averageArgb(orange, orange))
+    }
+
     // ── matchOriginalCase ───────────────────────────────────────────────────
 
     @Test

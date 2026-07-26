@@ -11,9 +11,13 @@ const val DEFAULT_BUBBLE_BG_ARGB: Int = android.graphics.Color.WHITE
  * @param displayText [translatedText] s měkkými rozdělovníky (viz [GeminiUltraPrompt]) na
  *   platných slabičných hranicích - render (viz ReaderScreen.kt) by měl zalamovat text
  *   podle tohohle pole, ne podle [translatedText], jinak Compose zalomí kdekoliv se vejde.
- * @param bgColorArgb barva pozadí bubliny nasamplovaná z originálního obrázku (viz
- *   [OcrEngine.sampleBackgroundColor]) - box pak vizuálně splyne s bublinou místo pevně
+ * @param bgColorArgb barva pozadí HORNÍ poloviny bubliny nasamplovaná z originálního obrázku
+ *   (viz [OcrEngine.sampleBackgroundColor]) - box pak vizuálně splyne s bublinou místo pevně
  *   bílé, která na barevných/šrafovaných bublinách nechávala prosvítat okraj originálu.
+ * @param bgColorBottomArgb barva pozadí DOLNÍ poloviny - společně s [bgColorArgb] tvoří
+ *   svislý gradient výplně místo jednolité barvy (viz TranslationOverlay). Výchozí hodnota
+ *   (stejná jako [bgColorArgb]) degraduje na plnou barvu - staré cache záznamy bez tohohle
+ *   pole tak vypadají přesně jako dřív, dokud se stránka znovu nepřeloží.
  * @param isSfx zvukový efekt - viz [BubbleClassifier]; render mu nedává box, jen ho nechá být.
  * @param lineCount kolik OCR řádků bylo sloučeno do téhle bubliny - signál pro
  *   [layoutTranslationBlocks], jestli má smysl box roztahovat nahoru (viz [PositionedTranslationBlock.minTopF]).
@@ -32,6 +36,7 @@ data class TranslatedBlock(
     val bottomF: Float,
     val displayText: String = translatedText,
     val bgColorArgb: Int = DEFAULT_BUBBLE_BG_ARGB,
+    val bgColorBottomArgb: Int = bgColorArgb,
     val isSfx: Boolean = false,
     val lineCount: Int = 1,
     val shape: List<BubbleShapePoint>? = null,

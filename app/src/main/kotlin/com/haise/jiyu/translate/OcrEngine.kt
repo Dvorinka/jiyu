@@ -23,8 +23,10 @@ data class RawTextBlock(
     val bottomF: Float,
     /** Kolik původních ML Kit "lines" bylo sloučeno do tohoto bloku - viz [OcrEngine.mergeNearbyLines]. */
     val lineCount: Int = 1,
-    /** Barva pozadí bubliny nasamplovaná z bitmapy - viz [OcrEngine.sampleBackgroundColor]. */
-    val bgColorArgb: Int = DEFAULT_BUBBLE_BG_ARGB,
+    /** Barva pozadí horní poloviny prstence kolem bubliny - viz [OcrEngine.sampleBackgroundColor]. */
+    val bgColorTopArgb: Int = DEFAULT_BUBBLE_BG_ARGB,
+    /** Barva pozadí dolní poloviny prstence - společně s [bgColorTopArgb] tvoří gradient výplně (viz TranslationOverlay). */
+    val bgColorBottomArgb: Int = DEFAULT_BUBBLE_BG_ARGB,
     /** Skutečný obrys bubliny (flood-fill) - viz [BubbleShapeDetector]. Null = detekce selhala, render použije heuristický obdélník. */
     val shape: List<BubbleShapePoint>? = null,
 )
@@ -116,15 +118,17 @@ class OcrEngine @Inject constructor() {
         // (jen relativní souřadnice).
         val pixelSource = BitmapPixelSource(bitmap)
         mergeNearbyLines(lines).map { block ->
-            val bg = sampleBackgroundColor(bitmap, block)
+            val (bgTop, bgBottom) = sampleBackgroundColor(bitmap, block)
             val shape = BubbleShapeDetector.detectShape(
                 source = pixelSource,
                 width = bitmap.width,
                 height = bitmap.height,
                 seeds = ringSeeds(block.leftF, block.topF, block.rightF, block.bottomF, bitmap.width, bitmap.height),
-                bgColorArgb = bg,
+                // Detektor tvaru (flood-fill) potřebuje JEDNU referenční barvu pozadí, ne
+                // gradient - průměr obou polovin je pro tenhle účel dost přesný.
+                bgColorArgb = averageArgb(bgTop, bgBottom),
             )
-            block.copy(bgColorArgb = bg, shape = shape)
+            block.copy(bgColorTopArgb = bgTop, bgColorBottomArgb = bgBottom, shape = shape)
         }
     }
 
@@ -196,11 +200,16 @@ class OcrEngine @Inject constructor() {
      * ale typicky pořád uvnitř bubliny) - viz [TranslatedBlock.bgColorArgb]. Bez tohohle
      * je přeložený box vždy bílý, což na barevných/šrafovaných bublinách (shout efekty,
      * system boxy) nechává viditelně prosvítat okraj originálu kolem hran boxu.
+     *
+     * Vrací DVĚ barvy (horní/dolní polovina prstence podle svislé pozice vzorku) místo
+     * jedné, pro gradient výplně - viz TranslationOverlay. Horní/dolní ŘÁDEK prstence jde
+     * celý do své poloviny; levý/pravý SLOUPEC se rozpadne mezi obě poloviny sám podle
+     * y-pozice každého vzorku ([sample] níž), žádná speciální logika navíc není potřeba.
      */
-    private fun sampleBackgroundColor(bitmap: Bitmap, block: RawTextBlock): Int {
+    private fun sampleBackgroundColor(bitmap: Bitmap, block: RawTextBlock): Pair<Int, Int> {
         val w = bitmap.width
         val h = bitmap.height
-        if (w <= 0 || h <= 0) return DEFAULT_BUBBLE_BG_ARGB
+        if (w <= 0 || h <= 0) return DEFAULT_BUBBLE_BG_ARGB to DEFAULT_BUBBLE_BG_ARGB
         val margin = 4
 
         val left = (block.leftF * w).toInt()
@@ -212,16 +221,23 @@ class OcrEngine @Inject constructor() {
         val ringTop = (top - margin).coerceIn(0, h - 1)
         val ringRight = (right + margin).coerceIn(0, w - 1)
         val ringBottom = (bottom + margin).coerceIn(0, h - 1)
-        if (ringRight <= ringLeft || ringBottom <= ringTop) return DEFAULT_BUBBLE_BG_ARGB
+        if (ringRight <= ringLeft || ringBottom <= ringTop) return DEFAULT_BUBBLE_BG_ARGB to DEFAULT_BUBBLE_BG_ARGB
 
-        var sumR = 0L; var sumG = 0L; var sumB = 0L; var count = 0
+        var topSumR = 0L; var topSumG = 0L; var topSumB = 0L; var topCount = 0
+        var bottomSumR = 0L; var bottomSumG = 0L; var bottomSumB = 0L; var bottomCount = 0
+        val midY = (ringTop + ringBottom) / 2
+
         fun sample(x: Int, y: Int) {
             if (x < 0 || x >= w || y < 0 || y >= h) return
             val px = bitmap.getPixel(x, y)
-            sumR += (px shr 16) and 0xFF
-            sumG += (px shr 8) and 0xFF
-            sumB += px and 0xFF
-            count++
+            val r = (px shr 16) and 0xFF
+            val g = (px shr 8) and 0xFF
+            val b = px and 0xFF
+            if (y <= midY) {
+                topSumR += r; topSumG += g; topSumB += b; topCount++
+            } else {
+                bottomSumR += r; bottomSumG += g; bottomSumB += b; bottomCount++
+            }
         }
 
         // Vzorkujeme jen obvod prstence (ne celou plochu) - max ~80 bodů, dost na stabilní
@@ -234,8 +250,11 @@ class OcrEngine @Inject constructor() {
         var y = ringTop
         while (y <= ringBottom) { sample(ringLeft, y); sample(ringRight, y); y += stepY }
 
-        if (count == 0) return DEFAULT_BUBBLE_BG_ARGB
-        return android.graphics.Color.rgb((sumR / count).toInt(), (sumG / count).toInt(), (sumB / count).toInt())
+        val topColor = if (topCount == 0) DEFAULT_BUBBLE_BG_ARGB
+            else android.graphics.Color.rgb((topSumR / topCount).toInt(), (topSumG / topCount).toInt(), (topSumB / topCount).toInt())
+        val bottomColor = if (bottomCount == 0) DEFAULT_BUBBLE_BG_ARGB
+            else android.graphics.Color.rgb((bottomSumR / bottomCount).toInt(), (bottomSumG / bottomCount).toInt(), (bottomSumB / bottomCount).toInt())
+        return topColor to bottomColor
     }
 
     private fun shouldMerge(a: RawTextBlock, b: RawTextBlock): Boolean {
