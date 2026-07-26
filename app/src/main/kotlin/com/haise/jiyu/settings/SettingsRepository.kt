@@ -44,6 +44,9 @@ object SettingsKeys {
     val PAGE_SCALE             = stringPreferencesKey("page_scale")
     val AUTO_BACKUP_ENABLED    = booleanPreferencesKey("auto_backup_enabled")
     val AUTO_NEXT_CHAPTER      = booleanPreferencesKey("auto_next_chapter")
+    val PRELOAD_NEXT_NOVEL_CHAPTER = booleanPreferencesKey("preload_next_novel_chapter")
+    val PRELOAD_NEXT_CHAPTER_MANGA = booleanPreferencesKey("preload_next_chapter_manga")
+    val PRELOAD_NEXT_CHAPTER_WIFI_ONLY = booleanPreferencesKey("preload_next_chapter_wifi_only")
     val SAVED_SEARCHES         = stringPreferencesKey("saved_searches")
     val CROP_BORDERS           = booleanPreferencesKey("crop_borders")
     val LIBRARY_GRID_MODE      = booleanPreferencesKey("library_grid_mode")
@@ -267,6 +270,32 @@ class SettingsRepository @Inject constructor(
 
     suspend fun setAutoNextChapter(enabled: Boolean) =
         dataStore.edit { it[SettingsKeys.AUTO_NEXT_CHAPTER] = enabled }
+
+    /** Výchozí true - warmuje Room cache pro další kapitolu light novel na pozadí, viz ReaderViewModel.preloadNextNovelChapter. */
+    val preloadNextNovelChapter: Flow<Boolean> =
+        dataStore.data.map { it[SettingsKeys.PRELOAD_NEXT_NOVEL_CHAPTER] ?: true }
+
+    suspend fun setPreloadNextNovelChapter(enabled: Boolean) =
+        dataStore.edit { it[SettingsKeys.PRELOAD_NEXT_NOVEL_CHAPTER] = enabled }
+
+    /**
+     * Výchozí true - warmuje Room cache pro další kapitolu manga/manhwa/manhua na pozadí
+     * (viz ReaderViewModel.preloadNextChapterMangaTranslation). Na rozdíl od novely (jen text)
+     * tohle stáhne CELOU další kapitolu obrázků + OCR na zařízení, proto je to samostatný
+     * přepínač od [preloadNextNovelChapter], ne stejný.
+     */
+    val preloadNextChapterManga: Flow<Boolean> =
+        dataStore.data.map { it[SettingsKeys.PRELOAD_NEXT_CHAPTER_MANGA] ?: true }
+
+    suspend fun setPreloadNextChapterManga(enabled: Boolean) =
+        dataStore.edit { it[SettingsKeys.PRELOAD_NEXT_CHAPTER_MANGA] = enabled }
+
+    /** Výchozí true (jen WiFi) - vypnutím jde přednačítání povolit i na mobilních datech. */
+    val preloadNextChapterWifiOnly: Flow<Boolean> =
+        dataStore.data.map { it[SettingsKeys.PRELOAD_NEXT_CHAPTER_WIFI_ONLY] ?: true }
+
+    suspend fun setPreloadNextChapterWifiOnly(enabled: Boolean) =
+        dataStore.edit { it[SettingsKeys.PRELOAD_NEXT_CHAPTER_WIFI_ONLY] = enabled }
 
     val savedSearches: Flow<List<String>> =
         dataStore.data.map { prefs ->

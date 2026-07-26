@@ -71,6 +71,9 @@ fun ReaderSettingsScreen(
     val readerTheme        by viewModel.readerTheme.collectAsState()
     val oledMode           by viewModel.oledMode.collectAsState()
     val autoNextChapter    by viewModel.autoNextChapter.collectAsState()
+    val preloadNextNovelChapter by viewModel.preloadNextNovelChapter.collectAsState()
+    val preloadNextChapterManga by viewModel.preloadNextChapterManga.collectAsState()
+    val preloadNextChapterWifiOnly by viewModel.preloadNextChapterWifiOnly.collectAsState()
     val cropBorders        by viewModel.cropBorders.collectAsState()
     val pageScale          by viewModel.pageScale.collectAsState()
     val keepScreenOn       by viewModel.keepScreenOn.collectAsState()
@@ -261,6 +264,62 @@ fun ReaderSettingsScreen(
                             onCheckedChange = null,
                             colors = SwitchDefaults.colors(checkedThumbColor = GlowViolet, checkedTrackColor = GlowViolet.copy(alpha = 0.5f)),
                         )
+                    }
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .toggleable(value = preloadNextNovelChapter, role = Role.Switch, onValueChange = { viewModel.setPreloadNextNovelChapter(it) })
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(stringResource(R.string.settings_reader_preload_novel_title), color = TextPrimary, fontSize = 14.sp)
+                            Text(stringResource(R.string.settings_reader_preload_novel_desc), color = TextSecondary, fontSize = 11.sp)
+                        }
+                        Switch(
+                            checked = preloadNextNovelChapter,
+                            onCheckedChange = null,
+                            colors = SwitchDefaults.colors(checkedThumbColor = GlowViolet, checkedTrackColor = GlowViolet.copy(alpha = 0.5f)),
+                        )
+                    }
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .toggleable(value = preloadNextChapterManga, role = Role.Switch, onValueChange = { viewModel.setPreloadNextChapterManga(it) })
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(stringResource(R.string.settings_reader_preload_manga_title), color = TextPrimary, fontSize = 14.sp)
+                            Text(stringResource(R.string.settings_reader_preload_manga_desc), color = TextSecondary, fontSize = 11.sp)
+                        }
+                        Switch(
+                            checked = preloadNextChapterManga,
+                            onCheckedChange = null,
+                            colors = SwitchDefaults.colors(checkedThumbColor = GlowViolet, checkedTrackColor = GlowViolet.copy(alpha = 0.5f)),
+                        )
+                    }
+
+                    if (preloadNextChapterManga) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .toggleable(value = preloadNextChapterWifiOnly, role = Role.Switch, onValueChange = { viewModel.setPreloadNextChapterWifiOnly(it) })
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(stringResource(R.string.settings_reader_preload_manga_wifi_title), color = TextPrimary, fontSize = 14.sp)
+                                Text(stringResource(R.string.settings_reader_preload_manga_wifi_desc), color = TextSecondary, fontSize = 11.sp)
+                            }
+                            Switch(
+                                checked = preloadNextChapterWifiOnly,
+                                onCheckedChange = null,
+                                colors = SwitchDefaults.colors(checkedThumbColor = GlowViolet, checkedTrackColor = GlowViolet.copy(alpha = 0.5f)),
+                            )
+                        }
                     }
 
                     Row(

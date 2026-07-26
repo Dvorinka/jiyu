@@ -451,6 +451,23 @@ class SettingsViewModel @Inject constructor(
 
     fun setAutoNextChapter(enabled: Boolean) = viewModelScope.launch { settings.setAutoNextChapter(enabled) }
 
+    // ── Přednačítání překladu další kapitoly light novel ─────────────────────
+    val preloadNextNovelChapter: StateFlow<Boolean> = settings.preloadNextNovelChapter
+        .stateIn(viewModelScope, SharingStarted.Eagerly, true)
+
+    fun setPreloadNextNovelChapter(enabled: Boolean) = viewModelScope.launch { settings.setPreloadNextNovelChapter(enabled) }
+
+    // ── Přednačítání překladu další kapitoly manga/manhwa/manhua ─────────────
+    val preloadNextChapterManga: StateFlow<Boolean> = settings.preloadNextChapterManga
+        .stateIn(viewModelScope, SharingStarted.Eagerly, true)
+
+    fun setPreloadNextChapterManga(enabled: Boolean) = viewModelScope.launch { settings.setPreloadNextChapterManga(enabled) }
+
+    val preloadNextChapterWifiOnly: StateFlow<Boolean> = settings.preloadNextChapterWifiOnly
+        .stateIn(viewModelScope, SharingStarted.Eagerly, true)
+
+    fun setPreloadNextChapterWifiOnly(enabled: Boolean) = viewModelScope.launch { settings.setPreloadNextChapterWifiOnly(enabled) }
+
     // ── Složka stahování ─────────────────────────────────────────────────────
     val downloadFolderUri: StateFlow<String?> = settings.downloadFolderUri
         .stateIn(viewModelScope, SharingStarted.Eagerly, null)

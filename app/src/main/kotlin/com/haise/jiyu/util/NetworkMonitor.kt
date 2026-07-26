@@ -27,6 +27,22 @@ class NetworkMonitor @Inject constructor(
             return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
         }
 
+    /**
+     * Nezpoplatněné (typicky WiFi) připojení - stejný signál jako WorkManager
+     * NetworkType.UNMETERED (viz DownloadQueue), jen synchronní a bez WorkManageru pro
+     * plain coroutine použití (viz ReaderViewModel.preloadNextChapterMangaTranslation).
+     * NET_CAPABILITY_NOT_METERED místo TRANSPORT_WIFI - správně pokrývá i zpoplatněné
+     * WiFi hotspoty jako "ne, tohle NEpouštěj bez svolení".
+     */
+    val isUnmetered: Boolean
+        get() {
+            val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+                ?: return true
+            val network = cm.activeNetwork ?: return false
+            val caps = cm.getNetworkCapabilities(network) ?: return false
+            return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED)
+        }
+
     /** Emits true/false on connectivity changes; skips initial value via [drop]. */
     val networkState: Flow<Boolean> = callbackFlow {
         val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager

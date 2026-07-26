@@ -398,15 +398,30 @@ class TranslateRepository @Inject constructor(
         if (paragraphs.isEmpty()) return null
 
         val glossary = glossaryFor(mangaId, targetLanguage)
-        val chunks = chunkParagraphs(paragraphs)
-        val translatedParagraphs = mutableListOf<String>()
+        // Odstavce se nikdy nedělí NAPŘÍČ dávkami (viz chunkUnits) - jediná výjimka je jeden
+        // odstavec delší než limit sám o sobě, ten se rozseká na věty (viz toTranslationUnits),
+        // nikdy uprostřed věty.
+        val units = toTranslationUnits(paragraphs)
+        val chunks = chunkUnits(units)
+        val translatedUnits = mutableListOf<String>()
         for (chunk in chunks) {
-            val translated = groqClient.translateNovelBatch(chunk, targetLanguage, sourceLanguage, glossary)
+            val translated = groqClient.translateNovelBatch(chunk.map { it.text }, targetLanguage, sourceLanguage, glossary)
             if (translated.size != chunk.size) return null // dávka selhala nebo neúplná -> necachovat polovičatý výsledek
-            translatedParagraphs += translated
+            translatedUnits += translated
         }
 
-        val result = translatedParagraphs.joinToString("\n")
+        // Rekonstrukce odstavců: "continuation" kousky (části jednoho moc dlouhého odstavce
+        // rozdělené podle vět, viz toTranslationUnits) se spojí zpátky mezerou do JEDNOHO
+        // odstavce - teprve mezi SKUTEČNÝMI odstavci jde nový řádek.
+        val resultParagraphs = mutableListOf<StringBuilder>()
+        units.forEachIndexed { i, unit ->
+            if (unit.isContinuation && resultParagraphs.isNotEmpty()) {
+                resultParagraphs.last().append(" ").append(translatedUnits[i])
+            } else {
+                resultParagraphs += StringBuilder(translatedUnits[i])
+            }
+        }
+        val result = resultParagraphs.joinToString("\n") { it.toString() }
         novelDao.upsert(TranslatedNovelEntity(id = novelCacheId(chapterId, sourceLanguage, targetLanguage), translatedText = result))
         return result
     }
@@ -417,18 +432,65 @@ class TranslateRepository @Inject constructor(
     private fun novelCacheId(chapterId: String, sourceLanguage: String, targetLanguage: String) =
         "$chapterId::$sourceLanguage::$targetLanguage"
 
-    private fun chunkParagraphs(paragraphs: List<String>): List<List<String>> {
-        val chunks = mutableListOf<List<String>>()
-        var current = mutableListOf<String>()
-        var currentLen = 0
+    /**
+     * Jeden "kousek" poslaný k překladu jako samostatná položka dávky. Normální (krátký)
+     * odstavec je jeden unit s [isContinuation]=false. Odstavec delší než
+     * [NOVEL_CHUNK_CHAR_LIMIT] se rozseká na věty ([splitAtSentenceBoundaries]) do víc units -
+     * první má isContinuation=false (začíná nový odstavec), zbytek true (patří k tomu samému
+     * odstavci, při skládání výsledku zpátky se spojí mezerou, ne novým řádkem).
+     */
+    private data class TranslationUnit(val text: String, val isContinuation: Boolean)
+
+    private fun toTranslationUnits(paragraphs: List<String>): List<TranslationUnit> {
+        val units = mutableListOf<TranslationUnit>()
         for (p in paragraphs) {
-            if (current.isNotEmpty() && currentLen + p.length > NOVEL_CHUNK_CHAR_LIMIT) {
+            if (p.length <= NOVEL_CHUNK_CHAR_LIMIT) {
+                units += TranslationUnit(p, isContinuation = false)
+            } else {
+                splitAtSentenceBoundaries(p, NOVEL_CHUNK_CHAR_LIMIT).forEachIndexed { i, piece ->
+                    units += TranslationUnit(piece, isContinuation = i > 0)
+                }
+            }
+        }
+        return units
+    }
+
+    /**
+     * Rozdělí text na konce vět (. ! ?) a hladově balí do kusů pod [limit] - NIKDY neuseknuté
+     * uprostřed věty. Když ani jedna věta sama o sobě nevejde do limitu (extrémně dlouhá věta
+     * bez interpunkce), vrátí ji jako jeden předimenzovaný kus - radši jedno moc velké API
+     * volání než rozseknutá věta v půlce.
+     */
+    private fun splitAtSentenceBoundaries(text: String, limit: Int): List<String> {
+        val sentences = text.split(Regex("(?<=[.!?])\\s+")).filter { it.isNotBlank() }
+        if (sentences.size <= 1) return listOf(text)
+
+        val pieces = mutableListOf<String>()
+        val current = StringBuilder()
+        for (s in sentences) {
+            if (current.isNotEmpty() && current.length + s.length + 1 > limit) {
+                pieces += current.toString()
+                current.clear()
+            }
+            if (current.isNotEmpty()) current.append(" ")
+            current.append(s)
+        }
+        if (current.isNotEmpty()) pieces += current.toString()
+        return pieces
+    }
+
+    private fun chunkUnits(units: List<TranslationUnit>): List<List<TranslationUnit>> {
+        val chunks = mutableListOf<List<TranslationUnit>>()
+        var current = mutableListOf<TranslationUnit>()
+        var currentLen = 0
+        for (u in units) {
+            if (current.isNotEmpty() && currentLen + u.text.length > NOVEL_CHUNK_CHAR_LIMIT) {
                 chunks += current
                 current = mutableListOf()
                 currentLen = 0
             }
-            current += p
-            currentLen += p.length
+            current += u
+            currentLen += u.text.length
         }
         if (current.isNotEmpty()) chunks += current
         return chunks

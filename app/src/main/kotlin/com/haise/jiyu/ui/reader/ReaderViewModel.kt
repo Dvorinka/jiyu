@@ -58,6 +58,7 @@ class ReaderViewModel @Inject constructor(
     private val muRepository: MangaUpdatesRepository,
     private val glossaryDao: GlossaryDao,
     private val sleepTimerManager: SleepTimerManager,
+    private val networkMonitor: com.haise.jiyu.util.NetworkMonitor,
 ) : ViewModel() {
 
     private val chapterEntityId: String = checkNotNull(savedStateHandle["chapterId"])
@@ -185,6 +186,8 @@ class ReaderViewModel @Inject constructor(
     // ── Přednačítání další kapitoly ──────────────────────────────────────────
     private val nextChapterCache = mutableMapOf<String, List<String>>()
     private var preloadJob: Job? = null
+    private var novelPreloadJob: Job? = null
+    private var mangaTranslatePreloadJob: Job? = null
 
     private val _webtoonScrollOffset = MutableStateFlow(0)
     val webtoonScrollOffset: StateFlow<Int> = _webtoonScrollOffset.asStateFlow()
@@ -312,6 +315,7 @@ class ReaderViewModel @Inject constructor(
             val cached = translateRepository.getCachedNovel(chapterId, _targetLanguage.value, _sourceLanguage.value)
             if (cached != null) {
                 _novelTranslatedText.value = cached
+                preloadNextNovelChapter()
                 return@launch
             }
             _novelTranslating.value = true
@@ -325,6 +329,7 @@ class ReaderViewModel @Inject constructor(
                 )
                 if (result != null) {
                     _novelTranslatedText.value = result
+                    preloadNextNovelChapter()
                 } else {
                     _translationError.value = context.getString(R.string.reader_error_translation_failed)
                     _novelTranslateMode.value = false
@@ -627,6 +632,84 @@ class ReaderViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Warmuje Room cache (TranslatedNovelEntity, viz TranslateRepository.getCachedNovel)
+     * překladem DALŠÍ kapitoly light novel na pozadí, jakmile se dokončí překlad AKTUÁLNÍ
+     * kapitoly (viz volání v toggleNovelTranslate) - když uživatel přejde na další kapitolu
+     * a zapne překlad, najde ho hotový okamžitě. Nezasahuje do _novelTranslatedText/
+     * _novelTranslating (ty patří AKTUÁLNÍ kapitole) - jde jen o zápis do cache, žádný
+     * viditelný UI stav pro tuhle kapitolu. Řízeno nastavením (SettingsRepository.
+     * preloadNextNovelChapter), výchozí zapnuto. Zrušeno (viz loadChapter), jakmile
+     * uživatel odejde jinam, než přednačítání stihne doběhnout.
+     */
+    private fun preloadNextNovelChapter() {
+        val chapter = currentChapter ?: return
+        val idx = allChapters.indexOfFirst { it.id == chapter.id }
+        if (idx <= 0) return
+        val nextChapter = allChapters[idx - 1]
+        val targetLanguage = _targetLanguage.value
+        val sourceLanguage = _sourceLanguage.value
+
+        novelPreloadJob?.cancel()
+        novelPreloadJob = viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            if (!settings.preloadNextNovelChapter.first()) return@launch
+            if (translateRepository.getCachedNovel(nextChapter.id, targetLanguage, sourceLanguage) != null) return@launch
+            try {
+                val manga = repository.getManga(nextChapter.mangaId) ?: return@launch
+                val rawPages = repository.getChapterPages(nextChapter.sourceId, nextChapter.url, manga.url)
+                if (rawPages.none { it.imageUrl == "novel://text" }) return@launch
+                val text = rawPages.firstOrNull()?.url?.takeIf { it.isNotBlank() } ?: return@launch
+                translateRepository.translateNovelChapter(
+                    chapterId = nextChapter.id,
+                    mangaId = nextChapter.mangaId,
+                    text = text,
+                    targetLanguage = targetLanguage,
+                    sourceLanguage = sourceLanguage,
+                )
+            } catch (_: Exception) {}
+        }
+    }
+
+    /**
+     * Stejná myšlenka jako [preloadNextNovelChapter], ale pro manga/manhwa/manhua - warmuje
+     * Room cache ([TranslatedPageDao] přes [TranslateRepository.translateChapter]) překladem
+     * DALŠÍ kapitoly na pozadí, jakmile dokončí překlad AKTUÁLNÍ kapitoly.
+     *
+     * Na rozdíl od novely (jen text) tohle stáhne CELOU další kapitolu obrázků + spustí OCR
+     * na zařízení pro každou stránku - výrazně dražší na data i baterii, proto:
+     * - samostatný přepínač (SettingsRepository.preloadNextChapterManga), ne sdílený s novelou
+     * - respektuje [SettingsRepository.preloadNextChapterWifiOnly] (výchozí zapnuto) - na
+     *   mobilních datech se nespustí, dokud si to uživatel vědomě nezapne v nastavení.
+     */
+    private fun preloadNextChapterMangaTranslation() {
+        val chapter = currentChapter ?: return
+        val idx = allChapters.indexOfFirst { it.id == chapter.id }
+        if (idx <= 0) return
+        val nextChapter = allChapters[idx - 1]
+        val targetLanguage = _targetLanguage.value
+        val sourceLanguage = _sourceLanguage.value
+
+        mangaTranslatePreloadJob?.cancel()
+        mangaTranslatePreloadJob = viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            if (!settings.preloadNextChapterManga.first()) return@launch
+            if (settings.preloadNextChapterWifiOnly.first() && !networkMonitor.isUnmetered) return@launch
+            try {
+                val manga = repository.getManga(nextChapter.mangaId) ?: return@launch
+                val rawPages = repository.getChapterPages(nextChapter.sourceId, nextChapter.url, manga.url)
+                if (rawPages.any { it.imageUrl == "novel://text" }) return@launch // novela - viz preloadNextNovelChapter
+                val urls = rawPages.mapNotNull { it.imageUrl?.takeIf { u -> u.isNotBlank() } ?: it.url.takeIf { u -> u.isNotBlank() } }
+                if (urls.isEmpty()) return@launch
+                translateRepository.translateChapter(
+                    pages = urls,
+                    chapterId = nextChapter.id,
+                    mangaId = nextChapter.mangaId,
+                    targetLanguage = targetLanguage,
+                    sourceLanguage = sourceLanguage,
+                ) { _, _ -> } // jen zápis do cache, žádný viditelný UI stav pro tuhle kapitolu
+            } catch (_: Exception) {}
+        }
+    }
+
     fun onPageChanged(index: Int) {
         _currentPage.value = index
 
@@ -757,6 +840,7 @@ class ReaderViewModel @Inject constructor(
                     done++
                     _translationProgress.value = TranslationProgress(done, pages.size)
                 }
+                preloadNextChapterMangaTranslation()
             } catch (_: com.haise.jiyu.translate.RateLimitedException) {
                 _translationError.value = context.getString(R.string.reader_error_rate_limited)
             } finally {
@@ -799,6 +883,7 @@ class ReaderViewModel @Inject constructor(
                     done++
                     _batchProgress.value = TranslationProgress(done, pages.size)
                 }
+                preloadNextChapterMangaTranslation()
             } catch (_: com.haise.jiyu.translate.RateLimitedException) {
                 // Dalsi pokusy by stejne selhaly na stejnem limitu - nema smysl
                 // prohanet zbytek davky, jen ukazat srozumitelnou hlasku.

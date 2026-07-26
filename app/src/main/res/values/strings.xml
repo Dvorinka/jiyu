@@ -160,6 +160,12 @@
     <string name="settings_reader_oled_desc">Čistě černé pozadí mezi stránkami — šetří baterii OLED displejů</string>
     <string name="settings_reader_auto_next_title">Po dočtení přejít na další kapitolu</string>
     <string name="settings_reader_auto_next_desc">Po dosažení poslední stránky se automaticky přejde na další kapitolu</string>
+    <string name="settings_reader_preload_novel_title">Přednačítat překlad další kapitoly (light novel)</string>
+    <string name="settings_reader_preload_novel_desc">Po přeložení aktuální kapitoly se na pozadí přeloží i další, aby byla hned připravená</string>
+    <string name="settings_reader_preload_manga_title">Přednačítat překlad další kapitoly (manga/manhwa/manhua)</string>
+    <string name="settings_reader_preload_manga_desc">Po přeložení aktuální kapitoly se na pozadí stáhne a přeloží i další — stojí to víc dat a baterie než u light novel</string>
+    <string name="settings_reader_preload_manga_wifi_title">Jen na WiFi</string>
+    <string name="settings_reader_preload_manga_wifi_desc">Vypni, pokud chceš přednačítání i na mobilních datech</string>
     <string name="settings_reader_crop_borders_title">Ořez bílých okrajů</string>
     <string name="settings_reader_crop_borders_desc">Automaticky odstraní prázdné okraje stránek</string>
     <string name="settings_reader_keep_screen_on_title">Udržet obrazovku zapnutou</string>
