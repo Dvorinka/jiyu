@@ -7,6 +7,7 @@ import com.haise.jiyu.source.MangaSource
 import com.haise.jiyu.source.Page
 import com.haise.jiyu.source.SChapter
 import com.haise.jiyu.source.SManga
+import com.haise.jiyu.source.interceptor.CloudflareInterceptor
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
@@ -165,8 +166,17 @@ class ComicKSource @Inject constructor(
 
     // ─── Privátní pomocné funkce ─────────────────────────────────────────────
 
+    /**
+     * api.comick.dev je za Cloudflare a bez prohlížečového User-Agentu vrací 403
+     * "Just a moment..." (WAF pravidlo na základě UA, ne skutečná JS výzva) - zjištěno
+     * auditem 2026-07-27. S touhle hlavičkou requesty prochází bez CloudflareInterceptor
+     * (rychlejší a spolehlivější než čekat na jeho WebView-based řešení výzvy).
+     */
+    private fun requestBuilder(url: String) = Request.Builder().url(url)
+        .header("User-Agent", CloudflareInterceptor.CHROME_UA)
+
     private fun getArray(url: String): JSONArray {
-        val request = Request.Builder().url(url).build()
+        val request = requestBuilder(url).build()
         client.newCall(request).execute().use { response ->
             val body = response.body?.string().orEmpty()
             check(response.isSuccessful) { "ComicK API chyba ${response.code}: $url" }
@@ -175,7 +185,7 @@ class ComicKSource @Inject constructor(
     }
 
     private fun getObject(url: String): JSONObject {
-        val request = Request.Builder().url(url).build()
+        val request = requestBuilder(url).build()
         client.newCall(request).execute().use { response ->
             val body = response.body?.string().orEmpty()
             check(response.isSuccessful) { "ComicK API chyba ${response.code}: $url" }

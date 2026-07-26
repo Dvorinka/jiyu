@@ -8,8 +8,8 @@ spousta "živých" domén vrací jen zaparkovanou/reklamní stránku).
 
 | Stav | Počet |
 |---|---|
-| ✅ Funguje | 87 |
-| ❌ Odstraněno — mrtvé / zaparkované / malvertising / kompromitované (nejde opravit) | 46 |
+| ✅ Funguje | 86 |
+| ❌ Odstraněno — mrtvé / zaparkované / malvertising / kompromitované (nejde opravit) | 47 |
 | ❓ Nejisté, zatím ponecháno — potřeba ověřit z mobilu/reálné appky | 1 |
 
 Ve `SourceManager.kt` u každého odstraněného zdroje zůstal komentář s důvodem
@@ -105,7 +105,6 @@ je teď plně funkční zdroj**, viz sekce 1a.
 |---|---|---|---|
 | mangadex | MangaDex | api.mangadex.org | API |
 | mangaplus | MANGA Plus | mangaplus.shueisha.co.jp | |
-| comick | ComicK | api.comick.dev | API (root vrací 404, reálné endpointy fungují) |
 | hitomi | Hitomi | hitomi.la | |
 | nhentai | nhentai | nhentai.net | |
 | mangafire | MangaFire | mangafire.to | |
@@ -234,6 +233,12 @@ obsah a spadne na chybu.
 | unionmangas | UnionMangas | unionmangas.xyz | zaparkovaná doména, JS redirect na `/lander` |
 | tmo | TMO (LectorTMO) | lectortmo.com | **potvrzeno definitivně mrtvé** (3. fáze) — lectortmo.com nemá DNS, a lectortmo.net (dřív podezřelý na "možná náhrada") je taky jen Namecheap "expired domain" parkovací stránka, ne skutečný web. Žádná nástupnická doména nenalezena. |
 
+### 2g. Odstraněno 2026-07-27 — funguje jen jako tracker, ne jako zdroj obrázků (1)
+
+| ID | Název | URL | Zjištěno |
+|---|---|---|---|
+| comick | ComicK | api.comick.dev | Metadata/seznam kapitol fungují (po opravě 403 přes User-Agent), ale API pole `md_images` je vždy prázdné a živý web na comick.dev v prohlížeči taky nezobrazí žádné stránky kapitoly — u licencovaných kapitol proto, že ComicK jen odkazuje na oficiální platformu, ale prázdné byly i běžné fanouškovské scanlation kapitoly. Web teď reálně slouží jen jako tracker (sledování/komentáře/hodnocení), ne jako zdroj čitelných stránek. |
+
 ### 2f. Doplňkově odhalené při psaní náhrad ve skupině 3 (3)
 
 | ID | Název | URL | Zjištěno |
@@ -255,6 +260,23 @@ je teď reimplementovaný v `app/src/main/kotlin/com/haise/jiyu/util/TileScrambl
 (čistá matematika, unit testovaná proti nezávislé Python reimplementaci a
 ověřená pixel-perfect na reálné zamíchané stránce) + `TileScrambleBitmap.kt`
 (skutečné kopírování pixelů přes `Canvas.drawBitmap`).
+
+**Update 2026-07-27 (nahlásil uživatel - ComicK "nefunguje"):** ComicK (api.comick.dev)
+byl v tomhle dokumentu původně označen za funkční jen podle HTTP kódů/metadat. Detailnější
+kontrola ukázala dva problémy:
+1. api.comick.dev je teď za Cloudflare a bez prohlížečové `User-Agent` hlavičky vrací
+   403 "Just a moment..." - **tohle jsem opravil** (`ComicKSource.kt` teď posílá
+   `CloudflareInterceptor.CHROME_UA`).
+2. Mnohem závažnější: samotná stránka kapitoly (jak přes API pole `md_images`, tak na
+   živém `comick.dev` webu ověřeno v prohlížeči) **nevrací žádné obrázky stránek** - u
+   licencovaných/"Official" kapitol proto, že ComicK nesmí hostovat placený obsah a jen
+   odkazuje na oficiální platformu (Tappytoon, MangaPlus...), ale prázdné byly i běžné
+   fanouškovské scanlation kapitoly. Uživatel potvrdil: **ComicK teď slouží jen jako
+   tracker** (sledování/komentáře/hodnocení), ne jako zdroj obrázků ke čtení.
+   → **ComicK proto odstraněn ze `SourceManager.kt`** (viz komentář u odstranění), i když
+   metadata/seznam kapitol technicky fungují - appka bez čitelných stránek by byla
+   zavádějící. `ComicKSource.kt`/`ComicKSourceTest.kt` zůstávají v repu (stejný vzor jako
+   u ostatních odstraněných zdrojů) pro případ, že by ComicK obrázky v budoucnu vrátil.
 
 Grid/seed se zakódují jako query parametry přímo do URL obrázku
 (`ScrambledImageUrl.kt`) - to je nejjednodušší společné místo, kudy je

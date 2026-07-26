@@ -10,7 +10,6 @@ import com.haise.jiyu.source.hostednovel.HostedNovelSource
 import com.haise.jiyu.source.mangadenizi.MangaDeniziSource
 import com.haise.jiyu.source.manhuabuddy.ManhuaBuddySource
 import com.haise.jiyu.source.woopread.WoopReadSource
-import com.haise.jiyu.source.comick.ComicKSource
 import com.haise.jiyu.source.dynasty.DynastySource
 import com.haise.jiyu.source.hitomi.HitomiSource
 import com.haise.jiyu.source.mangafire.MangaFireSource
@@ -89,7 +88,6 @@ import javax.inject.Singleton
 class SourceManager @Inject constructor(
     mangaDexSource: MangaDexSource,
     mangaPlusSource: MangaPlusSource,
-    comicKSource: ComicKSource,
     hitomiSource: HitomiSource,
     nhentaiSource: NhentaiSource,
     mangaFireSource: MangaFireSource,
@@ -160,7 +158,12 @@ class SourceManager @Inject constructor(
     private val staticSources: List<MangaSource> = listOf(
         mangaDexSource,
         mangaPlusSource,
-        comicKSource,
+        // ComicK (api.comick.dev) odstraněno 2026-07-27 - web i API teď fungují jen jako
+        // "tracker" (odkazuje na oficiální licencované platformy jako Tappytoon/MangaPlus),
+        // reálné stránky kapitol (md_images) API nevrací a ani samotný web comick.dev je
+        // v čtečce nezobrazí (ověřeno naživo v prohlížeči) - žádné reálné obrázky ke stažení.
+        // Metadata/seznam kapitol by šly, ale appka bez čitelných stránek by byla zavádějící.
+        // Viz ComicKSource.kt / ComicKSourceTest.kt (ponecháno pro případ, že by se to vrátilo).
         hitomiSource,
         nhentaiSource,
         mangaFireSource,
