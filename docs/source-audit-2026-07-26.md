@@ -8,9 +8,15 @@ spousta "živých" domén vrací jen zaparkovanou/reklamní stránku).
 
 | Stav | Počet |
 |---|---|
-| ✅ Funguje | 86 |
-| ❌ Odstraněno — mrtvé / zaparkované / malvertising / kompromitované (nejde opravit) | 47 |
-| ❓ Nejisté, zatím ponecháno — potřeba ověřit z mobilu/reálné appky | 1 |
+| ✅ Funguje | 85 |
+| ❌ Odstraněno — mrtvé / zaparkované / malvertising / kompromitované (nejde opravit) | 48 |
+| ❓ Nejisté, zatím ponecháno — potřeba ověřit z mobilu/reálné appky | 0 |
+
+**Update 2026-07-27 (druhé kolo, na výslovné přání uživatele):** curl-only audit dal u
+ComicK a Bato.to falešně pozitivní výsledek (metadata/HTTP kódy vypadaly OK, ale appka
+je reálně nemohla použít ke čtení). Proto teď probíhá druhé kolo ověřování **přímo v
+appce na emulátoru** - u každého zdroje se zkouší otevřít konkrétní titul a kapitolu,
+ne jen zkontrolovat HTTP odpověď. Průběžné výsledky viz sekce 6 na konci dokumentu.
 
 Ve `SourceManager.kt` u každého odstraněného zdroje zůstal komentář s důvodem
 (datum 2026-07-26), takže se dá kdykoliv dohledat, co a proč zmizelo.
@@ -233,11 +239,12 @@ obsah a spadne na chybu.
 | unionmangas | UnionMangas | unionmangas.xyz | zaparkovaná doména, JS redirect na `/lander` |
 | tmo | TMO (LectorTMO) | lectortmo.com | **potvrzeno definitivně mrtvé** (3. fáze) — lectortmo.com nemá DNS, a lectortmo.net (dřív podezřelý na "možná náhrada") je taky jen Namecheap "expired domain" parkovací stránka, ne skutečný web. Žádná nástupnická doména nenalezena. |
 
-### 2g. Odstraněno 2026-07-27 — funguje jen jako tracker, ne jako zdroj obrázků (1)
+### 2g. Odstraněno 2026-07-27 — nahlásil uživatel, potvrzeno druhým kolem testů (2)
 
 | ID | Název | URL | Zjištěno |
 |---|---|---|---|
 | comick | ComicK | api.comick.dev | Metadata/seznam kapitol fungují (po opravě 403 přes User-Agent), ale API pole `md_images` je vždy prázdné a živý web na comick.dev v prohlížeči taky nezobrazí žádné stránky kapitoly — u licencovaných kapitol proto, že ComicK jen odkazuje na oficiální platformu, ale prázdné byly i běžné fanouškovské scanlation kapitoly. Web teď reálně slouží jen jako tracker (sledování/komentáře/hodnocení), ne jako zdroj čitelných stránek. |
+| batoto | Bato.to | bato.to | curl konzistentně `Connection timed out` (možná blokace datacenter IP), ale uživatel potvrdil, že appka Bato.to na reálném telefonu taky nenačte. |
 
 ### 2f. Doplňkově odhalené při psaní náhrad ve skupině 3 (3)
 
@@ -295,14 +302,10 @@ u dlouhých sérií.
 
 ---
 
-## 4) ❓ Nejisté — ponecháno v appce, potřeba ověřit (1)
+## 4) ❓ Nejisté — ponecháno v appce, potřeba ověřit (0)
 
-- **batoto** (bato.to) — z tohoto stroje konzistentně `curl: (28) Connection
-  timed out`. Bato.to je velký populární web, může jít o blokaci datacenter IP
-  adres (běžné u anti-scraping ochran), ne o skutečně mrtvý web. **Nechal jsem
-  ho v appce** — bylo by riziko odstranit fungující populární zdroj kvůli
-  nejednoznačnému testu z vývojářského stroje. Zkus prosím v appce na telefonu,
-  jestli Bato.to funguje — pokud ne, dej vědět a odstraním ho taky.
+Prázdné — **batoto přesunuto do sekce 2g** (uživatel 2026-07-27 potvrdil, že appka
+Bato.to na reálném telefonu taky nenačte, ne jen curl z vývojářského stroje).
 
 ---
 
@@ -325,5 +328,5 @@ u dlouhých sérií.
 5. **Přidat pravidelnou automatickou kontrolu zdrojů** (např. GitHub Actions
    jednou za měsíc/kvartál pouští podobný curl audit jako dnes) — ať se mrtvé
    domény odhalí dřív, než se o tom appka dozví od uživatelů.
-6. **batoto ověřit z mobilní sítě** (viz sekce 4) — pokud je fakt jen
-   blokovaný z devel. stroje, není co řešit.
+6. ~~batoto ověřit z mobilní sítě~~ — **hotovo**, uživatel potvrdil nefunkčnost
+   na reálném telefonu, odstraněno (viz sekce 2g).

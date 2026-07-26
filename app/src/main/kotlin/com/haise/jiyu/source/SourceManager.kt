@@ -1,7 +1,6 @@
 package com.haise.jiyu.source
 
 import com.haise.jiyu.data.db.CustomSourceDao
-import com.haise.jiyu.source.batoto.BatoToSource
 import com.haise.jiyu.source.comizy.ComizySource
 import com.haise.jiyu.source.hivetoons.HiveToonsSource
 import com.haise.jiyu.source.mangaworld.MangaWorldSource
@@ -91,7 +90,6 @@ class SourceManager @Inject constructor(
     hitomiSource: HitomiSource,
     nhentaiSource: NhentaiSource,
     mangaFireSource: MangaFireSource,
-    batoToSource: BatoToSource,
     webtoonSource: WebtoonSource,
     dynastySource: DynastySource,
     mangaParkSource: MangaParkSource,
@@ -167,7 +165,10 @@ class SourceManager @Inject constructor(
         hitomiSource,
         nhentaiSource,
         mangaFireSource,
-        batoToSource,
+        // Bato.to odstraněno 2026-07-27 - z vývojářského stroje šlo jen o "connection
+        // timed out" (možná blokace datacenter IP), ale uživatel potvrdil, že appka na
+        // reálném telefonu Bato.to taky nenačte. Viz BatoToSource.kt (ponecháno pro
+        // případ, že by se to v budoucnu vrátilo).
         webtoonSource,
         dynastySource,
         mangaParkSource,
