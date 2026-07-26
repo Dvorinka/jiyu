@@ -1,6 +1,14 @@
 package com.haise.jiyu.ui.reader
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -19,6 +27,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
@@ -27,8 +38,10 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -94,11 +107,32 @@ fun imageDisplayRect(intrinsicSizePx: Size, containerSizeDp: Size, contentScale:
  * Vrstva všech (ne-SFX) přeložených bublin jedné stránky - jediné místo, odkud se volá
  * [TranslationOverlay], ať pro manga (MangaReader v ReaderPager.kt) nebo webtoon
  * (WebtoonPage ve WebtoonReader.kt) mód.
+ *
+ * @param pageIndex potřeba jen pro sestavení klíče "$pageIndex:$bubbleIndex" v [flippedBubbles]
+ *   (viz ReaderViewModel.toggleBubbleFlip) - bubbleIndex je pozice bubliny v [positioned], ne
+ *   v původním (nefiltrovaném) `blocks`.
  */
 @Composable
-fun BubbleOverlayLayer(blocks: List<TranslatedBlock>, imageRect: Rect, textScale: Float = 1f) {
+fun BubbleOverlayLayer(
+    blocks: List<TranslatedBlock>,
+    imageRect: Rect,
+    textScale: Float = 1f,
+    pageIndex: Int = -1,
+    flippedBubbles: Set<String> = emptySet(),
+    onToggleFlip: (pageIndex: Int, bubbleIndex: Int) -> Unit = { _, _ -> },
+) {
     val positioned = remember(blocks) { layoutTranslationBlocks(blocks) }
-    positioned.forEach { pos -> if (!pos.block.isSfx) TranslationOverlay(pos, imageRect, textScale) }
+    positioned.forEachIndexed { bubbleIndex, pos ->
+        if (!pos.block.isSfx) {
+            TranslationOverlay(
+                pos = pos,
+                imageRect = imageRect,
+                textScale = textScale,
+                isFlipped = "$pageIndex:$bubbleIndex" in flippedBubbles,
+                onTap = { onToggleFlip(pageIndex, bubbleIndex) },
+            )
+        }
+    }
 }
 
 /**
@@ -136,7 +170,13 @@ private class BubbleClipShape(
 }
 
 @Composable
-fun TranslationOverlay(pos: PositionedTranslationBlock, imageRect: Rect, textScale: Float = 1f) {
+fun TranslationOverlay(
+    pos: PositionedTranslationBlock,
+    imageRect: Rect,
+    textScale: Float = 1f,
+    isFlipped: Boolean = false,
+    onTap: () -> Unit = {},
+) {
     // OCR bounding box je v zásadě vždy leftF<=rightF/topF<=bottomF, ale nejde o zaručený
     // invariant (různé OCR modely, rotace/mirror snímků atd.) - záporná šířka/výška předaná
     // do Modifier.width()/height() spadne na IllegalArgumentException přímo v Compose layout
@@ -164,7 +204,7 @@ fun TranslationOverlay(pos: PositionedTranslationBlock, imageRect: Rect, textSca
     val snappedBg = snapBubbleBg(pos.block.bgColorArgb)
     val displayText = matchOriginalCase(pos.block.displayText, pos.block.originalText)
 
-    androidx.compose.foundation.layout.Box(
+    Box(
         modifier = Modifier
             .offset(x = left, y = top)
             // Pevná šířka + heightIn(min = minH): box musí vždy zakrýt aspoň vlastní OCR
@@ -175,17 +215,31 @@ fun TranslationOverlay(pos: PositionedTranslationBlock, imageRect: Rect, textSca
             .heightIn(min = minH)
             .clip(clipShape)
             .background(Color(snappedBg).copy(alpha = TRANSLATION_BOX_ALPHA))
+            // Tap = "flip" na originál (viz ReaderViewModel.toggleBubbleFlip). Konzumuje tap
+            // dřív, než se dostane k page-level gestům (tap-zóny/double-tap zoom/long-press
+            // sdílení v MangaReaderu) - vědomý kompromis, přesně nad bublinou chceme flip,
+            // ne zoom/navigaci.
+            .pointerInput(onTap) { detectTapGestures(onTap = { onTap() }) }
             .padding(horizontal = TRANSLATION_TEXT_HORIZONTAL_PADDING, vertical = 2.dp),
         contentAlignment = Alignment.Center,
     ) {
-        AutoFitTranslatedText(
-            text = displayText,
-            bgColorArgb = snappedBg,
-            boxWidth = w,
-            maxHeight = maxH,
-            textScale = textScale,
-            bubbleType = pos.block.bubbleType,
-        )
+        AnimatedContent(
+            targetState = isFlipped,
+            transitionSpec = {
+                (scaleIn(initialScale = 0.85f) + fadeIn())
+                    .togetherWith(scaleOut(targetScale = 0.85f) + fadeOut())
+            },
+            label = "bubble-flip",
+        ) { flipped ->
+            AutoFitTranslatedText(
+                text = if (flipped) pos.block.originalText else displayText,
+                bgColorArgb = snappedBg,
+                boxWidth = w,
+                maxHeight = maxH,
+                textScale = textScale,
+                bubbleType = pos.block.bubbleType,
+            )
+        }
     }
 }
 
@@ -241,12 +295,17 @@ private fun AutoFitTranslatedText(
     val fontSp = remember(text, widthPx, maxHeightPx, baseFontSp, fontFamily) {
         var fs = baseFontSp
         while (fs > minFontSp) {
+            // Rezerva na obrys (viz StrokedTranslatedText/STROKE_WIDTH_FACTOR) - obrys se
+            // kreslí kolem stejného textu ve stejné velikosti, takže vizuálně "vykousne"
+            // trochu místa navíc kolem glyphů. Bez rezervy by fitter vybral velikost, co se
+            // vejde jen do samotné výplně (Fill), a obrys by pak u okrajů/rohů bubliny přetekl.
+            val strokeReservePx = with(density) { maxOf(2.dp.toPx(), fs.sp.toPx() * STROKE_WIDTH_FACTOR) }
             val measured = textMeasurer.measure(
                 text = text,
                 style = TextStyle(fontSize = fs.sp, lineHeight = (fs * 1.25f).sp, fontFamily = fontFamily),
-                constraints = Constraints(maxWidth = widthPx),
+                constraints = Constraints(maxWidth = (widthPx - strokeReservePx).toInt().coerceAtLeast(1)),
             )
-            if (measured.size.height <= maxHeightPx) break
+            if (measured.size.height + strokeReservePx <= maxHeightPx) break
             fs -= 0.5f
         }
         fs.coerceAtLeast(minFontSp)
@@ -254,21 +313,65 @@ private fun AutoFitTranslatedText(
 
     // Vzorkovaná barva pozadí bubliny (viz TranslatedBlock.bgColorArgb) může být i tmavá
     // (stínovaný/černý shout box) - černý text na černém pozadí by byl nečitelný, proto
-    // volíme barvu textu podle jasu (luminance) pozadí, ne napevno černou.
+    // volíme barvu textu (a opačnou barvu obrysu) podle jasu (luminance) pozadí, ne napevno.
     val bg = Color(bgColorArgb)
     val luminance = 0.299f * bg.red + 0.587f * bg.green + 0.114f * bg.blue
     val textColor = if (luminance < 0.5f) Color.White else Color.Black
+    val strokeColor = if (luminance < 0.5f) Color.Black else Color.White
 
-    Text(
+    StrokedTranslatedText(
         text = text,
-        color = textColor,
-        fontSize = fontSp.sp,
-        lineHeight = (fontSp * 1.25f).sp,
+        fontSp = fontSp,
         fontFamily = fontFamily,
-        // Každý řádek vlastní vycentrovaný (ne jen blok jako celek) - víceřádkový text
-        // v bublině je jinak zarovnaný doleva a krajní řádky lepí/přetékají oblý okraj
-        // bubliny (viz "K VEČEŘI..." uříznuté "K"). Centrování per-řádek odpovídá
-        // klasickému komiksovému letteringu.
-        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+        textColor = textColor,
+        strokeColor = strokeColor,
     )
+}
+
+/** Podíl velikosti písma použitý jako šířka obrysu (viz [StrokedTranslatedText]), s dolní hranicí 2.dp pro malá písmena, kde by procentuální obrys byl neviditelně tenký. */
+private const val STROKE_WIDTH_FACTOR = 0.12f
+
+/**
+ * Vykreslí text DVAKRÁT přes sebe - nejdřív obrysovou vrstvu (opačná barva než výplň podle
+ * jasu pozadí), pak výplň navrch - pro čitelnost přes komplexní/vzorované pozadí bubliny.
+ * [TextStyle.drawStyle] umí jen JEDEN styl na jedno volání Text (buď Fill, nebo Stroke), takže
+ * obrys+výplň v jednom Text nejde - dvě překrývající se Text vrstvy jsou jednodušší a
+ * spolehlivější než snaha o "vlastní" kreslení přes Canvas/drawWithContent.
+ */
+@Composable
+private fun StrokedTranslatedText(
+    text: String,
+    fontSp: Float,
+    fontFamily: FontFamily,
+    textColor: Color,
+    strokeColor: Color,
+) {
+    val density = LocalDensity.current
+    val strokeWidthPx = with(density) { maxOf(2.dp.toPx(), fontSp.sp.toPx() * STROKE_WIDTH_FACTOR) }
+
+    Box(contentAlignment = Alignment.Center) {
+        Text(
+            text = text,
+            textAlign = TextAlign.Center,
+            style = TextStyle(
+                color = strokeColor,
+                fontSize = fontSp.sp,
+                lineHeight = (fontSp * 1.25f).sp,
+                fontFamily = fontFamily,
+                drawStyle = Stroke(width = strokeWidthPx, join = StrokeJoin.Round),
+            ),
+        )
+        Text(
+            text = text,
+            color = textColor,
+            fontSize = fontSp.sp,
+            lineHeight = (fontSp * 1.25f).sp,
+            fontFamily = fontFamily,
+            // Každý řádek vlastní vycentrovaný (ne jen blok jako celek) - víceřádkový text
+            // v bublině je jinak zarovnaný doleva a krajní řádky lepí/přetékají oblý okraj
+            // bubliny (viz "K VEČEŘI..." uříznuté "K"). Centrování per-řádek odpovídá
+            // klasickému komiksovému letteringu.
+            textAlign = TextAlign.Center,
+        )
+    }
 }

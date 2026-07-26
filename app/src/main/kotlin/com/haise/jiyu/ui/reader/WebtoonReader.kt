@@ -59,6 +59,8 @@ fun WebtoonReader(
     scrollSpeedMultiplier: Float = 1.0f,
     cropBorders: Boolean = false,
     volumeKeysNav: Boolean = true,
+    flippedBubbles: Set<String> = emptySet(),
+    onToggleBubbleFlip: (pageIndex: Int, bubbleIndex: Int) -> Unit = { _, _ -> },
 ) {
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
@@ -164,6 +166,8 @@ fun WebtoonReader(
                 translatedBlocks = translatedPages[index] ?: emptyList(),
                 textScale = textScale,
                 cropBorders = cropBorders,
+                flippedBubbles = flippedBubbles,
+                onToggleBubbleFlip = onToggleBubbleFlip,
             )
         }
     }
@@ -177,6 +181,8 @@ private fun WebtoonPage(
     translatedBlocks: List<TranslatedBlock>,
     textScale: Float,
     cropBorders: Boolean = false,
+    flippedBubbles: Set<String> = emptySet(),
+    onToggleBubbleFlip: (pageIndex: Int, bubbleIndex: Int) -> Unit = { _, _ -> },
 ) {
     var size by remember { mutableStateOf(IntSize.Zero) }
     val density = LocalDensity.current
@@ -201,7 +207,14 @@ private fun WebtoonPage(
             val imageRect = remember(size) {
                 with(density) { Rect(0f, 0f, size.width.toDp().value, size.height.toDp().value) }
             }
-            BubbleOverlayLayer(translatedBlocks, imageRect, textScale)
+            BubbleOverlayLayer(
+                blocks = translatedBlocks,
+                imageRect = imageRect,
+                textScale = textScale,
+                pageIndex = pageIndex,
+                flippedBubbles = flippedBubbles,
+                onToggleFlip = onToggleBubbleFlip,
+            )
         }
     }
 }

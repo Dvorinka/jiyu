@@ -383,6 +383,22 @@ class ReaderViewModel @Inject constructor(
         }
     }
 
+    // ── Tap-to-flip (bublina <-> originál) ───────────────────────────────────
+    // Klíč "$pageIndex:$bubbleIndex" je stabilní jen v rámci JEDNÉ kapitoly (viz reset
+    // v loadChapter výše) - bubbleIndex je pozice bubliny v cachovaném/deserializovaném
+    // seznamu TranslatedBlock pro danou stránku, což je deterministické, dokud se stránka
+    // znovu nepřeloží (jiný počet/pořadí bublin by pak ukazovalo špatnou bublinu jako
+    // "otočenou" - přijatelné riziko, protože retranslate stejné stránky je vzácný).
+    private val _flippedBubbles = MutableStateFlow<Set<String>>(emptySet())
+    val flippedBubbles: StateFlow<Set<String>> = _flippedBubbles.asStateFlow()
+
+    fun toggleBubbleFlip(pageIndex: Int, bubbleIndex: Int) {
+        val key = "$pageIndex:$bubbleIndex"
+        _flippedBubbles.value = _flippedBubbles.value.let { current ->
+            if (key in current) current - key else current + key
+        }
+    }
+
     fun clearTranslationError() { _translationError.value = null }
 
     fun startSleepTimer(minutes: Int, onFinish: () -> Unit) =
@@ -466,6 +482,10 @@ class ReaderViewModel @Inject constructor(
         _loading.value = true
         _pages.value = emptyList()
         _translatedPages.value = emptyMap()
+        // Klíč je "$pageIndex:$bubbleIndex" bez chapterId - stránkování se v každé kapitole
+        // čísluje znovu od 0, takže bez resetu by "otočená" bublina 3:2 z minulé kapitoly
+        // zůstala otočená i na stránce 3 v nové kapitole, i když jde o úplně jinou bublinu.
+        _flippedBubbles.value = emptySet()
         _translateMode.value = false
         translationJob?.cancel()
         translationJob = null

@@ -96,6 +96,8 @@ fun ReaderContent(
     glossary: List<GlossaryEntity> = emptyList(),
     onAddGlossaryEntry: (String, String) -> Unit = { _, _ -> },
     onRemoveGlossaryEntry: (GlossaryEntity) -> Unit = {},
+    flippedBubbles: Set<String> = emptySet(),
+    onToggleBubbleFlip: (pageIndex: Int, bubbleIndex: Int) -> Unit = { _, _ -> },
 ) {
     var showGlossarySheet by remember { mutableStateOf(false) }
 
@@ -154,6 +156,8 @@ fun ReaderContent(
                 scrollSpeedMultiplier = webtoonScrollSpeed,
                 cropBorders = cropBorders,
                 volumeKeysNav = volumeKeysNav,
+                flippedBubbles = flippedBubbles,
+                onToggleBubbleFlip = onToggleBubbleFlip,
             )
         } else {
             MangaReader(
@@ -179,6 +183,8 @@ fun ReaderContent(
                 onAutoNextChapter = onAutoNextChapter,
                 cropBorders = cropBorders,
                 volumeKeysNav = volumeKeysNav,
+                flippedBubbles = flippedBubbles,
+                onToggleBubbleFlip = onToggleBubbleFlip,
             )
         }
 

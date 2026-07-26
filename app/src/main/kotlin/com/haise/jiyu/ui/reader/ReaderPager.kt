@@ -93,6 +93,8 @@ fun MangaReader(
     onAutoNextChapter: () -> Unit = {},
     cropBorders: Boolean = false,
     volumeKeysNav: Boolean = true,
+    flippedBubbles: Set<String> = emptySet(),
+    onToggleBubbleFlip: (pageIndex: Int, bubbleIndex: Int) -> Unit = { _, _ -> },
 ) {
     // Pinch-to-zoom stav — žije tady (jediný spotřebitel), ne v ReaderContent -
     // rememberSaveable, aby otočení obrazovky (config change) nezahodilo rozostřený zoom.
@@ -353,7 +355,14 @@ fun MangaReader(
                                     imageDisplayRect(it, Size(maxWidth.value, maxHeight.value), resolvedContentScale)
                                 } ?: Rect(0f, 0f, maxWidth.value, maxHeight.value)
                             }
-                            BubbleOverlayLayer(blocks, imageRect, textScale)
+                            BubbleOverlayLayer(
+                                blocks = blocks,
+                                imageRect = imageRect,
+                                textScale = textScale,
+                                pageIndex = indices[0],
+                                flippedBubbles = flippedBubbles,
+                                onToggleFlip = onToggleBubbleFlip,
+                            )
                         }
                     }
                 } else {
@@ -386,7 +395,14 @@ fun MangaReader(
                                                 imageDisplayRect(it, Size(maxWidth.value, maxHeight.value), resolvedContentScale)
                                             } ?: Rect(0f, 0f, maxWidth.value, maxHeight.value)
                                         }
-                                        BubbleOverlayLayer(blocks, imageRect, textScale)
+                                        BubbleOverlayLayer(
+                                            blocks = blocks,
+                                            imageRect = imageRect,
+                                            textScale = textScale,
+                                            pageIndex = idx,
+                                            flippedBubbles = flippedBubbles,
+                                            onToggleFlip = onToggleBubbleFlip,
+                                        )
                                     }
                                 }
                             }

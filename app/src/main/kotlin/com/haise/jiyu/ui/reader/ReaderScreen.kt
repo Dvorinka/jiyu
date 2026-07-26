@@ -102,6 +102,7 @@ fun ReaderScreen(viewModel: ReaderViewModel = hiltViewModel()) {
     val keepScreenOn         by viewModel.keepScreenOn.collectAsState()
     val readerOrientation    by viewModel.readerOrientation.collectAsState()
     val controlsVisible      by viewModel.controlsVisible.collectAsState()
+    val flippedBubbles       by viewModel.flippedBubbles.collectAsState()
 
     var showSleepTimerDialog by remember { mutableStateOf(false) }
     val activity = LocalView.current.context as Activity
@@ -275,6 +276,8 @@ fun ReaderScreen(viewModel: ReaderViewModel = hiltViewModel()) {
                 glossary = glossary,
                 onAddGlossaryEntry = { source, target -> viewModel.addGlossaryEntry(source, target) },
                 onRemoveGlossaryEntry = { viewModel.removeGlossaryEntry(it) },
+                flippedBubbles = flippedBubbles,
+                onToggleBubbleFlip = { pageIndex, bubbleIndex -> viewModel.toggleBubbleFlip(pageIndex, bubbleIndex) },
             )
         }
 
