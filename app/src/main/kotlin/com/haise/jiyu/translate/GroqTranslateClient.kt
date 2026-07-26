@@ -41,18 +41,23 @@ class GroqTranslateClient @Inject constructor(
      * @param glossary páry pojem→překlad (jména, techniky, přezdívky...), které musí model
      *   dodržet přesně - zajišťuje konzistenci napříč kapitolami místo toho, aby si model
      *   "vymýšlel" jiný překlad stejného jména pokaždé znovu.
+     * @param provider "groq" (výchozí) nebo "openrouter" - pro necílové jazyky jiné než
+     *   čeština (viz [TranslateRepository.translatePage]) je tohle jediná záložní síť,
+     *   protože [GeminiUltraPrompt] je psaný natvrdo pro češtinu.
      */
     suspend fun translateBatch(
         texts: List<String>,
         targetLanguage: String = "Czech",
         sourceLanguage: String = "Auto",
         glossary: Map<String, String> = emptyMap(),
+        provider: String = "groq",
     ): List<String> = translateViaProxy(
         texts = texts,
         targetLanguage = targetLanguage,
         sourceLanguage = sourceLanguage,
         glossary = glossary,
         mode = "manga",
+        provider = provider,
     )
 
     /**
@@ -82,6 +87,7 @@ class GroqTranslateClient @Inject constructor(
         sourceLanguage: String,
         glossary: Map<String, String>,
         mode: String,
+        provider: String = "groq",
     ): List<String> = withContext(Dispatchers.IO) {
         if (!isConfigured || texts.isEmpty()) return@withContext emptyList()
 
@@ -91,6 +97,7 @@ class GroqTranslateClient @Inject constructor(
             put("targetLanguage", targetLanguage)
             put("sourceLanguage", sourceLanguage)
             put("glossary", JSONObject(glossary))
+            put("provider", provider)
         }
 
         val request = Request.Builder()

@@ -51,16 +51,27 @@ class TranslateRepository @Inject constructor(
             // 1) Gemini. 2) Stejný "ultra" prompt (komprese/sylabické dělení), ale přes Groq
             //    jako upstream - viz GeminiTranslateClient.translateBubbles(provider="groq") -
             //    zachytí Gemini-specifické selhání (deprekovaný model, jeho vlastní výpadek)
-            //    beze ztráty kvality. 3) Holý Groq překlad bez komprese jako poslední záchrana.
-            // [RateLimitedException] se NEODCHYTÁVÁ ani na jednom kroku - proxy má jednu
-            // sdílenou denní kvótu pro všechny tři cesty (viz translate-proxy checkQuota),
-            // takže jakmile je vyčerpaná, další pokus by dopadl stejně - rovnou se propaguje
-            // až do ReaderViewModelu, který na to má vlastní hlášku.
+            //    beze ztráty kvality. 3) Stejný "ultra" prompt, ale přes OpenRouter free-tier
+            //    model (provider="openrouter") - čtvrtá (resp. třetí přes stejný prompt) záchrana,
+            //    než klesneme na 4) holý Groq překlad bez komprese jako poslední záchranu.
+            // [RateLimitedException] se NEODCHYTÁVÁ na žádném kroku - proxy má jednu sdílenou
+            // denní kvótu pro všechny cesty (viz translate-proxy checkQuota), takže jakmile je
+            // vyčerpaná, další pokus by dopadl stejně - rovnou se propaguje až do ReaderViewModelu,
+            // který na to má vlastní hlášku.
             translateWithGemini(classified, glossary, provider = "gemini")
                 ?: translateWithGemini(classified, glossary, provider = "groq")
-                ?: translateWithGroq(classified, glossary, targetLanguage, sourceLanguage)
+                ?: translateWithGemini(classified, glossary, provider = "openrouter")
+                ?: translateWithGroq(classified, glossary, targetLanguage, sourceLanguage, provider = "groq")
+                ?: translateWithGroq(classified, glossary, targetLanguage, sourceLanguage, provider = "openrouter")
+                ?: emptyList()
         } else {
-            translateWithGroq(classified, glossary, targetLanguage, sourceLanguage)
+            // GeminiUltraPrompt je psaný natvrdo pro češtinu, takže pro jiné cílové jazyky
+            // nemá smysl - ale i tak appka dřív měla jen JEDNU cestu (holý Groq) bez jakékoli
+            // zálohy. Teď zkusí Groq a při selhání OpenRouter (stejný obecný "manga"/"novel"
+            // prompt parametrizovaný cílovým jazykem, viz translate-proxy systemPromptFor).
+            translateWithGroq(classified, glossary, targetLanguage, sourceLanguage, provider = "groq")
+                ?: translateWithGroq(classified, glossary, targetLanguage, sourceLanguage, provider = "openrouter")
+                ?: emptyList()
         }
         if (blocks.isEmpty()) return emptyList()
 
@@ -69,12 +80,12 @@ class TranslateRepository @Inject constructor(
     }
 
     /**
-     * @param provider "gemini" nebo "groq" - viz [GeminiTranslateClient.translateBubbles].
-     *   Oba provideři používají STEJNÝ [GeminiUltraPrompt] (komprese, sylabické dělení),
+     * @param provider "gemini", "groq" nebo "openrouter" - viz [GeminiTranslateClient.translateBubbles].
+     *   Všichni tři provideři používají STEJNÝ [GeminiUltraPrompt] (komprese, sylabické dělení),
      *   liší se jen upstream model, na který proxy request přepošle.
      * @return null když se nepodařilo přeložit ani jednu bublinu (proxy nemá nasazený
      *   "gemini" mód, síť selhala po všech pokusech, upstream model vrátil chybu...) -
-     *   volající ([translatePage]) pak zkusí druhého providera nebo nakonec
+     *   volající ([translatePage]) pak zkusí dalšího providera nebo nakonec
      *   [translateWithGroq] (bez komprese) jako poslední záchrannou síť.
      * @throws RateLimitedException když je vyčerpaná sdílená denní kvóta proxy - viz
      *   [translatePage], tohle se záměrně NEODCHYTÁVÁ tady.
@@ -109,21 +120,29 @@ class TranslateRepository @Inject constructor(
         return result.ifEmpty { null }
     }
 
-    /** Legacy/fallback cesta - Groq vrací jen holé přeložené texty, žádné syllable_breaks. */
+    /**
+     * Legacy/fallback cesta - vrací jen holé přeložené texty, žádné syllable_breaks.
+     * @param provider "groq" (výchozí) nebo "openrouter" - stejný obecný prompt
+     *   (translate-proxy mode="manga"/"novel"), jiný upstream model.
+     * @return null při selhání (žádný text se nepřeložil) - volající zkusí dalšího
+     *   providera nebo nakonec vrátí prázdný seznam.
+     */
     private suspend fun translateWithGroq(
         classified: List<ClassifiedBubble>,
         glossary: Map<String, String>,
         targetLanguage: String,
         sourceLanguage: String,
-    ): List<TranslatedBlock> {
+        provider: String = "groq",
+    ): List<TranslatedBlock>? {
         val toTranslate = classified.filter { !it.isSfx }
         val translations = if (toTranslate.isEmpty()) emptyList() else groqClient.translateBatch(
             texts = toTranslate.map { it.raw.text },
             targetLanguage = targetLanguage,
             sourceLanguage = sourceLanguage,
             glossary = glossary,
+            provider = provider,
         )
-        if (toTranslate.isNotEmpty() && translations.isEmpty()) return emptyList()
+        if (toTranslate.isNotEmpty() && translations.isEmpty()) return null
 
         var ti = 0
         return classified.map { c ->

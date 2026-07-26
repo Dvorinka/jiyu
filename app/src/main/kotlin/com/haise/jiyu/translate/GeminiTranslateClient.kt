@@ -24,9 +24,13 @@ import javax.inject.Singleton
  * (deprekovaný model, jeho vlastní výpadek), místo aby appka spadla na holý Groq překlad
  * bez těchhle pravidel - viz [TranslateRepository.translateWithGemini].
  *
- * Google AI Studio / Groq API klíč NENÍ nikde v appce - proxy je vloží server-side ze
- * Supabase secretů. Přímé volání z appky s klíčem v hlavičce by šlo dekompilací APK
- * triviálně ukrást a zneužít na cizí free-tier kvótu.
+ * Od verze 12 (2026-07-26) umí proxy stejný "gemini" mód obsloužit i přes OpenRouter
+ * free-tier model (parametr [provider] = "openrouter") jako čtvrtou úroveň zálohy, než
+ * appka klesne na holý Groq bez komprese - viz [TranslateRepository.translatePage].
+ *
+ * Google AI Studio / Groq / OpenRouter API klíč NENÍ nikde v appce - proxy je vloží
+ * server-side ze Supabase secretů. Přímé volání z appky s klíčem v hlavičce by šlo
+ * dekompilací APK triviálně ukrást a zneužít na cizí free-tier kvótu.
  */
 @Singleton
 class GeminiTranslateClient @Inject constructor(
@@ -39,12 +43,13 @@ class GeminiTranslateClient @Inject constructor(
      * Přeloží dávku bublin jedné stránky. SFX bubliny (viz [ClassifiedBubble.isSfx]) se
      * do requestu vůbec nezahrnují - filtruje [GeminiUltraPrompt.buildUserPrompt].
      *
-     * @param provider "gemini" (výchozí) nebo "groq" - viz komentář u třídy. Groq model se
-     *   nastavuje server-side (stejný "llama-3.3-70b-versatile" jako [GroqTranslateClient]),
-     *   appka ho nemusí posílat.
+     * @param provider "gemini" (výchozí), "groq" nebo "openrouter" - viz komentář u třídy. Groq i
+     *   OpenRouter model se nastavují server-side (Groq: "llama-3.3-70b-versatile" jako
+     *   [GroqTranslateClient]; OpenRouter: free-tier model, viz OPENROUTER_MODEL v translate-proxy),
+     *   appka je nemusí posílat.
      * @return null při selhání (síť, rate limit mimo [RateLimitedException], neparsovatelná odpověď)
      * @throws RateLimitedException viz [GroqTranslateClient] - stejná sémantika, proxy je sdílená
-     *   (kvóta je jedna společná pro gemini i groq provider).
+     *   (kvóta je jedna společná pro gemini, groq i openrouter provider).
      */
     suspend fun translateBubbles(
         bubbles: List<ClassifiedBubble>,

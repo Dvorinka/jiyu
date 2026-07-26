@@ -74,9 +74,25 @@ object GeminiUltraPrompt {
             Pokud si nejsi jistý slabičnou hranicí, radši žádný ­ nevkládej (nezalomené slovo
             je lepší než špatně rozdělené).
 
-            === GLOSÁŘ POJMŮ (ZÁVAZNÉ, dodržuj přesně) ===
+            === JMÉNA, MÍSTA A NÁZVY (anglicky, ale skloňuj) ===
+            Jména postav, měst, organizací a pojmenovaných technik/schopností NEPŘEKLÁDEJ do
+            češtiny - použij zavedený anglický přepis (počítá se fanouškovský i oficiální anglický
+            překlad), bez ohledu na to, z jakého jazyka překládáš (japonština, korejština, čínština,
+            ruština...). Pokud pro název anglický ekvivalent neznáš, přepiš ho sám do angličtiny -
+            nenechávej ho v původním písmu (kanji, hangul, azbuka...). Nevymýšlej český název a
+            nepřekládej doslovný význam jména (město, jehož název v originále znamená "bouře",
+            zůstává pod svým zavedeným anglickým jménem, ne "Bouřov"). Pokud text už obsahuje jméno
+            zapsané latinkou, nech ho přesně tak, jak je.
+            Tahle anglická jména ale SKLOŇUJ podle českých pádů, aby věta zněla přirozeně - pravopis
+            jména zůstává anglický, mění se jen koncovka podle vzoru odpovídajícího rodu postavy:
+              "Frodo" -> "Vidím Froda." (4. p.) / "Řekl Frodovi." (3. p.) / "Frodův meč." (přivl.)
+              "Naruto" -> "Narutu"/"Narutovi"/"Narutem" | "Sakura" -> "Sakuru"/"Sakuře"/"Sakurou"
+            Pokud by skloňování znělo krkolomně nebo nejednoznačně, oprav to opisem s předložkou
+            ("k Frodovi") místo násilné koncovky - ale nevynechávej skloňování úplně, jméno pořád
+            v 1. pádě uprostřed věty, kde gramaticky nepatří, zní v češtině nepřirozeně.
+
+            === GLOSÁŘ POJMŮ (ZÁVAZNÉ, dodržuj přesně, má přednost před pravidly výše) ===
             $glossaryBlock
-            Jména postav se nikdy nepřekládají, pokud nejsou v glosáři jako výjimka.
 
             === TYP BUBLINY ===
             SPEECH: normální neformální čeština. NARRATION: může být formálnější/delší.
