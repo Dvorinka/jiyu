@@ -91,13 +91,22 @@ class JapscanSource @Inject constructor(private val client: OkHttpClient) : Mang
 }
 
 // ── Anime-Sama (FR) ───────────────────────────────────────────────────────────
+// Domena se v roce 2026 zmenila z anime-sama.fr (mrtva) na anime-sama.to a web
+// prosel kompletnim redesignem (Tailwind). Seznam kapitol/stranek NENI ve
+// statickem HTML (generuje se JS souborem scans.js) - misto scrapovani DOM se
+// proto vola primo interni JSON API webu, kterou scans.js sam pouziva:
+//   GET /s2/scans/get_nb_chap_et_img.php?oeuvre={presny nazev z #titreOeuvre}
+//   -> {"1": pocetStranek, "2": pocetStranek, ...}
+//   obrazky: /s2/scans/{presny nazev}/{cislo kapitoly}/{cislo stranky}.jpg
+// Presny nazev dila (z #titreOeuvre na podstrance .../scan/vf/) se muze lisit
+// velikosti pismen/formatovanim od nazvu v katalogu, proto se nacita zvlast.
 @Singleton
 class AnimeSamaSource @Inject constructor(private val client: OkHttpClient) : MangaSource {
     override val id       = "animesama"
     override val name     = "Anime-Sama 🇫🇷"
     override val language = "fr"
     override val homepageUrl get() = base
-    private val base      = "https://anime-sama.fr"
+    private val base      = "https://anime-sama.to"
 
     private fun get(url: String) = client.newCall(
         Request.Builder().url(url)
@@ -105,27 +114,26 @@ class AnimeSamaSource @Inject constructor(private val client: OkHttpClient) : Ma
             .header("Referer", base).build()
     ).execute().use { it.body?.string() ?: "" }
 
+    private fun parseList(html: String): List<SManga> =
+        Jsoup.parse(html).select(".catalog-card").mapNotNull { el ->
+            val a = el.selectFirst("a") ?: return@mapNotNull null
+            val href = a.attr("href").ifBlank { return@mapNotNull null }
+            val title = el.selectFirst("h2.card-title")?.text()?.trim().orEmpty().ifBlank { return@mapNotNull null }
+            val cover = el.selectFirst("img.card-image")?.attr("src")?.takeIf { it.startsWith("http") }
+            SManga(sourceId = id, url = if (href.startsWith("http")) href else "$base$href", title = title, coverUrl = cover)
+        }
+
     override suspend fun getPopular(page: Int, filter: MangaFilter): List<SManga> = withContext(Dispatchers.IO) {
-        try {
-            Jsoup.parse(get("$base/catalogue/?page=$page&type=manga&sort=vues")).select(".cardListAnime").mapNotNull { el ->
-                val a    = el.selectFirst("a") ?: return@mapNotNull null
-                val href = a.attr("href").ifBlank { return@mapNotNull null }
-                SManga(sourceId = id, url = href,
-                    title    = el.selectFirst("h1, h2, .nom")?.text()?.trim() ?: a.attr("title").trim().ifBlank { return@mapNotNull null },
-                    coverUrl = el.selectFirst("img")?.let { img -> img.attr("data-src").ifBlank { img.attr("src") } })
-            }
-        } catch (_: Exception) { emptyList() }
+        try { parseList(get("$base/catalogue/?page=$page&type=manga&sort=vues")) } catch (_: Exception) { emptyList() }
     }
 
+    // Katalog nema server-side fulltextove hledani (search stranka vraci
+    // prazdny vysledek bez JS) - search proto stahne prvni stranku a filtruje
+    // lokalne, stejny vzor jako [com.haise.jiyu.source.hachirumi.HachirumiSource].
     override suspend fun search(query: String, page: Int, filter: MangaFilter): List<SManga> = withContext(Dispatchers.IO) {
+        if (page > 1) return@withContext emptyList()
         try {
-            val q = URLEncoder.encode(query, "UTF-8")
-            Jsoup.parse(get("$base/catalogue/?search=$q&type=manga")).select(".cardListAnime").mapNotNull { el ->
-                val a = el.selectFirst("a") ?: return@mapNotNull null
-                SManga(sourceId = id, url = a.attr("href"),
-                    title    = el.selectFirst("h1, h2, .nom")?.text()?.trim() ?: return@mapNotNull null,
-                    coverUrl = el.selectFirst("img")?.attr("src"))
-            }
+            parseList(get("$base/catalogue/?type=manga&sort=vues")).filter { it.title.contains(query, ignoreCase = true) }
         } catch (_: Exception) { emptyList() }
     }
 
@@ -133,34 +141,51 @@ class AnimeSamaSource @Inject constructor(private val client: OkHttpClient) : Ma
         try {
             val doc = Jsoup.parse(get(manga.url))
             manga.copy(
-                title       = doc.selectFirst("h1.titre, h1")?.text()?.trim() ?: manga.title,
-                coverUrl    = doc.selectFirst("img.cover, img.imgSerie")?.attr("src") ?: manga.coverUrl,
-                description = doc.selectFirst("p.synopsis, .synopsis")?.text()?.trim(),
-                genres      = doc.select(".tag, .genre a").map { it.text().trim() }.filter { it.isNotBlank() },
+                title = doc.selectFirst("h1")?.text()?.trim() ?: manga.title,
+                description = doc.selectFirst("#synopsisText")?.text()?.trim()?.takeIf { it.isNotBlank() },
+                genres = doc.select("span.genre-pill").map { it.text().trim() }.filter { it.isNotBlank() },
             )
         } catch (_: Exception) { manga }
     }
 
+    private fun scanUrl(mangaUrl: String) = mangaUrl.trimEnd('/') + "/scan/vf/"
+
+    private fun oeuvreName(mangaUrl: String): String? =
+        Jsoup.parse(get(scanUrl(mangaUrl))).selectFirst("#titreOeuvre")?.text()?.trim()?.ifBlank { null }
+
+    private fun chapterCounts(oeuvre: String): org.json.JSONObject =
+        org.json.JSONObject(get("$base/s2/scans/get_nb_chap_et_img.php?oeuvre=${URLEncoder.encode(oeuvre, "UTF-8")}"))
+
     override suspend fun getChapterList(manga: SManga): List<SChapter> = withContext(Dispatchers.IO) {
         try {
-            val doc = Jsoup.parse(get(manga.url))
-            doc.select(".chapitreList a, .listeChap a").mapIndexed { i, a ->
-                val href = a.attr("href")
-                val name = a.text().trim().ifBlank { "Chapitre ${i + 1}" }
-                SChapter(sourceId = id, mangaUrl = manga.url, url = href, name = name,
-                    chapterNumber = Regex("""[\d.]+""").find(name)?.value?.toFloatOrNull() ?: (i + 1).toFloat(),
-                    dateUpload = 0L)
-            }
+            val oeuvre = oeuvreName(manga.url) ?: return@withContext emptyList()
+            val counts = chapterCounts(oeuvre)
+            val names = counts.names() ?: return@withContext emptyList()
+            (0 until names.length()).mapNotNull { i ->
+                val key = names.getString(i)
+                val num = key.toFloatOrNull() ?: return@mapNotNull null
+                SChapter(
+                    sourceId = id,
+                    mangaUrl = manga.url,
+                    url = "${scanUrl(manga.url)}$key",
+                    name = "Chapitre $key",
+                    chapterNumber = num,
+                    dateUpload = 0L,
+                )
+            }.sortedBy { it.chapterNumber }
         } catch (_: Exception) { emptyList() }
     }
 
     override suspend fun getPageList(chapter: SChapter): List<Page> = withContext(Dispatchers.IO) {
         try {
-            val doc = Jsoup.parse(get(chapter.url))
-            doc.select(".reading-content img, .chapter-content img, #pageContainer img").mapIndexedNotNull { i, img ->
-                val url = img.attr("data-src").ifBlank { img.attr("src") }.takeIf { it.startsWith("http") }
-                    ?: return@mapIndexedNotNull null
-                Page(i, url, url)
+            val chapNum = chapter.url.substringAfterLast('/')
+            val oeuvre = oeuvreName(chapter.mangaUrl) ?: return@withContext emptyList()
+            val nbImages = chapterCounts(oeuvre).optInt(chapNum, 0)
+            if (nbImages <= 0) return@withContext emptyList()
+            val encodedOeuvre = URLEncoder.encode(oeuvre, "UTF-8").replace("+", "%20")
+            (1..nbImages).map { i ->
+                val url = "$base/s2/scans/$encodedOeuvre/$chapNum/$i.jpg"
+                Page(i - 1, url, url)
             }
         } catch (_: Exception) { emptyList() }
     }

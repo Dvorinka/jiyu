@@ -108,6 +108,9 @@
     <string name="settings_sources_section_title">Zdroje</string>
     <string name="settings_sources_catalog_button">Katalog zdrojů (%1$d)</string>
     <string name="settings_sources_custom_css_button">Vlastní CSS pro web zdroje</string>
+    <string name="settings_sources_adult_section_title">Zdroje 18+</string>
+    <string name="settings_sources_adult_toggle_title">Zobrazovat adult zdroje</string>
+    <string name="settings_sources_adult_toggle_desc">Vypnutím zmizí zdroje s 18+ obsahem z Procházet a hledání (už přidaná manga z nich zůstane čitelná)</string>
     <string name="settings_sources_madara_section_title">Vlastní zdroje (Madara)</string>
     <string name="settings_sources_madara_description">Generický zdroj pro weby postavené na Madara šabloně. Zadej název a adresu webu - appka proti ní zkusí parsovat standardní Madara markup.</string>
     <string name="settings_sources_add_button">Přidat zdroj</string>
@@ -632,6 +635,13 @@
     <string name="browse_report_problem_other">Jiný problém</string>
     <string name="browse_report_details_placeholder">Popiš problém…</string>
     <string name="browse_report_chooser_title">Odeslat report přes…</string>
+    <string name="settings_report_section_title">Podpora</string>
+    <string name="settings_report_button">Nahlásit problém</string>
+    <string name="settings_report_title">Nahlásit problém</string>
+    <string name="settings_report_problem_crash">Appka padá / zamrzá</string>
+    <string name="settings_report_problem_translation">Překlad nefunguje</string>
+    <string name="settings_report_problem_download">Stahování nefunguje</string>
+    <string name="settings_report_problem_other">Jiný problém</string>
     <string name="browse_source_type_manga">Manga</string>
     <string name="browse_source_type_manhwa">Manhwa</string>
     <string name="browse_source_type_manhua">Manhua</string>

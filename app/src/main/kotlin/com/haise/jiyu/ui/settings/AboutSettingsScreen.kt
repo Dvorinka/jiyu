@@ -22,6 +22,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -49,6 +52,7 @@ fun AboutSettingsScreen(
     val updateCheckedNone by viewModel.updateCheckedAndNoneFound.collectAsState()
     val downloadState by viewModel.updateDownloadState.collectAsState()
     val updateCtx = LocalContext.current
+    var showReportDialog by remember { mutableStateOf(false) }
 
     Scaffold(containerColor = Color.Transparent, contentWindowInsets = WindowInsets(0, 0, 0, 0)) { innerPadding ->
         Column(
@@ -168,9 +172,51 @@ fun AboutSettingsScreen(
                     }
                 }
 
+                SettingsSection(title = stringResource(R.string.settings_report_section_title)) {
+                    OutlinedButton(
+                        onClick = { showReportDialog = true },
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Violet),
+                    ) { Text(stringResource(R.string.settings_report_button)) }
+                }
+
                 val navBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
                 Spacer(Modifier.height(40.dp + navBottom))
             }
         }
+    }
+
+    if (showReportDialog) {
+        val chooserTitle = stringResource(R.string.browse_report_chooser_title)
+        val problemCrashLabel = stringResource(R.string.settings_report_problem_crash)
+        val problemTranslationLabel = stringResource(R.string.settings_report_problem_translation)
+        val problemDownloadLabel = stringResource(R.string.settings_report_problem_download)
+        val problemOtherLabel = stringResource(R.string.settings_report_problem_other)
+        com.haise.jiyu.ui.components.ReportDialog(
+            title = stringResource(R.string.settings_report_title),
+            problems = listOf(
+                "crash" to problemCrashLabel,
+                "translation" to problemTranslationLabel,
+                "download" to problemDownloadLabel,
+                com.haise.jiyu.ui.components.REPORT_PROBLEM_OTHER_KEY to problemOtherLabel,
+            ),
+            onDismiss = { showReportDialog = false },
+            onSend = { problemKey, details ->
+                val problemLabel = when (problemKey) {
+                    "crash" -> problemCrashLabel
+                    "translation" -> problemTranslationLabel
+                    "download" -> problemDownloadLabel
+                    else -> problemOtherLabel
+                }
+                val body = buildString {
+                    append("Verze appky: ${viewModel.appVersion}\n")
+                    append("Problém: $problemLabel\n")
+                    if (details.isNotBlank()) append("\nPopis:\n$details")
+                }
+                val intent = com.haise.jiyu.ui.components.buildReportEmailIntent("[Jiyu] Nahlášení problému", body)
+                updateCtx.startActivity(android.content.Intent.createChooser(intent, chooserTitle))
+                showReportDialog = false
+            },
+        )
     }
 }

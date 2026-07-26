@@ -44,6 +44,7 @@ class HitomiSource @Inject constructor(
 
     override val id = "hitomi"
     override val name = "Hitomi.La"
+    override val isAdult = true
     override val homepageUrl get() = baseUrl
 
     private val baseUrl = "https://hitomi.la"

@@ -13,9 +13,10 @@ import org.junit.Before
 import org.junit.Test
 
 /**
- * AnimeSamaSource (na rozdil od Japscan) pouziva manga.url/chapter.url PRIMO
- * (bez base prefixu) v getMangaDetails/getChapterList/getPageList - proto
- * fixture pouziva absolutni URL v hrefech, presne jak to ocekava produkcni kod.
+ * AnimeSamaSource (2026-07-26 redesign anime-sama.fr -> anime-sama.to):
+ * kapitoly/stranky se nezjistuji z HTML, ale z interniho JSON API
+ * (get_nb_chap_et_img.php), ktere web sam pouziva pro JS reader - viz
+ * komentar u tridy v FrenchSources.kt.
  */
 class AnimeSamaSourceTest {
 
@@ -24,23 +25,23 @@ class AnimeSamaSourceTest {
 
     private val listHtml = """
         <html><body>
-        <div class="cardListAnime"><a href="https://anime-sama.fr/catalogue/test-series"><h1>Test Series</h1><img src="https://cdn.example.com/test.jpg" /></a></div>
+        <div class="catalog-card"><a href="https://anime-sama.to/catalogue/test-series"><h2 class="card-title">Test Series</h2><img class="card-image" src="https://cdn.example.com/test.jpg" /></a></div>
         </body></html>
     """.trimIndent()
 
     private val detailHtml = """
         <html><body>
-        <h1 class="titre">Test Series</h1>
-        <img class="cover" src="https://cdn.example.com/test.jpg" />
-        <p class="synopsis">A synopsis.</p>
-        <a class="tag">Action</a>
-        <div class="chapitreList"><a href="https://anime-sama.fr/catalogue/test-series/chapter-1">Chapitre 1</a></div>
+        <h1>Test Series</h1>
+        <p id="synopsisText">A synopsis.</p>
+        <span class="genre-pill">Action</span>
         </body></html>
     """.trimIndent()
 
-    private val pagesHtml = """
-        <html><body><div class="reading-content"><img data-src="https://cdn.example.com/test/1/01.jpg" /></div></body></html>
+    private val scanPageHtml = """
+        <html><body><span id="titreOeuvre">Test Series</span></body></html>
     """.trimIndent()
+
+    private val chapterCountsJson = """{"1":2,"2":3}"""
 
     @Before
     fun setUp() {
@@ -49,9 +50,11 @@ class AnimeSamaSourceTest {
             override fun dispatch(request: RecordedRequest): MockResponse {
                 val path = request.path.orEmpty()
                 return when {
-                    path.startsWith("/catalogue/?page=") -> MockResponse().setBody(listHtml)
+                    path.startsWith("/s2/scans/get_nb_chap_et_img.php") -> MockResponse().setBody(chapterCountsJson)
+                    path == "/catalogue/test-series/scan/vf/" -> MockResponse().setBody(scanPageHtml)
                     path == "/catalogue/test-series" -> MockResponse().setBody(detailHtml)
-                    path == "/catalogue/test-series/chapter-1" -> MockResponse().setBody(pagesHtml)
+                    path.startsWith("/catalogue/?page=") -> MockResponse().setBody(listHtml)
+                    path.startsWith("/catalogue/?type=") -> MockResponse().setBody(listHtml)
                     else -> MockResponse().setResponseCode(404)
                 }
             }
@@ -66,25 +69,46 @@ class AnimeSamaSourceTest {
     }
 
     @Test
-    fun `getPopular parses title and cover, language tag is fr`() = runTest {
+    fun `getPopular parses catalog-card title and cover, language tag is fr`() = runTest {
         val result = source.getPopular(1)
         assertEquals(1, result.size)
         assertEquals("Test Series", result[0].title)
+        assertEquals("https://cdn.example.com/test.jpg", result[0].coverUrl)
         assertEquals("fr", source.language)
     }
 
     @Test
-    fun `full flow parses details, chapters and pages via absolute URLs`() = runTest {
+    fun `search filters listing locally by title`() = runTest {
+        assertEquals(1, source.search("test", 1).size)
+        assertTrue(source.search("nomatch", 1).isEmpty())
+        assertTrue(source.search("test", 2).isEmpty())
+    }
+
+    @Test
+    fun `getMangaDetails parses synopsisText and genre-pill`() = runTest {
         val manga = source.getPopular(1).first()
         val details = source.getMangaDetails(manga)
         assertEquals("A synopsis.", details.description)
         assertEquals(listOf("Action"), details.genres)
+    }
 
+    @Test
+    fun `getChapterList reads titreOeuvre then calls chapter-count API`() = runTest {
+        val manga = source.getPopular(1).first()
         val chapters = source.getChapterList(manga)
-        assertEquals(1, chapters.size)
+        assertEquals(2, chapters.size)
+        assertTrue(chapters.any { it.chapterNumber == 1f })
+        assertTrue(chapters.any { it.chapterNumber == 2f })
+    }
 
-        val pages = source.getPageList(chapters[0])
-        assertEquals(1, pages.size)
+    @Test
+    fun `getPageList builds sequential image URLs from page count`() = runTest {
+        val manga = source.getPopular(1).first()
+        val chapters = source.getChapterList(manga)
+        val pages = source.getPageList(chapters.first { it.chapterNumber == 1f })
+        assertEquals(2, pages.size)
+        assertTrue(pages[0].url.endsWith("/1/1.jpg"))
+        assertTrue(pages[1].url.endsWith("/1/2.jpg"))
     }
 
     @Test

@@ -2,6 +2,8 @@ package com.haise.jiyu.download
 
 import android.app.NotificationManager
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import androidx.core.app.NotificationCompat
 import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
@@ -11,6 +13,8 @@ import com.haise.jiyu.data.db.entity.DownloadStatus
 import com.haise.jiyu.data.repository.MangaRepository
 import com.haise.jiyu.settings.SettingsRepository
 import com.haise.jiyu.util.ChapterStorage
+import com.haise.jiyu.util.ScrambledImageUrl
+import com.haise.jiyu.util.TileScrambleBitmap
 import com.haise.jiyu.work.CHANNEL_ID
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
@@ -22,6 +26,7 @@ import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import java.io.ByteArrayOutputStream
 
 const val CHANNEL_DOWNLOADS = "channel_downloads"
 
@@ -77,8 +82,13 @@ class ChapterDownloadWorker @AssistedInject constructor(
 
                 pages.forEachIndexed { index, page ->
                     val imageUrl = page.imageUrl ?: page.url
-                    val bytes = downloadBytes(imageUrl)
-                    val extension = imageUrl.substringBefore('?').substringAfterLast('.', "jpg").take(4)
+                    var bytes = downloadBytes(imageUrl)
+                    var extension = imageUrl.substringBefore('?').substringAfterLast('.', "jpg").take(4)
+                    val scramble = ScrambledImageUrl.parse(imageUrl)
+                    if (scramble != null) {
+                        bytes = descrambleToJpeg(bytes, scramble.grid, scramble.seed)
+                        extension = "jpg"
+                    }
                     ChapterStorage.writePage(applicationContext, chapterDirPath, "%03d.%s".format(index, extension), bytes)
                     val fraction = (index + 1).toFloat() / pages.size
                     nm.notify(progressId, NotificationCompat.Builder(applicationContext, CHANNEL_DOWNLOADS)
@@ -145,6 +155,21 @@ class ChapterDownloadWorker @AssistedInject constructor(
             if (!response.isSuccessful) throw IllegalStateException("Stažení selhalo: $url")
             return response.body?.bytes() ?: throw IllegalStateException("Prázdná odpověď: $url")
         }
+    }
+
+    /**
+     * Offline stahování jde přímo přes OkHttp, ne přes Coil - proto tu chybí
+     * [com.haise.jiyu.ui.reader.TileDescrambleTransformation] a je potřeba
+     * rozskládat dlaždice (viz [com.haise.jiyu.util.TileScramble]) ručně tady,
+     * jinak by se na disk uložil nečitelný zpřeházený obrázek.
+     */
+    private fun descrambleToJpeg(bytes: ByteArray, grid: Int, seed: Long): ByteArray {
+        val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+            ?: throw IllegalStateException("Nepodařilo se dekódovat obrázek pro rozskládání dlaždic")
+        val descrambled = TileScrambleBitmap.descramble(bitmap, grid, seed)
+        val output = ByteArrayOutputStream()
+        descrambled.compress(Bitmap.CompressFormat.JPEG, 92, output)
+        return output.toByteArray()
     }
 
     companion object {

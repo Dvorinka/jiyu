@@ -70,6 +70,9 @@ interface MangaSource {
     /** Doménová URL webu zdroje (bez cesty) - použije se pro načtení favicony v UI. Výchozí = null (spadne na barevný monogram). */
     val homepageUrl: String? get() = null
 
+    /** Zdroj s explicitním 18+ obsahem - viz SettingsRepository.showAdultSources a SourceManager (filtruje z Browse/hledání, ne z už přidané knihovny). Výchozí false. */
+    val isAdult: Boolean get() = false
+
     /** Fulltextové hledání podle názvu. */
     suspend fun search(query: String, page: Int = 1, filter: MangaFilter = MangaFilter()): List<SManga>
 

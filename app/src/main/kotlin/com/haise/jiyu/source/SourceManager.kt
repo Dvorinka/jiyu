@@ -7,6 +7,7 @@ import com.haise.jiyu.source.hivetoons.HiveToonsSource
 import com.haise.jiyu.source.mangaworld.MangaWorldSource
 import com.haise.jiyu.source.voidscans.VoidScansSource
 import com.haise.jiyu.source.hostednovel.HostedNovelSource
+import com.haise.jiyu.source.mangadenizi.MangaDeniziSource
 import com.haise.jiyu.source.manhuabuddy.ManhuaBuddySource
 import com.haise.jiyu.source.woopread.WoopReadSource
 import com.haise.jiyu.source.comick.ComicKSource
@@ -39,6 +40,7 @@ import com.haise.jiyu.source.weebcentral.WeebCentralSource
 import com.haise.jiyu.source.vortexscans.VortexScansSource
 import com.haise.jiyu.source.mangak.MangaKSource
 import com.haise.jiyu.source.i18n.JapscanSource
+import com.haise.jiyu.source.i18n.AnimeSamaSource
 import com.haise.jiyu.source.i18n.ScanVFSource
 import com.haise.jiyu.source.i18n.InMangaSource
 import com.haise.jiyu.source.mangadotnet.MangaDotNetSource
@@ -69,6 +71,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -113,6 +116,7 @@ class SourceManager @Inject constructor(
     vortexScansSource: VortexScansSource,
     mangaKSource: MangaKSource,
     japscanSource: JapscanSource,
+    animeSamaSource: AnimeSamaSource,
     scanVFSource: ScanVFSource,
     inMangaSource: InMangaSource,
     mangaDotNetSource: MangaDotNetSource,
@@ -145,8 +149,10 @@ class SourceManager @Inject constructor(
     hostedNovelSource: HostedNovelSource,
     manhuaBuddySource: ManhuaBuddySource,
     woopReadSource: WoopReadSource,
+    mangaDeniziSource: MangaDeniziSource,
     private val customSourceDao: CustomSourceDao,
     private val client: OkHttpClient,
+    private val settings: com.haise.jiyu.settings.SettingsRepository,
 ) {
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private val _cache = MutableStateFlow<List<MangaSource>>(emptyList())
@@ -212,13 +218,10 @@ class SourceManager @Inject constructor(
         //     vlastní frontend) - generické Madara selektory proto nic nenašly ("tu nic
         //     není"). Vyřešeno vlastními MangaSource třídami: mangabuddy -> comizy.io,
         //     hivecomic -> hivetoons.org, mangaworld -> mangaworld.mx, voidscans,
-        //     hostednovel, manhuabuddy a woopread, viz ComizySource / HiveToonsSource /
-        //     MangaWorldSource / VoidScansSource / HostedNovelSource /
-        //     ManhuaBuddySource / WoopReadSource.
-        //     mangadenizi (mangadenizi.net) zůstává neimplementováno - čistě
-        //     klientsky renderované Nuxt SPA (žádná data v syrovém HTML) plus
-        //     agresivní rate-limiting (HTTP 429), potřebovalo by JS
-        //     execution/reverse-engineering interního API, ne jen Jsoup scraper.
+        //     hostednovel, manhuabuddy, woopread a mangadenizi (Nuxt SPA bez dat v HTML,
+        //     ale s plně funkčním interním REST API - reverzováno z JS bundlu), viz
+        //     ComizySource / HiveToonsSource / MangaWorldSource / VoidScansSource /
+        //     HostedNovelSource / ManhuaBuddySource / WoopReadSource / MangaDeniziSource.
         //  5) Doplňkový audit 2026-07-26 při hledání náhrad ke skupině 4 odhalil další
         //     nebezpečné/mrtvé případy, odstraněny bez náhrady:
         //     creativenovels (creativenovels.com) - kompromitovaný web: listing
@@ -271,11 +274,13 @@ class SourceManager @Inject constructor(
             contentTypeOverride = "MANGA",
         ),
         // ── Francouzské zdroje 🇫🇷 ──────────────────────────────────────────
-        // animesama (anime-sama.fr) odstraněno 2026-07-26 - doména mrtvá, nová
-        // anime-sama.to sice žije, ale web byl kompletně přepsán (Tailwind redesign,
-        // seznam kapitol se generuje přes JS document.write, ne v statickém HTML) -
-        // vyžaduje plný přepis scraperu, ne jen výměnu domény/selektorů.
         japscanSource,
+        // animesama: doména anime-sama.fr mrtvá, přesunuto na anime-sama.to.
+        // Web byl kompletně přepsán a seznam kapitol/stránek se negeneruje
+        // ve statickém HTML - AnimeSamaSource proto místo Jsoup selektorů
+        // volá interní JSON API webu (/s2/scans/get_nb_chap_et_img.php),
+        // kterou používá jeho vlastní JS reader. Viz komentář u třídy.
+        animeSamaSource,
         scanVFSource,
         // ── Španělské a portugalské zdroje 🇪🇸🇧🇷 ──────────────────────────
         // tmo (lectortmo.com) odstraněno 2026-07-26 - doména mrtvá (DNS), nová
@@ -334,6 +339,11 @@ class SourceManager @Inject constructor(
         // WoopRead (woopread.com) - textovy light-novel web, vlastni Next.js
         // App Router frontend, nikdy nebyl Madara.
         woopReadSource,
+        // MangaDenizi (mangadenizi.net, TR) - nikdy nebylo Madara. Nuxt SPA bez
+        // dat ve statickem HTML, ale ma plne funkcni interni REST API (viz
+        // komentar u tridy) - vcetne rozskladani zamichanych "tiled-v1"
+        // dlazdic, viz TileScramble/TileScrambleBitmap.
+        mangaDeniziSource,
         MadaraSource(
             "webtoonxyz", "Webtoon XYZ", "https://www.webtoon.xyz", client,
             contentTypeOverride = "MANHWA",
@@ -369,9 +379,24 @@ class SourceManager @Inject constructor(
         }
     }
 
-    fun observeAll(): Flow<List<MangaSource>> = _cache
+    /** Čeká na první NEprázdnou emisi cache (start appky, než se static+custom zdroje slijí do jedné množiny) - beze změny obsahu, jen "chvíli počkej". */
+    private suspend fun rawSources(): List<MangaSource> = _cache.filter { it.isNotEmpty() }.first()
 
-    suspend fun getAll(): List<MangaSource> = _cache.filter { it.isNotEmpty() }.first()
+    /**
+     * Zdroje pro OBJEVOVÁNÍ (Procházet mřížka, GlobalSearch) - respektuje
+     * [SettingsRepository.showAdultSources]. Záměrně NEPOUŽÍVÁ [getById] (ten zůstává
+     * nefiltrovaný), aby vypnutí adult zdrojů neschovalo/nerozbilo mangu, kterou uživatel
+     * už má v knihovně z dřívějška - jen ji skryje z NOVÉHO objevování.
+     */
+    fun observeAll(): Flow<List<MangaSource>> = combine(_cache, settings.showAdultSources) { all, showAdult ->
+        if (showAdult) all else all.filterNot { it.isAdult }
+    }
 
-    suspend fun getById(id: String): MangaSource? = getAll().find { it.id == id }
+    suspend fun getAll(): List<MangaSource> {
+        val all = rawSources()
+        return if (settings.showAdultSources.first()) all else all.filterNot { it.isAdult }
+    }
+
+    /** Nefiltrované podle isAdult - viz komentář u [observeAll]. */
+    suspend fun getById(id: String): MangaSource? = rawSources().find { it.id == id }
 }

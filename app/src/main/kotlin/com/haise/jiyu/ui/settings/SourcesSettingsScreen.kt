@@ -3,6 +3,7 @@ package com.haise.jiyu.ui.settings
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -27,6 +28,8 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -40,6 +43,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -64,6 +68,7 @@ fun SourcesSettingsScreen(
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val customSources by viewModel.customSources.collectAsState()
+    val showAdultSources by viewModel.showAdultSources.collectAsState()
 
     Scaffold(containerColor = Color.Transparent, contentWindowInsets = WindowInsets(0, 0, 0, 0)) { innerPadding ->
         Column(
@@ -94,6 +99,29 @@ fun SourcesSettingsScreen(
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = Cyan),
                     ) {
                         Text(stringResource(R.string.settings_sources_custom_css_button))
+                    }
+                }
+
+                Spacer(Modifier.height(12.dp))
+
+                // ── Adult zdroje (Hitomi.La, nhentai, Hentai20.io, Manga18fx, Novelhall) ──
+                SettingsSection(title = stringResource(R.string.settings_sources_adult_section_title)) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .toggleable(value = showAdultSources, role = Role.Switch, onValueChange = { viewModel.setShowAdultSources(it) })
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(stringResource(R.string.settings_sources_adult_toggle_title), color = TextPrimary, fontSize = 14.sp)
+                            Text(stringResource(R.string.settings_sources_adult_toggle_desc), color = TextSecondary, fontSize = 11.sp)
+                        }
+                        Switch(
+                            checked = showAdultSources,
+                            onCheckedChange = null,
+                            colors = SwitchDefaults.colors(checkedThumbColor = GlowViolet, checkedTrackColor = GlowViolet.copy(alpha = 0.5f)),
+                        )
                     }
                 }
 

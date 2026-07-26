@@ -49,6 +49,7 @@ object SettingsKeys {
     val PRELOAD_NEXT_CHAPTER_MANGA = booleanPreferencesKey("preload_next_chapter_manga")
     val PRELOAD_NEXT_CHAPTER_WIFI_ONLY = booleanPreferencesKey("preload_next_chapter_wifi_only")
     val FAVORITE_SOURCE_IDS    = stringSetPreferencesKey("favorite_source_ids")
+    val SHOW_ADULT_SOURCES     = booleanPreferencesKey("show_adult_sources")
     val SAVED_SEARCHES         = stringPreferencesKey("saved_searches")
     val CROP_BORDERS           = booleanPreferencesKey("crop_borders")
     val LIBRARY_GRID_MODE      = booleanPreferencesKey("library_grid_mode")
@@ -309,6 +310,19 @@ class SettingsRepository @Inject constructor(
         val current = prefs[SettingsKeys.FAVORITE_SOURCE_IDS] ?: emptySet()
         prefs[SettingsKeys.FAVORITE_SOURCE_IDS] = if (sourceId in current) current - sourceId else current + sourceId
     }
+
+    /**
+     * Výchozí true - zdroje s [com.haise.jiyu.source.MangaSource.isAdult] byly přidané na
+     * výslovné přání uživatele, takže výchozí stav je "vidět". Vypnutím zmizí ze SEZNAMU
+     * zdrojů (Procházet, GlobalSearch) - viz SourceManager.observeAll/getAll - ale getById()
+     * zůstává nefiltrované, takže už přidaná manga/kapitoly z adult zdroje se dál dají číst,
+     * i když se zdroj skryje z objevování.
+     */
+    val showAdultSources: Flow<Boolean> =
+        dataStore.data.map { it[SettingsKeys.SHOW_ADULT_SOURCES] ?: true }
+
+    suspend fun setShowAdultSources(enabled: Boolean) =
+        dataStore.edit { it[SettingsKeys.SHOW_ADULT_SOURCES] = enabled }
 
     val savedSearches: Flow<List<String>> =
         dataStore.data.map { prefs ->

@@ -486,113 +486,35 @@ private fun SourceCard(
 
     if (showReportDialog) {
         val chooserTitle = stringResource(R.string.browse_report_chooser_title)
-        ReportSourceDialog(
-            sourceName = source.name,
+        val problemTitlesLabel = stringResource(R.string.browse_report_problem_titles)
+        val problemChaptersLabel = stringResource(R.string.browse_report_problem_chapters)
+        val problemErrorLabel = stringResource(R.string.browse_report_problem_error)
+        val problemOtherLabel = stringResource(R.string.browse_report_problem_other)
+        com.haise.jiyu.ui.components.ReportDialog(
+            title = stringResource(R.string.browse_report_title, source.name),
+            problems = listOf(
+                "titles" to problemTitlesLabel,
+                "chapters" to problemChaptersLabel,
+                "error" to problemErrorLabel,
+                com.haise.jiyu.ui.components.REPORT_PROBLEM_OTHER_KEY to problemOtherLabel,
+            ),
             onDismiss = { showReportDialog = false },
-            onSend = { problemType, details ->
-                val intent = buildSourceReportIntent(source.name, source.id, problemType, details)
+            onSend = { problemKey, details ->
+                val problemLabel = when (problemKey) {
+                    "titles" -> problemTitlesLabel
+                    "chapters" -> problemChaptersLabel
+                    "error" -> problemErrorLabel
+                    else -> problemOtherLabel
+                }
+                val body = buildString {
+                    append("Zdroj: ${source.name} (${source.id})\n")
+                    append("Problém: $problemLabel\n")
+                    if (details.isNotBlank()) append("\nPopis:\n$details")
+                }
+                val intent = com.haise.jiyu.ui.components.buildReportEmailIntent("[Jiyu] Problém se zdrojem: ${source.name}", body)
                 context.startActivity(Intent.createChooser(intent, chooserTitle))
                 showReportDialog = false
             },
         )
-    }
-}
-
-/**
- * Dialog s výběrem typu problému (rádiová volba) - "jiný" navíc odkryje textové pole pro
- * volný popis. Odeslání sestaví e-mail (viz [buildSourceReportIntent]) - appka nemá vlastní
- * backend na reporty, takže se pošle přes uživatelův vlastní e-mailový klient, stejně jako
- * existující "sdílet stránku" v čtečce.
- */
-@Composable
-private fun ReportSourceDialog(
-    sourceName: String,
-    onDismiss: () -> Unit,
-    onSend: (problemType: String, details: String) -> Unit,
-) {
-    var selectedProblem by remember { mutableStateOf("titles") }
-    var details by remember { mutableStateOf("") }
-    val problems = listOf(
-        "titles" to stringResource(R.string.browse_report_problem_titles),
-        "chapters" to stringResource(R.string.browse_report_problem_chapters),
-        "error" to stringResource(R.string.browse_report_problem_error),
-        "other" to stringResource(R.string.browse_report_problem_other),
-    )
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.browse_report_title, sourceName), color = TextPrimary) },
-        text = {
-            Column {
-                problems.forEach { (key, label) ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp))
-                            .clickable(
-                                interactionSource = remember { MutableInteractionSource() },
-                                indication = null,
-                                onClick = { selectedProblem = key },
-                            )
-                            .padding(vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        RadioButton(
-                            selected = selectedProblem == key,
-                            onClick = { selectedProblem = key },
-                            colors = RadioButtonDefaults.colors(selectedColor = Violet, unselectedColor = TextSecondary),
-                        )
-                        Text(label, color = TextPrimary, fontSize = 14.sp)
-                    }
-                }
-                if (selectedProblem == "other") {
-                    TextField(
-                        value = details,
-                        onValueChange = { details = it },
-                        placeholder = { Text(stringResource(R.string.browse_report_details_placeholder), color = TextSecondary, fontSize = 13.sp) },
-                        modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
-                        colors = TextFieldDefaults.colors(
-                            focusedTextColor = TextPrimary, unfocusedTextColor = TextPrimary,
-                            focusedContainerColor = Color.White.copy(alpha = 0.06f), unfocusedContainerColor = Color.White.copy(alpha = 0.06f),
-                        ),
-                    )
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = { onSend(selectedProblem, details) },
-                enabled = selectedProblem != "other" || details.isNotBlank(),
-            ) { Text(stringResource(R.string.common_send), color = Violet) }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel), color = TextSecondary) }
-        },
-        containerColor = NightBlue,
-    )
-}
-
-/**
- * Appka nemá vlastní backend na sběr reportů o nefunkčních zdrojích - report se pošle jako
- * e-mail přes uživatelův vlastní e-mailový klient (ACTION_SENDTO, stejný vzor jako sdílení
- * stránky v čtečce), ne automaticky na pozadí bez jeho vědomí.
- */
-private fun buildSourceReportIntent(sourceName: String, sourceId: String, problemType: String, details: String): Intent {
-    val problemLabel = when (problemType) {
-        "titles" -> "Zdroj nenačítá tituly"
-        "chapters" -> "Kapitoly se nenačítají"
-        "error" -> "Chyba (error)"
-        else -> "Jiný problém"
-    }
-    val body = buildString {
-        append("Zdroj: $sourceName ($sourceId)\n")
-        append("Problém: $problemLabel\n")
-        if (details.isNotBlank()) append("\nPopis:\n$details")
-    }
-    return Intent(Intent.ACTION_SENDTO).apply {
-        data = Uri.parse("mailto:")
-        putExtra(Intent.EXTRA_EMAIL, arrayOf("biketrialradim@gmail.com"))
-        putExtra(Intent.EXTRA_SUBJECT, "[Jiyu] Problém se zdrojem: $sourceName")
-        putExtra(Intent.EXTRA_TEXT, body)
     }
 }

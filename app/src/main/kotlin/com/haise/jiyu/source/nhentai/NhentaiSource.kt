@@ -35,6 +35,7 @@ class NhentaiSource @Inject constructor(
 
     override val id = "nhentai"
     override val name = "nhentai"
+    override val isAdult = true
     override val homepageUrl get() = "https://nhentai.net"
 
     private val apiBase   = "https://nhentai.net/api/v2"

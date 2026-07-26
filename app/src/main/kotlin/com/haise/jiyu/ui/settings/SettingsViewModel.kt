@@ -401,6 +401,12 @@ class SettingsViewModel @Inject constructor(
     // ── Katalog zdrojů ───────────────────────────────────────────────────────
     fun getCatalog(): List<CatalogSource> = catalogManager.catalog
 
+    // ── Adult zdroje (hromadný přepínač) ──────────────────────────────────────
+    val showAdultSources: StateFlow<Boolean> = settings.showAdultSources
+        .stateIn(viewModelScope, SharingStarted.Eagerly, true)
+
+    fun setShowAdultSources(enabled: Boolean) = viewModelScope.launch { settings.setShowAdultSources(enabled) }
+
     /** ID všech aktuálně aktivních zdrojů (vestavěných i vlastních Madara) - detekce duplicit z katalogu. */
     private val activeSourceIds: StateFlow<Set<String>> = sourceManager.observeAll()
         .map { list -> list.map { it.id }.toSet() }
