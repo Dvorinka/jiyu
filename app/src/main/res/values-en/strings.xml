@@ -367,6 +367,9 @@
     <string name="detail_reading_status_dropped">Dropped</string>
     <string name="detail_reading_status_plan">Plan to read</string>
     <string name="detail_status_placeholder">Status</string>
+    <string name="detail_info_origination">Origin</string>
+    <string name="detail_info_demographic">Demographic</string>
+    <string name="detail_info_published">Published</string>
     <string name="detail_continue_short">Continue</string>
     <string name="detail_read_options">Reading options</string>
     <string name="detail_chapters_header">CHAPTERS</string>

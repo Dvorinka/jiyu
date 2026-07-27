@@ -286,7 +286,9 @@ fun MangaDetailScreen(
                                     Text(text = label, color = statusColor, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
                                 }
                             }
-                            val genres = manga?.genres?.split(",")?.map { it.trim() }?.filter { it.isNotBlank() } ?: emptyList()
+                            val allGenres = manga?.genres?.split(",")?.map { it.trim() }?.filter { it.isNotBlank() } ?: emptyList()
+                            val demographicGenre = allGenres.firstOrNull { it.lowercase() in DEMOGRAPHIC_TAGS }
+                            val genres = allGenres.filter { it != demographicGenre }
                             if (genres.isNotEmpty()) {
                                 FlowRow(
                                     horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -305,6 +307,11 @@ fun MangaDetailScreen(
                                         }
                                     }
                                 }
+                            }
+                            Column(modifier = Modifier.padding(top = 6.dp)) {
+                                DetailInfoRow(stringResource(R.string.detail_info_origination), originationLabel(manga?.contentType))
+                                demographicGenre?.let { DetailInfoRow(stringResource(R.string.detail_info_demographic), it) }
+                                manga?.year?.takeIf { it > 0 }?.let { DetailInfoRow(stringResource(R.string.detail_info_published), it.toString()) }
                             }
                             Spacer(modifier = Modifier.weight(1f))
                             val readCount = chapters.count { it.read }
@@ -360,13 +367,20 @@ fun MangaDetailScreen(
                                     maxLines = if (descriptionExpanded) Int.MAX_VALUE else 3,
                                     overflow = TextOverflow.Ellipsis,
                                 )
-                                Text(
-                                    text = if (descriptionExpanded) stringResource(R.string.detail_show_less) else stringResource(R.string.detail_show_more),
-                                    color = GlowCyan,
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    modifier = Modifier.padding(top = 6.dp),
-                                )
+                                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 6.dp)) {
+                                    Text(
+                                        text = if (descriptionExpanded) stringResource(R.string.detail_show_less) else stringResource(R.string.detail_show_more),
+                                        color = GlowCyan,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                    )
+                                    Icon(
+                                        imageVector = if (descriptionExpanded) TablerIcons.ChevronUp else TablerIcons.ChevronDown,
+                                        contentDescription = null,
+                                        tint = GlowCyan,
+                                        modifier = Modifier.size(16.dp).padding(start = 4.dp),
+                                    )
+                                }
                             }
                         }
                     }
@@ -893,6 +907,26 @@ internal fun GlassChapterRow(
                 onClick = { onToggleRead(); showMenu = false },
             )
         }
+    }
+}
+
+/** Známé demografické štítky, které bývají zamíchané mezi žánry - vytáhneme je do vlastního řádku (jako ComicK "Demographic"). */
+private val DEMOGRAPHIC_TAGS = setOf("shounen", "shonen", "shoujo", "shojo", "seinen", "josei", "kodomo")
+
+@Composable
+private fun originationLabel(contentType: String?): String = when (contentType) {
+    "MANHWA" -> stringResource(R.string.mylist_content_manhwa)
+    "MANHUA" -> stringResource(R.string.mylist_content_manhua)
+    "NOVEL"  -> stringResource(R.string.mylist_content_novel)
+    "COMIC"  -> stringResource(R.string.mylist_content_comic)
+    else     -> stringResource(R.string.browse_source_type_manga)
+}
+
+@Composable
+private fun DetailInfoRow(label: String, value: String) {
+    Row(modifier = Modifier.padding(vertical = 1.dp)) {
+        Text(text = "$label: ", color = TextSecondary, fontSize = 11.sp)
+        Text(text = value, color = TextPrimary, fontSize = 11.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 

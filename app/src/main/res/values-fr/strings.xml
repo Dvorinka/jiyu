@@ -364,6 +364,9 @@
     <string name="detail_reading_status_dropped">Abandonné</string>
     <string name="detail_reading_status_plan">À lire</string>
     <string name="detail_status_placeholder">Statut</string>
+    <string name="detail_info_origination">Origine</string>
+    <string name="detail_info_demographic">Démographie</string>
+    <string name="detail_info_published">Publié</string>
     <string name="detail_continue_short">Continuer</string>
     <string name="detail_read_options">Options de lecture</string>
     <string name="detail_chapters_header">CHAPITRES</string>
