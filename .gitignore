@@ -11,3 +11,6 @@ local.properties
 
 # Firebase — obsahuje ID projektu, není potřeba (a nechceme) verzovat
 app/google-services.json
+
+# Supabase CLI - lokální metadata linknutého projektu, ne zdrojový kód
+supabase/.temp
