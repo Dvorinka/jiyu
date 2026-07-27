@@ -260,7 +260,7 @@ fun BrowseScreen(
             // jen ONA sama scrolluje, ne celá obrazovka - hlavička s filtry zůstává
             // připevněná nahoře při scrollování mřížky.
             LazyVerticalGrid(
-                columns = GridCells.Fixed(2),
+                columns = GridCells.Fixed(3),
                 contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 12.dp, bottom = 16.dp + navBottom),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -469,7 +469,7 @@ private fun SourceCard(
     var showMenu by remember { mutableStateOf(false) }
     var showReportDialog by remember { mutableStateOf(false) }
 
-    Box(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
@@ -480,82 +480,56 @@ private fun SourceCard(
                 indication = null,
                 onClick = onClick,
             )
-            .padding(12.dp),
+            .padding(10.dp),
     ) {
-        // Ikona vlevo + název vedle ní na jednom řádku, typ/jazyk pod tím přes celou
-        // šířku (ne vtěsnané do úzkého sloupečku vedle ikony) - čistší, vzdušnější
-        // rozvržení než dřívější "vše pod sebou" karta. Srdíčko + menu jsou
-        // samostatně přilepené do pravého horního rohu (viz Box níže), aby
-        // nesoutěžily o místo s názvem v hlavním řádku - se 48dp minimálním
-        // dotykovým cílem IconButtonu by se tam jinak název vešel sotva na 2 znaky.
-        Column(modifier = Modifier.fillMaxWidth().padding(end = 34.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier
-                        .size(36.dp)
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(accent.copy(alpha = 0.18f)),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        text = initials.ifBlank { "?" },
-                        color = accent,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold,
-                    )
-                    // Favicona webu zdroje přes veřejnou službu (zdroje nemají bundlované
-                    // logo) - dokud se nenačte (nebo web faviconu nemá/blokuje), zůstává
-                    // vidět barevný monogram pod ní, žádné bliknutí prázdného místa.
-                    source.homepageUrl?.let { homepage ->
-                        var showFavicon by remember(source.id) { mutableStateOf(false) }
-                        AsyncImage(
-                            model = faviconUrlFor(homepage),
-                            contentDescription = null,
-                            contentScale = ContentScale.Fit,
-                            modifier = Modifier
-                                .matchParentSize()
-                                .padding(6.dp)
-                                .alpha(if (showFavicon) 1f else 0f),
-                            onState = { state -> showFavicon = state is AsyncImagePainter.State.Success },
-                        )
-                    }
-                }
-                Spacer(Modifier.width(8.dp))
+        // Ikona a srdíčko/menu na společném řádku (samostatně, ne vedle názvu) - u
+        // úzkého 3-sloupcového gridu by název vedle ikony a 48dp dotykového cíle
+        // menu tlačítka neměl vůbec místo (ověřeno naživo - useklo by ho na 1 znak).
+        // Typ obsahu + jazyk jsou ale spojené do jednoho řádku pod názvem místo
+        // dřívějších dvou zvlášť + samostatného chip-boxu - čistší bez ztráty místa.
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(accent.copy(alpha = 0.18f)),
+                contentAlignment = Alignment.Center,
+            ) {
                 Text(
-                    text = source.name,
-                    color = TextPrimary,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
+                    text = initials.ifBlank { "?" },
+                    color = accent,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
                 )
+                // Favicona webu zdroje přes veřejnou službu (zdroje nemají bundlované
+                // logo) - dokud se nenačte (nebo web faviconu nemá/blokuje), zůstává
+                // vidět barevný monogram pod ní, žádné bliknutí prázdného místa.
+                source.homepageUrl?.let { homepage ->
+                    var showFavicon by remember(source.id) { mutableStateOf(false) }
+                    AsyncImage(
+                        model = faviconUrlFor(homepage),
+                        contentDescription = null,
+                        contentScale = ContentScale.Fit,
+                        modifier = Modifier
+                            .matchParentSize()
+                            .padding(6.dp)
+                            .alpha(if (showFavicon) 1f else 0f),
+                        onState = { state -> showFavicon = state is AsyncImagePainter.State.Success },
+                    )
+                }
             }
-            Spacer(Modifier.height(6.dp))
-            Text(
-                text = "${contentTypeLabel(source.contentType)} · ${languageFlag(source.language)} ${source.language.uppercase()}",
-                color = TextSecondary,
-                fontSize = 10.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(start = 44.dp),
-            )
-        }
-
-        Row(
-            modifier = Modifier.align(Alignment.TopEnd),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
+            Spacer(Modifier.weight(1f))
             if (isFavorite) {
                 Icon(
                     TablerIcons.Heart,
                     contentDescription = null,
                     tint = Pink,
-                    modifier = Modifier.size(13.dp).padding(end = 2.dp),
+                    modifier = Modifier.size(12.dp).padding(end = 4.dp),
                 )
             }
             Box {
                 // IconButton (ne holý Icon) - vlastní clickable zastaví tap dřív, než se
-                // dostane ke klikatelnému Box celé karty (jinak by klik na tři tečky
+                // dostane ke klikatelnému Column celé karty (jinak by klik na tři tečky
                 // rovnou otevřel zdroj místo menu).
                 IconButton(onClick = { showMenu = true }, modifier = Modifier.size(20.dp)) {
                     Icon(
@@ -588,6 +562,24 @@ private fun SourceCard(
                 }
             }
         }
+        Spacer(Modifier.height(8.dp))
+        Text(
+            text = source.name,
+            color = TextPrimary,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            lineHeight = 14.sp,
+        )
+        Spacer(Modifier.height(3.dp))
+        Text(
+            text = "${contentTypeLabel(source.contentType)} · ${languageFlag(source.language)} ${source.language.uppercase()}",
+            color = TextSecondary,
+            fontSize = 10.sp,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 
     if (showReportDialog) {
