@@ -81,24 +81,26 @@ class TranslateRepository @Inject constructor(
             //    beze ztráty kvality. 3) Stejný "ultra" prompt, ale přes OpenRouter free-tier
             //    model (provider="openrouter") - čtvrtá (resp. třetí přes stejný prompt) záchrana,
             //    než klesneme na 4) holý Groq překlad bez komprese jako poslední záchranu.
-            // [RateLimitedException] se NEODCHYTÁVÁ na žádném kroku - proxy má jednu sdílenou
-            // denní kvótu pro všechny cesty (viz translate-proxy checkQuota), takže jakmile je
-            // vyčerpaná, další pokus by dopadl stejně - rovnou se propaguje až do ReaderViewModelu,
-            // který na to má vlastní hlášku.
-            translateWithGemini(classified, glossary, mangaContext, provider = "gemini", mangaId, targetLanguage)
-                ?: translateWithGemini(classified, glossary, mangaContext, provider = "groq", mangaId, targetLanguage)
-                ?: translateWithGemini(classified, glossary, mangaContext, provider = "openrouter", mangaId, targetLanguage)
-                ?: translateWithGroq(classified, glossary, targetLanguage, sourceLanguage, provider = "groq")
-                ?: translateWithGroq(classified, glossary, targetLanguage, sourceLanguage, provider = "openrouter")
-                ?: emptyList()
+            // RateLimitedException z JEDNOHO kroku už neznamená konec (viz translateChain) -
+            // Gemini/Groq/OpenRouter jsou tři nezávislé komerční služby s vlastní kvótou,
+            // 429 na proxy je jen jeho VLASTNÍ limit počtu požadavků (viz komentář u
+            // RateLimitedException), ne nutně důkaz, že mají vyčerpáno i ostatní dva.
+            translateChain(
+                { translateWithGemini(classified, glossary, mangaContext, provider = "gemini", mangaId, targetLanguage) },
+                { translateWithGemini(classified, glossary, mangaContext, provider = "groq", mangaId, targetLanguage) },
+                { translateWithGemini(classified, glossary, mangaContext, provider = "openrouter", mangaId, targetLanguage) },
+                { translateWithGroq(classified, glossary, targetLanguage, sourceLanguage, provider = "groq") },
+                { translateWithGroq(classified, glossary, targetLanguage, sourceLanguage, provider = "openrouter") },
+            )
         } else {
             // GeminiUltraPrompt je psaný natvrdo pro češtinu, takže pro jiné cílové jazyky
             // nemá smysl - ale i tak appka dřív měla jen JEDNU cestu (holý Groq) bez jakékoli
             // zálohy. Teď zkusí Groq a při selhání OpenRouter (stejný obecný "manga"/"novel"
             // prompt parametrizovaný cílovým jazykem, viz translate-proxy systemPromptFor).
-            translateWithGroq(classified, glossary, targetLanguage, sourceLanguage, provider = "groq")
-                ?: translateWithGroq(classified, glossary, targetLanguage, sourceLanguage, provider = "openrouter")
-                ?: emptyList()
+            translateChain(
+                { translateWithGroq(classified, glossary, targetLanguage, sourceLanguage, provider = "groq") },
+                { translateWithGroq(classified, glossary, targetLanguage, sourceLanguage, provider = "openrouter") },
+            )
         }
         if (blocks.isEmpty()) return emptyList()
 
@@ -180,16 +182,18 @@ class TranslateRepository @Inject constructor(
             // odpovědi se doplní originálem, nikdy se nezahodí), takže rozdělení jedné
             // odpovědi zpátky po stránkách podle počtu bublin níž je bezpečné.
             val blocks = if (targetLanguage == "Czech") {
-                translateWithGemini(flatBubbles, glossary, mangaContext, provider = "gemini", mangaId, targetLanguage)
-                    ?: translateWithGemini(flatBubbles, glossary, mangaContext, provider = "groq", mangaId, targetLanguage)
-                    ?: translateWithGemini(flatBubbles, glossary, mangaContext, provider = "openrouter", mangaId, targetLanguage)
-                    ?: translateWithGroq(flatBubbles, glossary, targetLanguage, sourceLanguage, provider = "groq")
-                    ?: translateWithGroq(flatBubbles, glossary, targetLanguage, sourceLanguage, provider = "openrouter")
-                    ?: emptyList()
+                translateChain(
+                    { translateWithGemini(flatBubbles, glossary, mangaContext, provider = "gemini", mangaId, targetLanguage) },
+                    { translateWithGemini(flatBubbles, glossary, mangaContext, provider = "groq", mangaId, targetLanguage) },
+                    { translateWithGemini(flatBubbles, glossary, mangaContext, provider = "openrouter", mangaId, targetLanguage) },
+                    { translateWithGroq(flatBubbles, glossary, targetLanguage, sourceLanguage, provider = "groq") },
+                    { translateWithGroq(flatBubbles, glossary, targetLanguage, sourceLanguage, provider = "openrouter") },
+                )
             } else {
-                translateWithGroq(flatBubbles, glossary, targetLanguage, sourceLanguage, provider = "groq")
-                    ?: translateWithGroq(flatBubbles, glossary, targetLanguage, sourceLanguage, provider = "openrouter")
-                    ?: emptyList()
+                translateChain(
+                    { translateWithGroq(flatBubbles, glossary, targetLanguage, sourceLanguage, provider = "groq") },
+                    { translateWithGroq(flatBubbles, glossary, targetLanguage, sourceLanguage, provider = "openrouter") },
+                )
             }
 
             var offset = 0
@@ -615,4 +619,34 @@ class TranslateRepository @Inject constructor(
             )
         }
     } catch (e: Exception) { emptyList() }
+}
+
+/**
+ * Zkusí [steps] popořadě - výsledek prvního, co vrátí ne-null seznam, se použije. Na
+ * rozdíl od prostého řetězce `?:` (dřívější řešení) [RateLimitedException] z JEDNOHO
+ * kroku už neznamená okamžitý konec: Gemini/Groq/OpenRouter jsou tři nezávislé komerční
+ * služby s vlastní kvótou, 429 z proxy je jen JEJÍ VLASTNÍ limit počtu požadavků (viz
+ * komentář u [RateLimitedException]), ne důkaz, že mají vyčerpáno i zbylé dva kroky -
+ * "první rate limit = vzdej to" tak zbytečně promarnilo kapacitu, kterou další krok
+ * třeba ještě měl.
+ *
+ * [RateLimitedException] se propaguje dál JEN když byly rate-limited (nebo selhaly)
+ * úplně všechny kroky - `ReaderViewModel` na ni má vlastní hlášku a měl by ji dostat
+ * pořád, jen ne už po prvním neúspěchu.
+ *
+ * Top-level (ne metoda [TranslateRepository]) - jde tak otestovat čistě na dvojici
+ * fake suspend lambd, bez nutnosti mockovat celý repository se všemi závislostmi.
+ */
+internal suspend fun translateChain(vararg steps: suspend () -> List<TranslatedBlock>?): List<TranslatedBlock> {
+    var anyRateLimited = false
+    for (step in steps) {
+        try {
+            val result = step()
+            if (result != null) return result
+        } catch (e: RateLimitedException) {
+            anyRateLimited = true
+        }
+    }
+    if (anyRateLimited) throw RateLimitedException()
+    return emptyList()
 }
