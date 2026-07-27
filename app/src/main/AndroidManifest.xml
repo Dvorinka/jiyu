@@ -5,6 +5,11 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Od Androidu 14 (targetSdk 34) musí každá foreground service mít deklarovaný typ -
+         ChapterDownloadWorker běží jako foreground service (postup stahování v notifikaci),
+         bez tohohle appka na startu stahování rovnou spadne (InvalidForegroundServiceTypeException). -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <!-- Instalace stažené aktualizace přes systémový instalátor balíčků (sideload, appka
          není na Play Storu). Uživatel musí instalaci z tohoto zdroje ručně povolit. -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
@@ -64,6 +69,14 @@
                 <data android:scheme="jiyu" android:host="mal-auth" />
             </intent-filter>
         </activity>
+
+        <!-- WorkManager tuhle service deklaruje bez foregroundServiceType - na Androidu 14
+             (targetSdk 34) je typ povinný, jinak setForeground() v ChapterDownloadWorker
+             spadne s InvalidForegroundServiceTypeException. -->
+        <service
+            android:name="androidx.work.impl.foreground.SystemForegroundService"
+            android:foregroundServiceType="dataSync"
+            tools:node="merge" />
 
         <!-- Home screen widget -->
         <receiver

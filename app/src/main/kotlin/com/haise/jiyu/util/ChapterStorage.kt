@@ -20,14 +20,53 @@ object ChapterStorage {
 
     private fun isSaf(path: String) = path.startsWith("content://")
 
-    /** Vytvoří novou složku pro kapitolu a vrátí její "localPath" (File path nebo content URI). */
-    fun createChapterDir(context: Context, downloadFolderUri: String?, chapterEntityId: String): String {
+    /**
+     * Očistí název mangy/kapitoly na bezpečný název souboru/složky - dřív se stažená
+     * kapitola pojmenovávala podle "sourceId::URL adresy kapitoly", což je nečitelné a
+     * navíc na Windows (kam si uživatel stažené kapitoly chce zkopírovat, viz uživatelský
+     * dotaz) rovnou nefunkční jméno souboru (URL obsahuje ':' a '/'). Zakázané znaky
+     * (Windows je přísnější než Android/Linux, sjednocujeme na jeho pravidla, ať název
+     * funguje všude) se nahradí mezerou, ne smažou - jinak by se slova bez mezery kolem
+     * zakázaného znaku slepila dohromady.
+     */
+    private fun sanitizeFileName(name: String): String {
+        val cleaned = name.replace(Regex("[\\\\/:*?\"<>|]"), " ").trim().take(120)
+        return cleaned.ifBlank { "bez_nazvu" }
+    }
+
+    /**
+     * Číslo kapitoly zarovnané nulami zleva, aby se soubory/složky v obyčejném průzkumníku
+     * řadily ve správném pořadí čtení, ne abecedně ("Kapitola 10" před "Kapitola 2").
+     * [Locale.ROOT] je tu záměrně - `String.format`/Kotlin `.format()` bez explicitního
+     * locale používá SYSTÉMOVÝ locale telefonu, který u desetinné čárky/tečky není vždy
+     * anglický (např. čeština má desetinnou ČÁRKU) - bez tohohle by "10.5" na některých
+     * telefonech vyšlo jako "10,5", nekonzistentní jméno souboru napříč zařízeními.
+     */
+    private fun formattedChapterNumber(chapterNumber: Float): String =
+        if (chapterNumber == chapterNumber.toLong().toFloat()) String.format(java.util.Locale.ROOT, "%04d", chapterNumber.toLong())
+        else String.format(java.util.Locale.ROOT, "%06.1f", chapterNumber)
+
+    /** "0001 - Název kapitoly" (nebo jen číslo, pokud kapitola nemá vlastní název odlišný od čísla) - viz [sanitizeFileName]/[formattedChapterNumber]. */
+    fun chapterFolderName(chapterNumber: Float, chapterName: String): String {
+        val num = formattedChapterNumber(chapterNumber)
+        val cleanName = sanitizeFileName(chapterName)
+        return if (cleanName.isBlank() || cleanName == "bez_nazvu") num else "$num - $cleanName"
+    }
+
+    /** Vytvoří (případně dohledá již existující) vnořenou složku manga/kapitola a vrátí její "localPath" (File path nebo content URI). */
+    fun createChapterDir(context: Context, downloadFolderUri: String?, mangaFolderName: String, chapterFolderName: String): String {
+        val safeMangaFolder = sanitizeFileName(mangaFolderName)
         if (downloadFolderUri != null) {
-            val root = DocumentFile.fromTreeUri(context, Uri.parse(downloadFolderUri))
-            val dir = root?.createDirectory(chapterEntityId)
-            if (dir != null) return dir.uri.toString()
+            var current: DocumentFile? = DocumentFile.fromTreeUri(context, Uri.parse(downloadFolderUri))
+            for (segment in listOf(safeMangaFolder, chapterFolderName)) {
+                // Složka pro mangu se mezi jednotlivými kapitolami opakuje (stahování víc
+                // kapitol téže mangy) - findFile/reuse, ne vytvořit duplicitní "One Piece (1)".
+                val existing = current?.findFile(segment)?.takeIf { it.isDirectory }
+                current = existing ?: current?.createDirectory(segment)
+            }
+            if (current != null) return current.uri.toString()
         }
-        val dir = File(context.filesDir, "downloads/$chapterEntityId")
+        val dir = File(context.filesDir, "downloads/$safeMangaFolder/$chapterFolderName")
         dir.mkdirs()
         return dir.absolutePath
     }
@@ -65,11 +104,12 @@ object ChapterStorage {
         }
     }
 
-    /** Vytvoří .cbz archiv se všemi stránkami kapitoly (uvnitř stejné složky u SAF, jako sourozenec u File). */
-    fun createCbz(context: Context, dirPath: String, chapterEntityId: String) {
+    /** Vytvoří .cbz archiv se všemi stránkami kapitoly (uvnitř stejné složky u SAF, jako sourozenec u File) pod čitelným jménem [cbzBaseName] (bez přípony). */
+    fun createCbz(context: Context, dirPath: String, cbzBaseName: String) {
+        val safeName = sanitizeFileName(cbzBaseName)
         if (isSaf(dirPath)) {
             val dir = DocumentFile.fromSingleUri(context, Uri.parse(dirPath)) ?: return
-            val cbzFile = dir.createFile("application/vnd.comicbook+zip", "$chapterEntityId.cbz") ?: return
+            val cbzFile = dir.createFile("application/vnd.comicbook+zip", "$safeName.cbz") ?: return
             context.contentResolver.openOutputStream(cbzFile.uri)?.use { out ->
                 ZipOutputStream(BufferedOutputStream(out)).use { zip ->
                     dir.listFiles()
@@ -84,7 +124,7 @@ object ChapterStorage {
             }
         } else {
             val chapterDir = File(dirPath)
-            val cbzFile = File(chapterDir.parent, "${chapterDir.name}.cbz")
+            val cbzFile = File(chapterDir.parent, "$safeName.cbz")
             ZipOutputStream(BufferedOutputStream(FileOutputStream(cbzFile))).use { zip ->
                 chapterDir.listFiles()?.sortedBy { it.name }?.forEach { file ->
                     zip.putNextEntry(ZipEntry(file.name))

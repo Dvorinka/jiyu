@@ -2,8 +2,10 @@ package com.haise.jiyu.download
 
 import android.app.NotificationManager
 import android.content.Context
+import android.content.pm.ServiceInfo
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
@@ -71,14 +73,32 @@ class ChapterDownloadWorker @AssistedInject constructor(
             .setOngoing(true)
             .build()
 
-        setForeground(ForegroundInfo(progressId, progressNotification))
+        // Explicitní dataSync typ je od Androidu 14 (targetSdk 34) povinný, jinak setForeground()
+        // shodí proces s InvalidForegroundServiceTypeException (viz manifest pro service+permission).
+        val foregroundInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            ForegroundInfo(progressId, progressNotification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
+        } else {
+            ForegroundInfo(progressId, progressNotification)
+        }
+        setForeground(foregroundInfo)
         repository.setDownloadStatus(chapterEntityId, DownloadStatus.DOWNLOADING)
 
         return withContext(Dispatchers.IO) {
             try {
                 val pages = repository.getChapterPages(sourceId, chapterUrl, mangaUrl)
                 val downloadFolderUri = settings.downloadFolderUri.first()
-                val chapterDirPath = ChapterStorage.createChapterDir(applicationContext, downloadFolderUri, chapterEntityId)
+                // Čitelné jméno "Název mangy/0012 - Název kapitoly" místo dřívějšího
+                // "sourceId::URL kapitoly" - uživatel si stažené kapitoly kopíruje na PC
+                // (viz uživatelský dotaz), kde by opaque URL jméno bylo nepoužitelné/
+                // rozbité (Windows zakazuje ':' a '/' ve jméně souboru).
+                val chapterEntity = repository.getChapter(chapterEntityId)
+                val mangaTitle = repository.getMangaByUrl(mangaUrl)?.title ?: "Manga"
+                val chapterFolderName = if (chapterEntity != null) {
+                    ChapterStorage.chapterFolderName(chapterEntity.chapterNumber, chapterEntity.name)
+                } else {
+                    chapterEntityId
+                }
+                val chapterDirPath = ChapterStorage.createChapterDir(applicationContext, downloadFolderUri, mangaTitle, chapterFolderName)
 
                 pages.forEachIndexed { index, page ->
                     val imageUrl = page.imageUrl ?: page.url
@@ -108,7 +128,7 @@ class ChapterDownloadWorker @AssistedInject constructor(
                 repository.markDownloaded(chapterEntityId, chapterDirPath, pages.size)
 
                 if (settings.saveAsCbz.first()) {
-                    ChapterStorage.createCbz(applicationContext, chapterDirPath, chapterEntityId)
+                    ChapterStorage.createCbz(applicationContext, chapterDirPath, chapterFolderName)
                 }
 
                 if (settings.notifyDownloads.first()) notifyDone(chapterEntityId)
