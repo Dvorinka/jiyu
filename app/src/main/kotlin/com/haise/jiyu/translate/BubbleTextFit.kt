@@ -35,7 +35,7 @@ data class InscribedRect(val leftF: Float, val topF: Float, val rightF: Float, v
  * 0..1 souřadnice stránky) - viz [BubbleShapeDetector]. Body jsou seřazené odshora dolů
  * (rostoucí yF), mimo rozsah se hodnota přichytí na krajní bod.
  */
-private fun shapeBoundsAtYF(shape: List<BubbleShapePoint>, yF: Float): Pair<Float, Float> {
+internal fun shapeBoundsAtYF(shape: List<BubbleShapePoint>, yF: Float): Pair<Float, Float> {
     if (shape.isEmpty()) return 0f to 1f
     if (shape.size == 1) return shape[0].leftF to shape[0].rightF
 

@@ -59,6 +59,7 @@ import com.haise.jiyu.translate.TextMeasurement
 import com.haise.jiyu.translate.TranslatedBlock
 import com.haise.jiyu.translate.averageArgb
 import com.haise.jiyu.translate.fitFontSizeToBox
+import com.haise.jiyu.translate.fitTextToShape
 import com.haise.jiyu.translate.largestInscribedRect
 import com.haise.jiyu.translate.layoutTranslationBlocks
 import com.haise.jiyu.translate.matchOriginalCase
@@ -321,6 +322,12 @@ fun TranslationOverlay(
                     bubbleType = pos.block.bubbleType,
                     offsetX = textOffsetX,
                     offsetY = textOffsetY,
+                    shape = pos.block.shape,
+                    shapeCenterF = inscribed?.let { (it.leftF + it.rightF) / 2f },
+                    shapeTopF = pos.minTopF,
+                    shapeBottomF = pos.maxBottomF,
+                    imageWidthDp = imageRect.width,
+                    imageHeightDp = imageRect.height,
                 )
             }
         }
@@ -369,12 +376,84 @@ private fun AutoFitTranslatedText(
     bubbleType: BubbleType,
     offsetX: androidx.compose.ui.unit.Dp = 0.dp,
     offsetY: androidx.compose.ui.unit.Dp = 0.dp,
+    shape: List<BubbleShapePoint>? = null,
+    shapeCenterF: Float? = null,
+    shapeTopF: Float = 0f,
+    shapeBottomF: Float = 0f,
+    imageWidthDp: Float = 0f,
+    imageHeightDp: Float = 0f,
 ) {
     val density = LocalDensity.current
     val textMeasurer = rememberTextMeasurer()
     val fontFamily = fontFamilyFor(bubbleType)
     val maxFontSp = 36f * textScale
     val minFontSp = 6f * textScale
+
+    // Vzorkovaná barva pozadí bubliny může být i tmavá (stínovaný/černý shout box) - černý text
+    // na černém pozadí by byl nečitelný, proto volíme barvu textu (a opačnou barvu obrysu)
+    // podle jasu (luminance) pozadí, ne napevno.
+    val bg = Color(bgColorArgb)
+    val luminance = 0.299f * bg.red + 0.587f * bg.green + 0.114f * bg.blue
+    val textColor = if (luminance < 0.5f) Color.White else Color.Black
+    val strokeColor = if (luminance < 0.5f) Color.Black else Color.White
+
+    // ── Sazba do skutečného tvaru bubliny (vyvážené řádky, viz [fitTextToShape]) ──
+    // Tohle je hlavní cesta pro bubliny se známým obrysem: každý řádek dostane šířku podle
+    // tvaru ve svém pásu, takže v oválné bublině vyjde blok textu kosočtvercový (delší řádky
+    // uprostřed) - přesně jak sází profesionální lettering - a využije se mnohem víc plochy
+    // než u prostého vepsaného obdélníku. Řádky jdou do JEDNOHO Textu oddělené \n, takže
+    // řádkování i centrování řeší Compose (žádné vykreslování řádek po řádku, které dřív
+    // způsobovalo překrývající se řádky).
+    val shapedLayout = if (shape != null && shapeCenterF != null && imageHeightDp > 0f) {
+        val words = remember(text) { text.split(' ', '\n').filter { it.isNotBlank() } }
+        remember(text, shape, shapeCenterF, shapeTopF, shapeBottomF, imageWidthDp, imageHeightDp, maxFontSp, fontFamily) {
+            fitTextToShape(
+                words = words,
+                minFontSp = minFontSp,
+                maxFontSp = maxFontSp,
+                shape = shape,
+                centerF = shapeCenterF,
+                shapeTopF = shapeTopF,
+                shapeBottomF = shapeBottomF,
+                pageWidthPx = with(density) { imageWidthDp.dp.toPx() },
+                pageHeightPx = with(density) { imageHeightDp.dp.toPx() },
+                measureWord = { word, fontSp ->
+                    val style = TextStyle(fontSize = fontSp.sp, fontFamily = fontFamily)
+                    val strokeReserve = with(density) { maxOf(2.dp.toPx(), fontSp.sp.toPx() * STROKE_WIDTH_FACTOR) }
+                    textMeasurer.measure(text = word, style = style, softWrap = false).size.width + strokeReserve
+                },
+                spaceWidth = { fontSp ->
+                    val style = TextStyle(fontSize = fontSp.sp, fontFamily = fontFamily)
+                    // Šířka mezery = rozdíl mezi "a a" a "aa" - měřit samotné " " je nespolehlivé,
+                    // protože měřič koncové mezery ořezává.
+                    val withSpace = textMeasurer.measure(text = "a a", style = style, softWrap = false).size.width
+                    val without = textMeasurer.measure(text = "aa", style = style, softWrap = false).size.width
+                    (withSpace - without).toFloat().coerceAtLeast(1f)
+                },
+                lineHeightPx = { fontSp -> with(density) { (fontSp * 1.25f).sp.toPx() } },
+            )
+        }
+    } else {
+        null
+    }
+
+    if (shapedLayout != null) {
+        Box(
+            // offsetY je 0 - blok je svisle vycentrovaný přímo v tvaru bubliny (viz
+            // fitTextToShape) a vnější Box má u tvarových bloků přesně výšku tvaru.
+            modifier = Modifier.offset(x = offsetX),
+            contentAlignment = Alignment.Center,
+        ) {
+            StrokedTranslatedText(
+                text = shapedLayout.lines.joinToString("\n"),
+                fontSp = shapedLayout.fontSp,
+                fontFamily = fontFamily,
+                textColor = textColor,
+                strokeColor = strokeColor,
+            )
+        }
+        return
+    }
     // boxWidth je šířka VNĚJŠÍHO Boxu (viz volající) - Text uvnitř má reálně k dispozici
     // o horizontal padding Boxu (4.dp na každé straně) míň. Bez týhle korekce fitter vybíral
     // velikost písma, která se vejde do PLNÉ šířky boxu, ale skutečný Text dostal od Compose
@@ -423,14 +502,6 @@ private fun AutoFitTranslatedText(
             },
         )
     }
-
-    // Vzorkovaná barva pozadí bubliny (viz TranslatedBlock.bgColorArgb) může být i tmavá
-    // (stínovaný/černý shout box) - černý text na černém pozadí by byl nečitelný, proto
-    // volíme barvu textu (a opačnou barvu obrysu) podle jasu (luminance) pozadí, ne napevno.
-    val bg = Color(bgColorArgb)
-    val luminance = 0.299f * bg.red + 0.587f * bg.green + 0.114f * bg.blue
-    val textColor = if (luminance < 0.5f) Color.White else Color.Black
-    val strokeColor = if (luminance < 0.5f) Color.Black else Color.White
 
     Box(
         modifier = Modifier.width(boxWidth).offset(x = offsetX, y = offsetY),
