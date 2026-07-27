@@ -648,3 +648,57 @@ instance v `staticSources`). Komentáře s důvodem viz přímo v
 
 Commit `faff271` (17 zdrojů), dodatečně `mangafire` samostatným commitem
 poté, co uživatel zkontroloval, jestli je vše zapsané do seznamu.
+
+## 9) Pate kolo - 2026-07-27, uzivatelska korekce (manhuafast/manhuaus/immortalupdates)
+
+Uzivatel nesouhlasil s odstranenim manhuafast, manhuaus a immortalupdates -
+tyhle tri weby podle nej v appce **Kotatsu** (jiny opensource Android
+manga reader) funguji bez problemu.
+
+**Krizova kontrola s Kotatsu parsery** (github.com/KotatsuApp/kotatsu-parsers,
+naklonovano a prohledano lokalne):
+- `ImmortalUpdates.kt` je v Kotatsu oznacen `@Broken("Redirect to @MortalsGroove")`
+  a nahradni parser `MortalsGroove.kt` je TAKY `@Broken` - Kotatsu tedy sam
+  potvrzuje, ze tenhle web je mrtvy. Uzivatelovo tvrzeni o immortalupdates
+  se nepotvrdilo, **zustava odstraneno beze zmeny**.
+- `Manhuafast.kt` a `Manhuaus.kt` v Kotatsu **NEJSOU** oznaceny `@Broken` -
+  podle Kotatsu udrzovatelu tedy aktualne funguji. To byl dostatecny duvod
+  zkusit je vratit a poradne overit primo v appce (curl z tohohle
+  Windows stroje davno predtim vracel 403/525, ale to uz drive u mangahub
+  GraphQL API byl planny poplach zpusobeny TLS/JA3 otiskem curlu, ne
+  realnym problemem appky).
+
+**Zjisteni z Kotatsu kodu:** vychozi (non-`withoutAjax`) Madara parser v
+Kotatsu nenacita archiv pres GET `/manga/page/N/?m_orderby=`, ale POST na
+`/wp-admin/admin-ajax.php` (`action=madara_load_more`) - stejny mechanismus,
+jaky uz Jiyu pouziva jen pro `getChapterList()`. Hypoteza: WAF pravidlo
+blokuje konkretne GET scraping vzor na archivni URL, zatimco AJAX POST
+(napodobujici vlastni JS webu) muze projit.
+
+**Zivy test primo v appce (emulator jiyu_test, ne jen curl):**
+1. Docasne vraceny manhuafast + manhuaus do `SourceManager.kt`, build+test OK.
+2. **manhuafast**: GET archiv `/manga/page/1/?m_orderby=views` -> 403,
+   zobrazil se interaktivni Cloudflare Turnstile dialog, uspesne vyresen
+   (checkbox potvrzen), ale nasledny retry POPULARNI ARCHIV pozadavku
+   skoncil OPET 403 - stejny TLS/HTTP-otisk mismatch jako u evilmanga
+   (sekce 8b). Docasne implementovana AJAX varianta archivu
+   (`useAjaxArchive` v `MadaraSource.kt`, Kotatsu-style POST na
+   `admin-ajax.php`) - vysledek **HTTP 525** (Cloudflare SSL handshake
+   failed), reprodukovano 3x primo z appky (ne curlu) - tedy realny,
+   potvrzeny problem, ne curl/TLS-fingerprint artefakt.
+3. **manhuaus**: stejna AJAX varianta -> **HTTP 403** rovnou, bez zobrazeni
+   Turnstile dialogu (tvrde WAF pravidlo na urovni requestu, ne jen
+   chybejici cookie).
+
+**Zaver:** Kotatsuv `@Broken` flag pro tyhle dva zjevne neni aktualni
+(Kotatsu pravdepodobne pouziva jiny, vetsi architektonicky pristup -
+napr. smerovani celych requestu pres WebView/systemovy prohlizec, ne jen
+reseni vyzvy + OkHttp replay), ale nase appka je nema jak realne precist.
+**manhuafast a manhuaus znovu odstraneny** ze `SourceManager.kt` se
+zdokumentovanym duvodem (viz komentare tam). Docasne pridany
+`useAjaxArchive` mechanismus v `MadaraSource.kt` byl po zjisteni, ze
+problem nereси, zase odstranen (nepouzita komplexita bez realneho vyuziti).
+
+**Finalni stav po patem kole: 68 aktivnich zdroju** (beze zmeny -
+manhuafast/manhuaus byly jen docasne vraceny a znovu odstraneny,
+immortalupdates zustalo odstranene od ctvrteho kola).

@@ -178,6 +178,27 @@ class SourceManager @Inject constructor(
         vortexScansSource,
         mangaKSource,
         // ── Manhua (čínské komiksy) ──────────────────────────────────────────
+        // manhuafast/manhuaus: uživatel 2026-07-27 upozornil, že oba weby v appce
+        // Kotatsu fungují bez problémů, a Kotatsu parser je (na rozdíl od
+        // ImmortalUpdates) neoznačuje jako @Broken. Kvůli tomu byly dočasně
+        // vráceny zpět a přetestovány ŽIVĚ v appce na emulátoru (ne jen curlem):
+        // - manhuafast: GET archiv (`/manga/page/1/?m_orderby=`) → 403 i po
+        //   úspěšném interaktivním vyřešení Cloudflare Turnstile výzvy (stejný
+        //   TLS/HTTP-otisk mismatch jako u evilmanga). Zkusen i Kotatsu přístup -
+        //   AJAX POST na `/wp-admin/admin-ajax.php` (`action=madara_load_more`,
+        //   stejný endpoint, který appka používá pro getChapterList) - výsledek
+        //   byl HTTP 525 (Cloudflare SSL handshake failed), reprodukováno 3x.
+        // - manhuaus: stejný AJAX POST přístup → HTTP 403 rovnou, bez zobrazení
+        //   Turnstile dialogu (tvrdé WAF pravidlo, ne jen chybějící cookie).
+        // Obě selhání potvrzena PŘÍMO V APPCE (ne curlem), takže nejde o
+        // TLS/JA3 fingerprint artefakt tohoto Windows stroje - jde o reálnou
+        // ochranu, kterou appka nemá jak obejít. Kotatsu zjevně používá jiný
+        // mechanismus (pravděpodobně routuje celé requesty přes WebView/systémový
+        // prohlížeč, ne jen řešení výzvy + OkHttp replay) - jeho @Broken flag
+        // pro tyhle dva zjevně jen není aktuální. Znovu odstraněno, viz
+        // docs/source-audit-2026-07-26.md sekce 9. AJAX-archiv mechanismus v
+        // MadaraSource.kt byl po tomto zjištění zase odstraněn (nepoužitá
+        // komplexita, nikam jinam se nehodí).
         MadaraSource("manhuaplus",    "Manhuaplus",         "https://manhuaplus.com",       client, contentTypeOverride = "MANHUA"),
         // ── Manhwa scanlation skupiny ────────────────────────────────────────
         MadaraSource("manhwatop",     "Manhwatop",          "https://manhwatop.com",        client, contentTypeOverride = "MANHWA"),
@@ -347,10 +368,14 @@ class SourceManager @Inject constructor(
         // tyhle weby nemůže nikdy přečíst, i když prohlížení/hledání může naživo
         // vypadat funkčně. curl 2026-07-27 reconfirmed real "Just a moment..." (403)
         // na všech níže - stejná kategorie ochrany jako evilmanga/kunmanga:
-        // webtoonxyz, aquareader, foxaholic, immortalupdates, manhuafast, manhuaus,
-        // scribblehub, manganato (natomanga.com - nově chráněno, dřív fungovalo bez
-        // ochrany). Viz *Source.kt třídy jednotlivých zdrojů (ponechány pro případ,
-        // že by appka v budoucnu routovala requesty přes WebView).
+        // webtoonxyz, aquareader, foxaholic, immortalupdates, scribblehub,
+        // manganato (natomanga.com - nově chráněno, dřív fungovalo bez ochrany),
+        // manhuafast, manhuaus (viz komentář u sekce "Manhua" výše - dočasně
+        // vráceny 2026-07-27 na uživatelův popud, ale živý test v appce/emulátoru
+        // potvrdil stejné selhání jako u evilmanga i s Kotatsu-style AJAX
+        // archivem, takže odstraněny znovu).
+        // Viz *Source.kt třídy jednotlivých zdrojů (ponechány pro případ, že by
+        // appka v budoucnu routovala requesty přes WebView).
         //
         // madaradex: NEODSTRANĚN jako "CF-gated" web, ale CDN subdoména
         // (cdn.madaradex.org) sama vrací 403 i se správným Refererem (vlastní WAF
