@@ -28,6 +28,7 @@ data class MadaraSelectors(
     val status: String = "div.post-status .summary-content, .post-content_item .summary-content",
     val chapterList: String = "li.wp-manga-chapter",
     val pageImage: String = "div.reading-content img, div.page-break img",
+    val novelContent: String = "div.reading-content p",
 ) {
     companion object {
         val DEFAULT = MadaraSelectors()
@@ -194,6 +195,18 @@ class MadaraSource(
     override suspend fun getPageList(chapter: SChapter): List<Page> =
         withContext(Dispatchers.IO) {
             val doc = fetchDocument(chapter.url)
+
+            // Madara sablona se pouziva i pro romanove (NOVEL) weby - obsah
+            // kapitoly je pak text v <p> tazich stejneho ".reading-content"
+            // kontejneru, ne <img> - puvodne se tu vzdy hledaly jen obrazky,
+            // takze romanove Madara zdroje (wuxiaworldsite, ranovel) vzdy
+            // vratily prazdny seznam stranek. "novel://text" je sentinel,
+            // ktery ctecka (ReaderViewModel) rozezna jako text, ne obrazek.
+            if (contentTypeOverride == "NOVEL") {
+                val text = doc.select(selectors.novelContent).joinToString("\n\n") { it.text().trim() }
+                return@withContext if (text.isBlank()) emptyList() else listOf(Page(0, text, "novel://text"))
+            }
+
             val images = doc.select(selectors.pageImage)
 
             images.mapIndexedNotNull { i, img ->

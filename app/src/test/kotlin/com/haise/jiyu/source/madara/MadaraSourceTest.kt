@@ -155,4 +155,43 @@ class MadaraSourceTest {
         assertEquals(2, customSource.getPopular(1).size)
         assertEquals(2, customSource.search("one piece", 1).size)
     }
+
+    @Test
+    fun `getPageList extracts paragraph text for NOVEL content type`() = runTest {
+        val novelPagesHtml = """
+            <html><body>
+            <div class="reading-content">
+              <p>First paragraph.</p>
+              <p>Second paragraph.</p>
+            </div>
+            </body></html>
+        """.trimIndent()
+        server.dispatcher = object : Dispatcher() {
+            override fun dispatch(request: RecordedRequest): MockResponse {
+                val path = request.path.orEmpty()
+                return when {
+                    request.method == "POST" && path.contains("/ajax/chapters/") -> MockResponse().setBody(chaptersHtml)
+                    path.startsWith("/manga/page/") -> MockResponse().setBody(listHtml)
+                    path == "/manga/one-piece/" -> MockResponse().setBody(detailHtml)
+                    path == "/manga/one-piece/chapter-1092/" -> MockResponse().setBody(novelPagesHtml)
+                    else -> MockResponse().setResponseCode(404)
+                }
+            }
+        }
+        val novelSource = MadaraSource(
+            id = "madara:novel",
+            name = "Test Madara Novel",
+            baseUrl = server.url("/").toString(),
+            client = OkHttpClient(),
+            contentTypeOverride = "NOVEL",
+        )
+        val manga = novelSource.getPopular(1).first()
+        val chapter = novelSource.getChapterList(manga).first()
+
+        val pages = novelSource.getPageList(chapter)
+
+        assertEquals(1, pages.size)
+        assertEquals("novel://text", pages[0].imageUrl)
+        assertEquals("First paragraph.\n\nSecond paragraph.", pages[0].url)
+    }
 }

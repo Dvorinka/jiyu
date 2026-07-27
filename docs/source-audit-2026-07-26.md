@@ -438,16 +438,22 @@ nový `hotlinkRefererPrefixes`), `app/src/main/kotlin/com/haise/jiyu/source/manh
 
 ### 6e. ❌ Prázdný/chybný seznam kapitol nebo stránek
 
-| ID | Chyba | Poznámka |
+**Update 2026-07-27 (třetí kolo):** 5 z 8 se ukázalo jako falešný poplach -
+ruční ověření konkrétního reálného titulu/kapitoly (ne náhodně vybraného,
+který mohl mít 0 kapitol nebo být uzamčený) prošlo bez problémů, beze změny
+kódu. Skutečná chyba se potvrdila jen u 2 (wuxiaworldsite/ranovel - společná
+příčina, opravena) + wuxiabox zůstává nevyřešen:
+
+| ID | Chyba | Výsledek |
 |---|---|---|
-| dynasty | seznam kapitol prázdný | Dynasty Scans - možná změna API |
-| wuxiabox | seznam kapitol prázdný | |
-| mangahome | seznam kapitol prázdný | |
-| ranobes | seznam stránek prázdný (50 kapitol nalezeno) | |
-| novelhall | seznam stránek prázdný (762 kapitol nalezeno) | adult zdroj |
-| voidscans | seznam stránek prázdný (6 kapitol nalezeno) | |
-| wuxiaworldsite | seznam stránek prázdný (288 kapitol nalezeno, po opravě 6b) | |
-| ranovel | stránka kapitoly 403 (471 kapitol nalezeno, po opravě 6b) | |
+| dynasty | seznam kapitol prázdný | **re-test OK** - `.chapter-list dd a[href*='/chapters/']` funguje, prázdno bylo jen u konkrétního titulu bez nahraných kapitol |
+| wuxiabox | seznam kapitol prázdný | **potvrzeno, needs bigger investigation** - AJAX endpointy `/e/extend/fy.php` i `/e/extend/fy1.php?wjm={slug}` vrací prázdný `<ul class="chapter-list">`; detail stránka neobsahuje žádnou stopu po správném volání (pravděpodobně jinačí endpoint/parametr skrytý v minifikovaném `app.min.js`) |
+| mangahome | seznam kapitol prázdný | **re-test OK** - `ul.detail-chlist li` i `img.image[src]` fungují na reálném titulu |
+| ranobes | seznam stránek prázdný (50 kapitol nalezeno) | **re-test OK** - `#arrticle` (skutečný, ne překlep) obsahuje plný text na reálné kapitole |
+| novelhall | seznam stránek prázdný (762 kapitol nalezeno) | **re-test OK** - `div.book-catalog li a` i `div#htmlContent` fungují na reálné kapitole |
+| voidscans | seznam stránek prázdný (6 kapitol nalezeno) | **re-test OK** - `img[data-elem=pinchzoomer]` funguje, jen `div.card.shadow-sm` třída má navíc `h-100` (CSS multi-class selektor to nevadí) |
+| wuxiaworldsite | seznam stránek prázdný (288 kapitol nalezeno, po opravě 6b) | **opraveno** - skutečná příčina: `MadaraSource.getPageList()` uměl vytáhnout jen `<img>` (obrázky), ale Madara-šablonové NOVEL weby (`contentTypeOverride = "NOVEL"`) mají obsah kapitoly jako text v `<p>` uvnitř `.reading-content` - appka tak u KAŽDÉHO Madara NOVEL zdroje vždy vracela 0 stránek. Přidána větev v `MadaraSource.kt` - když `contentTypeOverride == "NOVEL"`, vytáhne se text z nového `selectors.novelContent` (`div.reading-content p`) a vrátí se jako `Page("novel://text")` sentinel (stejná konvence jako `NovelHallSource`/`WuxiaBoxSource`). Přidán test `getPageList extracts paragraph text for NOVEL content type`. |
+| ranovel | stránka kapitoly 403 (471 kapitol nalezeno, po opravě 6b) | **stejná NOVEL oprava aplikována**, ale zdroj navíc má vlastní problém - konkrétně stránky KAPITOL (ne archiv/detail) jsou za skutečnou Cloudflare JS výzvou (`Cf-Mitigated: challenge`, `Just a moment...`) - archiv/detail prochází bez problémů. Spoléhá na existující `CloudflareInterceptor`, živě netestováno tento kruh (stejná kategorie jako 6c) - **needs bigger investigation / live test**. |
 
 ### 6f. ❌ Prázdný seznam populárních titulů - potvrzeno jako REÁLNÝ problém (ne Cloudflare/blokace)
 
