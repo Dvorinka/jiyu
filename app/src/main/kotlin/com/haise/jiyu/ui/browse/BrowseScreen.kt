@@ -220,6 +220,34 @@ fun BrowseScreen(
             }
         }
 
+        // ── Oblíbené zdroje - horizontální karusel zvýrazněných karet ────────
+        val favoriteSources = sources.filter { it.id in favoriteSourceIds }
+        if (favoriteSources.isNotEmpty()) {
+            Column(modifier = Modifier.padding(top = 4.dp, bottom = 4.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(TablerIcons.Heart, contentDescription = null, tint = Pink, modifier = Modifier.size(16.dp))
+                    Text(
+                        text = stringResource(R.string.browse_favorites_section),
+                        color = TextPrimary,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(start = 6.dp),
+                    )
+                }
+                LazyRow(
+                    contentPadding = PaddingValues(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    items(favoriteSources, key = { "fav_${it.id}" }) { source ->
+                        FeaturedSourceCard(source = source, onClick = { onOpenSource(source.id) })
+                    }
+                }
+            }
+        }
+
         // ── Mřížka zdrojů ─────────────────────────────────────────────────────
         val navBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
         if (sources.isEmpty()) {
@@ -339,6 +367,87 @@ private fun languageFlag(code: String): String = when (code.lowercase()) {
 private fun faviconUrlFor(homepageUrl: String): String {
     val domain = homepageUrl.removePrefix("https://").removePrefix("http://").substringBefore("/")
     return "https://www.google.com/s2/favicons?domain=$domain&sz=64"
+}
+
+/**
+ * Zvýrazněná karta pro karusel oblíbených zdrojů nad hlavní mřížkou - stejné
+ * vizuální prvky jako [SourceCard] (monogram/favicon, typ obsahu, jazyk), ale
+ * větší a s odznakem srdíčka v rohu, aby oblíbené zdroje šly najít na první
+ * pohled bez scrollování celé mřížky.
+ */
+@Composable
+private fun FeaturedSourceCard(source: MangaSource, onClick: () -> Unit) {
+    val initials = remember(source.name) {
+        source.name.trim().split(" ")
+            .mapNotNull { word -> word.firstOrNull { it.isLetterOrDigit() }?.uppercaseChar() }
+            .take(2)
+            .joinToString("")
+    }
+    val accent = remember(source.id) { accentFor(source.id) }
+
+    Box(
+        modifier = Modifier
+            .width(150.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(NightBlue)
+            .border(1.dp, Pink.copy(alpha = 0.35f), RoundedCornerShape(16.dp))
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onClick,
+            )
+            .padding(12.dp),
+    ) {
+        Column {
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(accent.copy(alpha = 0.18f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(text = initials.ifBlank { "?" }, color = accent, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                source.homepageUrl?.let { homepage ->
+                    var showFavicon by remember(source.id) { mutableStateOf(false) }
+                    AsyncImage(
+                        model = faviconUrlFor(homepage),
+                        contentDescription = null,
+                        contentScale = ContentScale.Fit,
+                        modifier = Modifier
+                            .matchParentSize()
+                            .padding(8.dp)
+                            .alpha(if (showFavicon) 1f else 0f),
+                        onState = { state -> showFavicon = state is AsyncImagePainter.State.Success },
+                    )
+                }
+            }
+            Spacer(Modifier.height(10.dp))
+            Text(
+                text = source.name,
+                color = TextPrimary,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                lineHeight = 15.sp,
+            )
+            Spacer(Modifier.height(4.dp))
+            Row {
+                Text(text = contentTypeLabel(source.contentType), color = TextSecondary, fontSize = 10.sp, maxLines = 1)
+                Text(text = " · ${languageFlag(source.language)} ${source.language.uppercase()}", color = TextSecondary, fontSize = 10.sp, maxLines = 1)
+            }
+        }
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .size(22.dp)
+                .clip(RoundedCornerShape(50))
+                .background(Pink.copy(alpha = 0.22f)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(TablerIcons.Heart, contentDescription = null, tint = Pink, modifier = Modifier.size(12.dp))
+        }
+    }
 }
 
 /** Karta zdroje - monogram (barevně odlišený, viz [accentFor]), název, typ obsahu a jazyk. */
