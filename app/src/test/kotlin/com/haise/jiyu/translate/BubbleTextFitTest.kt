@@ -48,6 +48,21 @@ class BubbleTextFitTest {
     }
 
     @Test
+    fun `shapeCenterAtYF tracks the offset center of a compound double-circle shape`() {
+        // Reprodukuje nahlaseny bug - horni (uzsi) kruh dvojkruhove bubliny ma jiny stred
+        // nez spodni (sirsi) kruh, protoze bublina neni souose polozena.
+        val shape = listOf(
+            BubbleShapePoint(0.0f, 0.30f, 0.60f), // horni kruh: sirka 0.30, stred 0.45
+            BubbleShapePoint(0.5f, 0.35f, 0.65f), // "pas" mezi kruhy
+            BubbleShapePoint(1.0f, 0.10f, 0.90f), // spodni kruh: sirka 0.80, stred 0.50
+        )
+        assertEquals(0.45f, shapeCenterAtYF(shape, 0.0f), 0.001f)
+        assertEquals(0.50f, shapeCenterAtYF(shape, 1.0f), 0.001f)
+        // Prumerny/globalni stred cele ohranicujici plochy (0.10..0.90) by byl 0.50 pro OBA
+        // konce - presne tohle je bug, ktery per-radkove centrovani resi (viz TranslationLayer).
+    }
+
+    @Test
     fun `shapeWidthAtYF clamps outside the sampled range`() {
         val shape = listOf(
             BubbleShapePoint(yF = 0.2f, leftF = 0.3f, rightF = 0.5f),
@@ -156,5 +171,51 @@ class BubbleTextFitTest {
             measure = { fontSp, maxW -> fakeMeasure("KRATKY TEXT", fontSp, maxW) },
         )
         assertEquals(0.80f * imageWidthPx, result.widthPx, 1f)
+    }
+
+    @Test
+    fun `single narrow notch does not force tiny font on an otherwise spacious scalloped bubble`() {
+        // Reprodukuje nahlaseny bug (velka bublina se zvlnenym/girlandovym okrajem vysla
+        // s drobounkym pismem) - vroubkovany okraj strida siroko/uzko kazdy vzorek, ale
+        // prumerovani pres celou vysku radku (ne jeden bod uprostred) tohle vyhladi.
+        val scallopedShape = (0 until 24).map { i ->
+            val yF = i / 23f
+            // Siroka bublina (0.75) s pravidelnymi mensimi zarezy (0.55) kazdy druhy vzorek -
+            // podstatne mirnejsi nez skutecny "starburst" (isJaggedShape), ale porad hodne
+            // kolisajici bod od bodu.
+            val width = if (i % 2 == 0) 0.75f else 0.55f
+            BubbleShapePoint(yF = yF, leftF = 0.5f - width / 2f, rightF = 0.5f + width / 2f)
+        }
+        val imageWidthPx = 1000f
+        val widthAtYF: (Float) -> Float = { yF -> shapeWidthAtYF(scallopedShape, yF) * imageWidthPx }
+
+        val result = fitFontSizeToShape(
+            minFontSp = 6f,
+            maxFontSp = 36f,
+            boxWidthPx = 0.75f * imageWidthPx,
+            maxHeightPx = 300f,
+            shapeTopF = 0f,
+            imageHeightPx = 1000f,
+            widthAtYF = widthAtYF,
+            measure = { fontSp, maxW -> fakeMeasure("HOW COULD THAT BE SURELY WE ARE NOT FIRST TIMERS", fontSp, maxW) },
+        )
+        assertTrue(
+            "expected a comfortably readable font size in a spacious scalloped bubble, got ${result.fontSp}",
+            result.fontSp > 18f,
+        )
+    }
+
+    @Test
+    fun `averageWidthAcrossLine smooths a single narrow sample within the line span`() {
+        val shape = listOf(
+            BubbleShapePoint(0.0f, 0.0f, 1.0f), // width 1.0
+            BubbleShapePoint(0.5f, 0.45f, 0.55f), // width 0.1 - narrow notch exactly at the middle
+            BubbleShapePoint(1.0f, 0.0f, 1.0f), // width 1.0
+        )
+        val widthAtYF: (Float) -> Float = { yF -> shapeWidthAtYF(shape, yF) }
+        // Cely radek pokryva rozsah 0.0..1.0 (stejny jako cely tvar) - prumer pres 5 bodu
+        // (0, 0.25, 0.5, 0.75, 1.0) musi byt vyrazne vetsi nez jediny bod presne v zarezu (0.1).
+        val avg = averageWidthAcrossLine(widthAtYF, 0.0f, 1.0f)
+        assertTrue("expected averaging to smooth past the single narrow notch, got $avg", avg > 0.5f)
     }
 }

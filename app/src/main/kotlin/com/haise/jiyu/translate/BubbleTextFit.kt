@@ -10,13 +10,15 @@ data class TextMeasurement(val totalHeightPx: Float, val lines: List<LineMetrics
 data class ShapeFitResult(val fontSp: Float, val widthPx: Float)
 
 /**
- * Lineárně interpolovaná šířka (rightF-leftF, normalizované 0..1 souřadnice stránky) obrysu
- * bubliny v konkrétní výšce [yF] - viz [BubbleShapeDetector]. Body jsou seřazené odshora dolů
- * (rostoucí yF), mimo rozsah se hodnota přichytí na krajní bod.
+ * Lineárně interpolované levý/pravý okraj obrysu bubliny v konkrétní výšce [yF] (normalizované
+ * 0..1 souřadnice stránky) - viz [BubbleShapeDetector]. Body jsou seřazené odshora dolů
+ * (rostoucí yF), mimo rozsah se hodnota přichytí na krajní bod. Sdílené jádro pro
+ * [shapeWidthAtYF] (šířka) a [shapeCenterAtYF] (vodorovný střed) - obojí bublina potřebuje
+ * počítat úplně stejnou interpolací, jen jinak zkombinovat výsledný levý/pravý bod.
  */
-fun shapeWidthAtYF(shape: List<BubbleShapePoint>, yF: Float): Float {
-    if (shape.isEmpty()) return 1f
-    if (shape.size == 1) return (shape[0].rightF - shape[0].leftF).coerceAtLeast(0.0001f)
+private fun shapeBoundsAtYF(shape: List<BubbleShapePoint>, yF: Float): Pair<Float, Float> {
+    if (shape.isEmpty()) return 0f to 1f
+    if (shape.size == 1) return shape[0].leftF to shape[0].rightF
 
     val clamped = yF.coerceIn(shape.first().yF, shape.last().yF)
     var i = 0
@@ -24,11 +26,29 @@ fun shapeWidthAtYF(shape: List<BubbleShapePoint>, yF: Float): Float {
     val a = shape[i]
     val b = shape[i + 1]
     val span = (b.yF - a.yF)
-    if (span <= 0.0001f) return (a.rightF - a.leftF).coerceAtLeast(0.0001f)
+    if (span <= 0.0001f) return a.leftF to a.rightF
     val t = (clamped - a.yF) / span
     val left = a.leftF + (b.leftF - a.leftF) * t
     val right = a.rightF + (b.rightF - a.rightF) * t
+    return left to right
+}
+
+/** Šířka obrysu bubliny v konkrétní výšce [yF] - viz [shapeBoundsAtYF]. */
+fun shapeWidthAtYF(shape: List<BubbleShapePoint>, yF: Float): Float {
+    val (left, right) = shapeBoundsAtYF(shape, yF)
     return (right - left).coerceAtLeast(0.0001f)
+}
+
+/**
+ * Vodorovný střed obrysu bubliny v konkrétní výšce [yF] - viz [shapeBoundsAtYF]. U složených
+ * tvarů (dvojkruhová "myšlenková" bublina) se tohle liší řádek od řádku - text vycentrovaný
+ * jen podle JEDNOHO globálního středu (průměr celého tvaru) pak v užší části tvaru vyjde
+ * mimo střed a levá/pravá strana řádku se ořízne o obrys (viz uživatelská zpětná vazba -
+ * horní řádky dvojkruhové bubliny useknuté zleva).
+ */
+fun shapeCenterAtYF(shape: List<BubbleShapePoint>, yF: Float): Float {
+    val (left, right) = shapeBoundsAtYF(shape, yF)
+    return (left + right) / 2f
 }
 
 /** Hrubý krok prvního sestupu z [ShapeFitResult] hledání (viz [fitFontSizeToShape]). */
@@ -48,6 +68,29 @@ private const val FINE_STEP_SP = 0.25f
 private const val DEFAULT_MAX_ITERATIONS = 6
 
 private data class FitAttempt(val fits: Boolean, val widthPx: Float)
+
+/** Kolik bodů se vzorkuje napříč výškou jednoho řádku - viz [averageWidthAcrossLine]. */
+private const val LINE_WIDTH_SAMPLE_COUNT = 5
+
+/**
+ * Průměrná dostupná šířka tvaru NAPŘÍČ CELOU výškou řádku (od [topYF] po [bottomYF]), ne jen
+ * v jednom bodě uprostřed - u zvlněných/klikatých obrysů (girlandový okraj hravé bubliny,
+ * zářez mezi dvěma spojenými kruhy) by jediný bod uprostřed mohl náhodou padnout přesně do
+ * úzkého zářezu a umělo shodit šířku celého řádku (a tím i celého odstavce, viz
+ * [attemptFit]), i když je řádek jinak z většiny ve volném prostoru. Průměr přes víc bodů
+ * odpovídá tomu, jak by bublinu "od oka" odhadl člověk - drobný zářez nezmenší dojem
+ * z celkově prostorné bubliny, jen extrémně úzký/kompaktní tvar sníží průměr doopravdy.
+ */
+internal fun averageWidthAcrossLine(widthAtYF: (Float) -> Float, topYF: Float, bottomYF: Float): Float {
+    val span = bottomYF - topYF
+    if (span <= 0f) return widthAtYF(topYF)
+    var sum = 0f
+    for (i in 0 until LINE_WIDTH_SAMPLE_COUNT) {
+        val t = i / (LINE_WIDTH_SAMPLE_COUNT - 1).toFloat()
+        sum += widthAtYF(topYF + span * t)
+    }
+    return sum / LINE_WIDTH_SAMPLE_COUNT
+}
 
 /**
  * Zkusí, jestli se [text] vejde při [fontSp] do [maxHeightPx] - a pokud je zadané [widthAtYF]
@@ -75,8 +118,9 @@ private fun attemptFit(
         var tightestAvailable = Float.MAX_VALUE
         var anyOverflow = false
         for (line in measured.lines) {
-            val midYF = shapeTopF + ((line.topPx + line.bottomPx) / 2f) / imageHeightPx
-            val available = widthAtYF(midYF)
+            val topYF = shapeTopF + line.topPx / imageHeightPx
+            val bottomYF = shapeTopF + line.bottomPx / imageHeightPx
+            val available = averageWidthAcrossLine(widthAtYF, topYF, bottomYF)
             if (line.widthPx > available + 0.5f) anyOverflow = true
             if (available < tightestAvailable) tightestAvailable = available
         }

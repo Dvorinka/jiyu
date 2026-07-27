@@ -23,10 +23,25 @@ object BubbleClassifier {
         "LEVEL UP", "SKILL", "STATUS", " HP", " MP", " EXP", "QUEST", "ACHIEVEMENT", "DUNGEON",
     )
 
+    /**
+     * Běžná krátká anglická citoslovce/replika bez mezery, co by jinak spadla do stejného
+     * "krátký ALL CAPS bez mezery" pravidla jako opravdové zvukové efekty (viz [detectSfx]) -
+     * a protože SFX bublina se nikdy nepřekládá ani nevykresluje (originál zůstává), takhle
+     * zůstávala anglicky i naprosto běžná replika typu "DAMN..." (viz uživatelská zpětná
+     * vazba - bublina zůstala nepřeložená). Seznam NENÍ o rozpoznání smyslu, jen o vyloučení
+     * nejčastějších skutečných slov z falešně pozitivního zásahu.
+     */
+    private val shortWordsNotSfx = setOf(
+        "DAMN", "WAIT", "STOP", "NO", "YES", "HEY", "WHAT", "WHY", "HELP", "RUN", "GO",
+        "OK", "OKAY", "HUH", "WHO", "NOW", "LOOK", "COME", "MOVE", "OUT", "HERE", "THERE",
+        "WHOA", "OH", "AH", "HA", "UGH", "NOPE", "YEAH", "SURE", "FINE", "GOOD", "BAD",
+        "NEVER", "ALWAYS", "PLEASE", "SORRY", "THANKS", "WOW", "DAMMIT", "SHIT", "HELL",
+    )
+
     fun classify(raw: RawTextBlock, lineCount: Int): ClassifiedBubble {
         val trimmed = raw.text.trim()
         val letters = trimmed.filter { it.isLetter() }
-        val isSfx = detectSfx(trimmed, letters)
+        val isSfx = detectSfx(raw, trimmed, letters)
 
         val sizeTag = when {
             isSfx -> SizeTag.SFX
@@ -64,7 +79,10 @@ object BubbleClassifier {
         }
     }
 
-    private fun detectSfx(trimmed: String, letters: String): Boolean {
+    /** "SIRENSCANS.COM", "ENSCANS.COM" apod. - viz [looksLikeWatermark]. */
+    private val domainPattern = Regex("[A-Z0-9]{2,}\\.(COM|NET|ORG|INFO|IO|TO|CC|ME)")
+
+    private fun detectSfx(raw: RawTextBlock, trimmed: String, letters: String): Boolean {
         if (trimmed.isEmpty()) return false
 
         // Čistě symboly/interpunkce - "!!!", "???", "*gasp*" bez písmen kolem
@@ -73,6 +91,8 @@ object BubbleClassifier {
         val core = trimmed.trim('*', '!', '?', '.', ' ')
         if (core.isEmpty()) return false
 
+        if (looksLikeWatermark(raw, core)) return true
+
         // Holé číslo bez jediného písmene - typicky číslo panelu/stránky vypálené do skenu
         // (běžné u starších scanlation releasů jako MangaStream), ne replika. Skutečný dialog
         // se nikdy nezúží na samotnou číslici bez okolního textu. Bez tohohle OCR box kolem
@@ -80,8 +100,12 @@ object BubbleClassifier {
         // často "uteče" do sousední skutečné bubliny a vytvoří tvar mimo obě.
         if (letters.isEmpty() && core.all { it.isDigit() }) return true
 
-        // Krátký ALL CAPS text bez mezer (typicky zvuk, ne věta) - "BOOM!!!" ale ne "NO WAY"
-        if (letters.length in 1..6 && letters.all { it.isUpperCase() } && !core.contains(' ')) return true
+        // Krátký ALL CAPS text bez mezer (typicky zvuk, ne věta) - "BOOM!!!" ale ne "NO WAY".
+        // Vyjímka pro běžná krátká slova (viz shortWordsNotSfx) - ta stejné pravidlo splňují,
+        // ale jsou to skutečné repliky, ne zvukové efekty.
+        if (letters.length in 1..6 && letters.all { it.isUpperCase() } && !core.contains(' ') &&
+            core.uppercase() !in shortWordsNotSfx
+        ) return true
 
         if (sfxWords.contains(core.uppercase())) return true
 
@@ -90,6 +114,27 @@ object BubbleClassifier {
         if (core.length in 2..6 && core.any { it.code > 0x3000 } && isRepeatingPattern(core)) return true
 
         return false
+    }
+
+    /**
+     * Vodoznak/tag scanlation skupiny přes kresbu (např. "SirenScans.com" diagonálně přes
+     * panel) se chová jako normální OCR blok a dřív se přeložil a překryl plnou barevnou
+     * plochou přes půl obrázku (viz uživatelská zpětná vazba - černá skvrna přes obličej
+     * postavy). Dvě nezávislé stopy:
+     *  1) Text obsahuje doménový vzor (".com"/".net"/...) - vodoznaky jsou skoro vždy
+     *     web adresa skenlační skupiny, normální replika takhle nikdy nevypadá.
+     *  2) Vodoznak čtený OCR "po písmenkách" (svisle otočený text) sloučí spoustu OCR
+     *     řádků do jednoho hodně úzkého a hodně vysokého bloku - normální dialogová
+     *     bublina takhle nevypadá ani u dlouhé replity.
+     */
+    private fun looksLikeWatermark(raw: RawTextBlock, core: String): Boolean {
+        val collapsed = core.replace(" ", "").replace("\n", "").uppercase()
+        if (domainPattern.containsMatchIn(collapsed)) return true
+
+        val width = raw.rightF - raw.leftF
+        val height = raw.bottomF - raw.topF
+        val aspectRatio = if (height > 0f) width / height else 1f
+        return raw.lineCount >= 8 && aspectRatio < 0.15f
     }
 
     private fun isRepeatingPattern(text: String): Boolean {
