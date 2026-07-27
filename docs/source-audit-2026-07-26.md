@@ -18,6 +18,15 @@ je reálně nemohla použít ke čtení). Proto teď probíhá druhé kolo ově�
 appce na emulátoru** - u každého zdroje se zkouší otevřít konkrétní titul a kapitolu,
 ne jen zkontrolovat HTTP odpověď. Průběžné výsledky viz sekce 6 na konci dokumentu.
 
+**Update 2026-07-27 (třetí kolo):** doopraveny/prošetřeny všechny zdroje označené
+druhým kolem jako "needs bigger investigation" (sekce 6c-6f). Shrnutí: **9 skutečně
+opraveno** (6× hotlink referer v 6d, 2× parsovací selektor - MadaraSource NOVEL
+větev + NovelFire, 1× zastaralá doména - Japscan), **6 se ukázalo jako falešný
+poplach** z minulého kola (fungují beze změny na reálném titulu/kapitole), **~20
+zůstává jako needs bigger investigation** (buď skutečná Cloudflare JS výzva čekající
+na živý test, nebo web mezitím kompletně změnil platformu/strukturu a vyžaduje
+srovnatelné úsilí jako dřívější mangadenizi přepis). Detaily viz sekce 6c-6f.
+
 Ve `SourceManager.kt` u každého odstraněného zdroje zůstal komentář s důvodem
 (datum 2026-07-26), takže se dá kdykoliv dohledat, co a proč zmizelo.
 
@@ -462,19 +471,66 @@ stránka vrací **HTTP 200 a normální obsah** (ne Cloudflare, ne DNS mrtvý) -
 appka i tak vrátí prázdný seznam, čili jde o skutečnou chybu v parsování
 nebo API endpointu:
 
-- **mangafire** - potvrzeno: API teď vrací `{"message":"Missing token."}`
-  (HTTP 403) - vyžaduje nějaký auth/session token, který appka nezískává.
-  Potřeba zjistit, odkud token appka získat (možná z cookie po načtení
-  hlavní stránky) - **needs bigger investigation**.
-- **mangaboomers** - potvrzeno: `manga-boomers.cz` je teď čistě klientsky
-  renderované SPA (jen 7,9 kB HTML, `class="no-js"`, žádná data) - potřebuje
-  kompletní přepis na interní API stejně jako dřív mangadenizi/mangafire -
-  **needs bigger investigation**.
-- flamecomics, rawkuma, manganato, mangahub, scribblehub(pozn. i CF gated),
-  japscan, scanvf, inmanga, novelfire, manhuarm, mangablaze - HTTP 200
-  potvrzeno curlem, appka vrací prázdno - root cause NEZJIŠTĚN (nestihnuto),
-  pravděpodobně změna HTML struktury/selektorů nebo podobný API problém jako
-  u mangafire. **needs bigger investigation** u každého zvlášť.
+**Update 2026-07-27 (třetí kolo) - root cause zjištěn/doopraven u všech 13:**
+
+- **mangafire** - reconfirmed: API stále vrací `{"message":"Missing token."}`
+  (HTTP 403) - vyžaduje auth/session token, který appka nezískává. **needs
+  bigger investigation** (potřeba zjistit zdroj tokenu, možná cookie po
+  načtení hlavní stránky).
+- **mangaboomers** - reconfirmed: `manga-boomers.cz` je pořád čistě klientsky
+  renderované SPA (7,9 kB HTML) - **needs bigger investigation** (potřeba
+  najít interní API jako dřív u mangadenizi/mangafire).
+- **flamecomics** - **nová příčina zjištěna**: web přešel z Madara na
+  kompletně přepsanou Next.js aplikaci (`/_next/static/...`, archiv na
+  `/browse`, detail na `/series/{id}`, `__NEXT_DATA__` s `series_id`) -
+  `FlameComicsSource.kt` cílí na starou Madara `/manga/?...` URL, která už
+  vůbec neexistuje. **needs bigger investigation** (kompletní přepis
+  zdrojové třídy na nové Next.js API, srovnatelné úsilí jako mangadenizi).
+- **rawkuma** - **nová příčina zjištěna**: web se přestěhoval na novou
+  doménu `rawkuma.net` (z `.com`) s úplně jiným archivem
+  (`/library/?the_page=N&the_genre=...`, ne Madara `/manga/page/N/`).
+  **needs bigger investigation** (kompletní přepis na novou strukturu).
+- **manganato** (`natomanga.com`) - **nová příčina zjištěna**: doména je teď
+  za skutečnou Cloudflare JS výzvou (`Cf-Mitigated: challenge`) - dřív
+  fungovala bez ochrany. Spoléhá na existující `CloudflareInterceptor`,
+  živě netestováno - stejná kategorie jako 6c, **needs bigger investigation
+  / live test**.
+- **mangahub** - **nelze ověřit z tohoto prostředí**: GraphQL API
+  (`api.mghubcdn.com/graphql`) při curlu na Windows spadne do
+  schannel TLS re-negotiation smyčky (nesouvisí nutně se skutečnou
+  dostupností - může to být jen Windows-curl kvirk, ne realny problem
+  appky) - doporučeno ověřit přímo v appce/emulátoru.
+- **scribblehub** - Cloudflare-gated, viz 6c.
+- **japscan** - **opraveno (částečně)**: `japscan.lol` přesměrovává na
+  novou doménu `japscan.foo` ("Nous avons déménagé"/"přestěhovali jsme se").
+  `JapscanSource.kt` aktualizován na novou doménu, ale ta je navíc za
+  Cloudflare JS výzvou - spoléhá na `CloudflareInterceptor`, živě
+  netestováno.
+- **scanvf** - **needs bigger investigation**: archivní URL vrací HTTP 200
+  s reálným obsahem stránky, ale žádná z očekávaných karet titulů
+  (`.manga-poster`/`.bsx`/`.novel-item`) ani žádný `/manga/` odkaz se v HTML
+  vůbec nevyskytuje - buď se listing teď generuje přes JS/AJAX, nebo
+  `sort=views` je neplatný parametr, který tiše vrátí 0 výsledků.
+- **inmanga** - **needs bigger investigation**: archivní URL
+  `/ver/manga/lista` vrací 404 (web přešel na `/manga/consult`), ale ani
+  nová cesta neobsahuje žádné z očekávaných tříd (`.manga-card`/`.thumbnail`)
+  ani `/ver/manga/` odkazy - vypadá to na JS/AJAX-driven listing.
+- **novelfire** - **opraveno**: web přejmenoval `h2.title a` na
+  `a:has(h4.novel-title)` (redesign karty titulu, přibyl druhý odkaz na
+  poslední kapitolu uvnitř stejného bloku, na který starý selektor
+  omylem mohl narazit). Opraven selektor v `NovelFireSource.kt` + fixture
+  v testu aktualizována na reálnou strukturu.
+- **manhuarm** - **falešný poplach, funguje bez úprav**: `/manga/page/1/`
+  vrací 301 → 200 (redirect) - curl bez `-L` i pravděpodobně předchozí
+  test bez sledování redirectů to vyhodnotily jako selhání, appka
+  (OkHttp) redirecty sleduje automaticky.
+- **mangablaze** - **needs bigger investigation**: web běží na hluboce
+  přetémovaném Madara (vlastní `a.acard`/`.ac-t` karty na archivu, a na
+  detailu/kapitole žádný z výchozích Madara selektorů vůbec nesedí -
+  celý template vypadá jako bespoke, ne jen upravené CSS třídy).
+  Oprava jen archivní karty by appku nedostala k reálně čitelné kapitole,
+  proto neaplikováno - vyžadovalo by kompletní vlastní `MangaSource`
+  třídu srovnatelnou s náročností mangadenizi.
 
 ---
 

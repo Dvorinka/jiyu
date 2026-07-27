@@ -21,7 +21,10 @@ class JapscanSource @Inject constructor(private val client: OkHttpClient) : Mang
     override val name     = "Japscan 🇫🇷"
     override val language = "fr"
     override val homepageUrl get() = base
-    private val base      = "https://www.japscan.lol"
+    // japscan.lol presmerovava na tuto novou domenu ("Nous avons demenage" -
+    // "prestehovali jsme se") - zjisteno auditem 2026-07-27. Nova domena je
+    // navic za Cloudflare JS vyzvou (spoleha na existujici CloudflareInterceptor).
+    private val base      = "https://www.japscan.foo"
 
     private fun get(url: String) = client.newCall(
         Request.Builder().url(url)

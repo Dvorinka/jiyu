@@ -38,9 +38,12 @@ class NovelFireSource @Inject constructor(private val client: OkHttpClient) : Ma
     private fun parseList(html: String): List<SManga> {
         val doc = Jsoup.parse(html)
         return doc.select("li.novel-item").mapNotNull { el ->
-            val link = el.selectFirst("h2.title a") ?: return@mapNotNull null
+            // Web prejmenoval "h2.title a" na "a:has(h4.novel-title)" (audit
+            // 2026-07-27) - item-body ma navic druhy odkaz na posledni
+            // kapitolu (h5.chapter-title), proto nestaci prvni <a> v bloku.
+            val link = el.selectFirst("a:has(h4.novel-title)") ?: el.selectFirst("h2.title a") ?: return@mapNotNull null
             val href = link.attr("href").ifBlank { return@mapNotNull null }
-            val title = link.text().trim().ifBlank { return@mapNotNull null }
+            val title = link.selectFirst("h4.novel-title")?.text()?.trim()?.ifBlank { null } ?: link.text().trim().ifBlank { return@mapNotNull null }
             val cover = el.selectFirst("img")?.let {
                 it.attr("data-src").ifBlank { it.attr("src") }
             }?.let { if (it.startsWith("http")) it else "$base$it" }

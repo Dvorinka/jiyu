@@ -20,10 +20,10 @@ class NovelFireSourceTest {
     private val listHtml = """
         <html><body>
         <li class="novel-item">
-          <div class="cover-wrap"><figure class="cover"><a href="/book/test-series"><img class="lazy" src="placeholder.gif" data-src="/server-1/test.jpg" /></a></figure></div>
+          <div class="cover-wrap"><a href="/book/test-series"><figure class="novel-cover"><img class="lazy" src="placeholder.gif" data-src="/server-1/test.jpg" /></figure></a></div>
           <div class="item-body">
-            <div class="status-group"><span class="status"> Ongoing </span></div>
-            <h2 class="title text2row"><a href="/book/test-series">Test Series</a></h2>
+            <a title="Test Series" href="/book/test-series"><h4 class="novel-title text1row">Test Series</h4></a>
+            <a title="Chapter 5" href="/book/test-series/chapter-5"><h5 class="chapter-title text1row">Chapter 5</h5></a>
           </div>
         </li>
         </body></html>
