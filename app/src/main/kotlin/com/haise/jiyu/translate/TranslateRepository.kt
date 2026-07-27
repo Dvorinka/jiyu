@@ -420,9 +420,22 @@ class TranslateRepository @Inject constructor(
     }
 
     private fun cacheId(chapterId: String, pageIndex: Int, targetLanguage: String, sourceLanguage: String) =
-        "$chapterId::$pageIndex::$sourceLanguage::$targetLanguage"
+        "$chapterId::$pageIndex::$sourceLanguage::$targetLanguage::v$PIPELINE_VERSION"
 
     companion object {
+        /**
+         * Verze překladového pipeline (OCR klasifikace + prompt), zahrnutá do klíče cache.
+         * Bez ní zůstávaly po aktualizaci appky viset staré, rozbité výsledky - uživatel
+         * nainstaloval opravu, ale pořád viděl přesně tu chybu, co byla opravená, protože se
+         * stránka vzala z cache a znovu se nezpracovala (viz uživatelská zpětná vazba
+         * "nic si neopravil"). Zvyš tohle číslo VŽDY, když se změní něco, co ovlivňuje
+         * ULOŽENÁ data (klasifikace SFX/vodoznaku, prompt, struktura bloků) - ne když se
+         * mění jen vykreslování (to se počítá při zobrazení a na cache nezávisí).
+         *
+         * v2 (2026-07-27): detekce vodoznaku scanlation skupiny + krátká slova už nejsou SFX.
+         */
+        private const val PIPELINE_VERSION = 2
+
         /** Maximální počet znaků originálu na jedno API volání - drží výstup pod limitem max_tokens. */
         private const val NOVEL_CHUNK_CHAR_LIMIT = 2500
 

@@ -1,20 +1,39 @@
 package com.haise.jiyu.translate
 
-/** Jeden zalomený řádek textu při konkrétní velikosti písma/šířce - viz [fitFontSizeToShape]. */
+/** Jeden zalomený řádek textu při konkrétní velikosti písma/šířce - viz [fitFontSizeToBox]. */
 data class LineMetrics(val widthPx: Float, val topPx: Float, val bottomPx: Float)
 
-/** Výsledek měření celého textu při dané velikosti písma a maximální šířce. */
-data class TextMeasurement(val totalHeightPx: Float, val lines: List<LineMetrics>)
+/**
+ * Výsledek měření textu při dané velikosti písma a maximální šířce.
+ *
+ * [longestWordWidthPx] je šířka NEJDELŠÍHO jednotlivého slova (nezalomitelného celku) - bez
+ * něj nešlo poznat rozdíl mezi "text se hezky zalomil" a "Compose musel slovo rozsekat
+ * uprostřed po písmenech". Oba případy totiž vypadají v [lines] stejně (všechny řádky se
+ * vejdou do limitu), protože Compose při zalamování slovo prostě rozřízne - viz
+ * [fitFontSizeToBox] a uživatelská zpětná vazba ("KDYBYCH" vykreslené jako "KDYB"/"YCH").
+ */
+data class TextMeasurement(
+    val totalHeightPx: Float,
+    val lines: List<LineMetrics>,
+    val longestWordWidthPx: Float = 0f,
+)
 
-/** Vybraná velikost písma + šířka, na kterou se text má zalomit (viz [fitFontSizeToShape]). */
+/** Vybraná velikost písma + šířka, na kterou se text má zalomit (viz [fitFontSizeToBox]). */
 data class ShapeFitResult(val fontSp: Float, val widthPx: Float)
+
+/**
+ * Obdélník (normalizované 0..1 souřadnice stránky) vepsaný do tvaru bubliny - viz
+ * [largestInscribedRect].
+ */
+data class InscribedRect(val leftF: Float, val topF: Float, val rightF: Float, val bottomF: Float) {
+    val widthF: Float get() = rightF - leftF
+    val heightF: Float get() = bottomF - topF
+}
 
 /**
  * Lineárně interpolované levý/pravý okraj obrysu bubliny v konkrétní výšce [yF] (normalizované
  * 0..1 souřadnice stránky) - viz [BubbleShapeDetector]. Body jsou seřazené odshora dolů
- * (rostoucí yF), mimo rozsah se hodnota přichytí na krajní bod. Sdílené jádro pro
- * [shapeWidthAtYF] (šířka) a [shapeCenterAtYF] (vodorovný střed) - obojí bublina potřebuje
- * počítat úplně stejnou interpolací, jen jinak zkombinovat výsledný levý/pravý bod.
+ * (rostoucí yF), mimo rozsah se hodnota přichytí na krajní bod.
  */
 private fun shapeBoundsAtYF(shape: List<BubbleShapePoint>, yF: Float): Pair<Float, Float> {
     if (shape.isEmpty()) return 0f to 1f
@@ -40,154 +59,97 @@ fun shapeWidthAtYF(shape: List<BubbleShapePoint>, yF: Float): Float {
 }
 
 /**
- * Vodorovný střed obrysu bubliny v konkrétní výšce [yF] - viz [shapeBoundsAtYF]. U složených
- * tvarů (dvojkruhová "myšlenková" bublina) se tohle liší řádek od řádku - text vycentrovaný
- * jen podle JEDNOHO globálního středu (průměr celého tvaru) pak v užší části tvaru vyjde
- * mimo střed a levá/pravá strana řádku se ořízne o obrys (viz uživatelská zpětná vazba -
- * horní řádky dvojkruhové bubliny useknuté zleva).
+ * Největší osově zarovnaný obdélník, který se CELÝ vejde dovnitř obrysu bubliny.
+ *
+ * Tohle nahrazuje dřívější (a opakovaně rozbitý) přístup "zalamuj text podle siluety bubliny
+ * řádek po řádku". Ten byl principiálně křehký: šířka se počítala zvlášť pro každý řádek,
+ * takže stačilo, aby jeden řádek spadl do užšího místa, a zúžení pak rozbilo zalomení všech
+ * ostatních; a u složených tvarů (dvojkruhová bublina) navíc text potřeboval i jiný vodorovný
+ * střed pro každý řádek, což vedlo na vykreslování řádek-po-řádku a to zase na překrývající se
+ * řádky (viz uživatelská zpětná vazba - "OBCHODNÍ"/"STEZKA" přes sebe).
+ *
+ * Vepsaný obdélník je to, co dělá skutečná sazba: najdi bezpečnou plochu uvnitř tvaru a vysázej
+ * text do ní jako jeden normální blok. Text pak nikdy nemůže zasáhnout obrys, řádkování řeší
+ * Compose sám (žádné překryvy) a velikost písma vychází z plochy, takže je napříč bublinami
+ * konzistentní.
+ *
+ * O(n²) přes vzorky obrysu (n = 24, viz [BubbleShapeDetector.SAMPLE_COUNT]) - pro každý pár
+ * řádků (i, j) je vepsaná šířka dána nejtěsnějším levým/pravým okrajem v tom rozsahu.
+ * Vrací null, když tvar nedává použitelný obdélník (prázdný/degenerovaný).
  */
-fun shapeCenterAtYF(shape: List<BubbleShapePoint>, yF: Float): Float {
-    val (left, right) = shapeBoundsAtYF(shape, yF)
-    return (left + right) / 2f
+fun largestInscribedRect(shape: List<BubbleShapePoint>): InscribedRect? {
+    if (shape.size < 2) return null
+
+    var best: InscribedRect? = null
+    var bestArea = 0f
+
+    for (i in shape.indices) {
+        var maxLeft = shape[i].leftF
+        var minRight = shape[i].rightF
+        for (j in i until shape.size) {
+            maxLeft = maxOf(maxLeft, shape[j].leftF)
+            minRight = minOf(minRight, shape[j].rightF)
+            val width = minRight - maxLeft
+            if (width <= 0f) break // dál už se rozsah jen zužuje, nemá smysl pokračovat
+
+            val height = shape[j].yF - shape[i].yF
+            if (height <= 0f) continue
+
+            val area = width * height
+            if (area > bestArea) {
+                bestArea = area
+                best = InscribedRect(leftF = maxLeft, topF = shape[i].yF, rightF = minRight, bottomF = shape[j].yF)
+            }
+        }
+    }
+    return best
 }
 
-/** Hrubý krok prvního sestupu z [ShapeFitResult] hledání (viz [fitFontSizeToShape]). */
+/** Hrubý krok prvního sestupu z [ShapeFitResult] hledání (viz [fitFontSizeToBox]). */
 private const val COARSE_STEP_SP = 2f
 
 /** Jemný krok doladění kolem hrubě nalezené hranice. */
 private const val FINE_STEP_SP = 0.25f
 
 /**
- * Kolik kol zpřesnění šířky smí [attemptFit] udělat, než se vzdá dané velikosti písma.
- * Zvednuto z 3 na 6 (viz uživatelská zpětná vazba - text namačkaný do úzkého sloupečku
- * u zubatých/hvězdicovitých tvarů) - u hodně nepravidelných tvarů (starburst odznak) tři
- * kola nestačí na stabilizaci šířky (řádek v úzkém místě vynutí užší šířku, což vytvoří
- * NOVÝ řádek, který může padnout do jiného úzkého místa) a algoritmus se vzdá na zbytečně
- * pesimistické (příliš úzké) hodnotě dřív, než by mohl najít stabilnější rovnováhu.
- */
-private const val DEFAULT_MAX_ITERATIONS = 6
-
-private data class FitAttempt(val fits: Boolean, val widthPx: Float)
-
-/** Kolik bodů se vzorkuje napříč výškou jednoho řádku - viz [averageWidthAcrossLine]. */
-private const val LINE_WIDTH_SAMPLE_COUNT = 5
-
-/**
- * Průměrná dostupná šířka tvaru NAPŘÍČ CELOU výškou řádku (od [topYF] po [bottomYF]), ne jen
- * v jednom bodě uprostřed - u zvlněných/klikatých obrysů (girlandový okraj hravé bubliny,
- * zářez mezi dvěma spojenými kruhy) by jediný bod uprostřed mohl náhodou padnout přesně do
- * úzkého zářezu a umělo shodit šířku celého řádku (a tím i celého odstavce, viz
- * [attemptFit]), i když je řádek jinak z většiny ve volném prostoru. Průměr přes víc bodů
- * odpovídá tomu, jak by bublinu "od oka" odhadl člověk - drobný zářez nezmenší dojem
- * z celkově prostorné bubliny, jen extrémně úzký/kompaktní tvar sníží průměr doopravdy.
- */
-internal fun averageWidthAcrossLine(widthAtYF: (Float) -> Float, topYF: Float, bottomYF: Float): Float {
-    val span = bottomYF - topYF
-    if (span <= 0f) return widthAtYF(topYF)
-    var sum = 0f
-    for (i in 0 until LINE_WIDTH_SAMPLE_COUNT) {
-        val t = i / (LINE_WIDTH_SAMPLE_COUNT - 1).toFloat()
-        sum += widthAtYF(topYF + span * t)
-    }
-    return sum / LINE_WIDTH_SAMPLE_COUNT
-}
-
-/**
- * Zkusí, jestli se [text] vejde při [fontSp] do [maxHeightPx] - a pokud je zadané [widthAtYF]
- * (blok má skutečně detekovaný tvar bubliny), zároveň iterativně zužuje šířku zalomení, dokud
- * žádný vzniklý řádek nepřesahuje šířku tvaru v místě, kam podle svojí vlastní vertikální
- * pozice v bloku připadá (ne podle jedné globální nejširší šířky celého tvaru - to je přesně
- * bug, který tahle funkce řeší, viz [fitFontSizeToShape] dokumentace).
- */
-private fun attemptFit(
-    fontSp: Float,
-    boxWidthPx: Float,
-    maxHeightPx: Float,
-    shapeTopF: Float,
-    imageHeightPx: Float,
-    widthAtYF: ((Float) -> Float)?,
-    measure: (fontSp: Float, maxWidthPx: Float) -> TextMeasurement,
-    maxIterations: Int,
-): FitAttempt {
-    var widthConstraintPx = boxWidthPx
-    repeat(maxIterations) {
-        val measured = measure(fontSp, widthConstraintPx)
-        if (measured.totalHeightPx > maxHeightPx) return FitAttempt(false, widthConstraintPx)
-        if (widthAtYF == null) return FitAttempt(true, widthConstraintPx)
-
-        var tightestAvailable = Float.MAX_VALUE
-        var anyOverflow = false
-        for (line in measured.lines) {
-            val topYF = shapeTopF + line.topPx / imageHeightPx
-            val bottomYF = shapeTopF + line.bottomPx / imageHeightPx
-            val available = averageWidthAcrossLine(widthAtYF, topYF, bottomYF)
-            if (line.widthPx > available + 0.5f) anyOverflow = true
-            if (available < tightestAvailable) tightestAvailable = available
-        }
-        if (!anyOverflow) return FitAttempt(true, widthConstraintPx)
-
-        val next = minOf(widthConstraintPx, tightestAvailable).coerceAtLeast(1f)
-        // Žádný pokrok (další kolo by zúžilo o zanedbatelně málo, nebo vůbec) - tahle
-        // velikost písma se do tvaru nevejde, ať zužujeme, jak chceme.
-        if (next >= widthConstraintPx - 0.01f) return FitAttempt(false, widthConstraintPx)
-        widthConstraintPx = next
-    }
-    return FitAttempt(false, widthConstraintPx)
-}
-
-/**
- * Najde největší velikost písma (mezi [minFontSp] a [maxFontSp]), při které se [measure]
- * vejde do [maxHeightPx] - a u bublin se skutečným tvarem ([widthAtYF] != null) navíc do
- * šířky tvaru v místě KAŽDÉHO zalomeného řádku, ne jen do jedné globální (nejširší) šířky
- * celého tvaru.
+ * Najde největší velikost písma (mezi [minFontSp] a [maxFontSp]), při které se text vejde do
+ * zadaného obdélníku ([boxWidthPx] x [maxHeightPx]) - A ZÁROVEŇ se do šířky vejde i nejdelší
+ * jednotlivé slovo.
  *
- * Řeší dva propojené problémy najednou (viz analýza v konverzaci s uživatelem 2026-07):
- *  1) Starý fitter jen ZMENŠOVAL od pevného stropu (11sp) - obrovská "shout" bublina s
- *     trsy hrotů kolem tak měla vždycky malinký text s hromadou nevyužitého místa.
- *  2) Fitter měřil text proti CELÉ šířce ohraničujícího obdélníku tvaru (nejširší místo),
- *     ne proti šířce v místě, kam řádek podle svojí výšky skutečně padne - u nepravidelných/
- *     složených tvarů (dvojkruhové "myšlenkové" bubliny, hvězdicovité výbuchy) tak řádek
- *     vykreslený v užším místě bubliny (viz [BubbleClipShape]) reálně přesahoval obrys a
- *     tvar ho tam oříznul.
+ * Ta druhá podmínka je to podstatné a dřív úplně chyběla: Compose při zalamování slovo, které
+ * se nevejde, prostě rozsekne uprostřed po písmenech ("KDYBYCH" -> "KDYB"/"YCH"). Vzniklé
+ * řádky pak samozřejmě VŠECHNY splňují šířkový limit, takže starý fitter takové zmrzačené
+ * rozvržení vyhodnotil jako úspěch a ještě se ho snažil "vylepšit" zvětšením písma. Kontrola
+ * [TextMeasurement.longestWordWidthPx] tenhle celý druh selhání odřízne u kořene - fitter
+ * musí zvolit menší písmo, dokud se nejdelší slovo nevejde vcelku.
  *
- * Vrácená [ShapeFitResult.widthPx] není nutně [boxWidthPx] - u shape-aware bloků je to
- * zúžená šířka, na kterou se má text skutečně zalomit (vykreslený box zůstává v plné šířce
- * bubliny, jen text uvnitř něj se má vycentrovat do užšího sloupce, aby žádný řádek
- * nezasáhl místo, kde je tvar užší, než jeho celkový nejširší bod).
- *
- * Hledání je dvoufázové (hrubý krok [COARSE_STEP_SP], pak jemné doladění [FINE_STEP_SP]
- * kolem nalezené hranice) - lineární krok 0.5sp od velkého stropu (~36sp) dolů by u KAŽDÉ
- * bubliny na stránce znamenal desítky měření navíc oproti starému, mnohem užšímu rozsahu.
+ * Hledání je dvoufázové (hrubý krok [COARSE_STEP_SP], pak jemné doladění [FINE_STEP_SP]) -
+ * lineární krok od velkého stropu dolů by u každé bubliny znamenal desítky měření navíc.
  */
-fun fitFontSizeToShape(
+fun fitFontSizeToBox(
     minFontSp: Float,
     maxFontSp: Float,
     boxWidthPx: Float,
     maxHeightPx: Float,
-    shapeTopF: Float,
-    imageHeightPx: Float,
-    widthAtYF: ((Float) -> Float)?,
     measure: (fontSp: Float, maxWidthPx: Float) -> TextMeasurement,
-    maxIterations: Int = DEFAULT_MAX_ITERATIONS,
 ): ShapeFitResult {
-    fun attempt(fontSp: Float) =
-        attemptFit(fontSp, boxWidthPx, maxHeightPx, shapeTopF, imageHeightPx, widthAtYF, measure, maxIterations)
+    fun fits(fontSp: Float): Boolean {
+        val measured = measure(fontSp, boxWidthPx)
+        if (measured.totalHeightPx > maxHeightPx) return false
+        // Rezerva 0.5px na zaokrouhlení mezi měřením a skutečným vykreslením.
+        if (measured.longestWordWidthPx > boxWidthPx + 0.5f) return false
+        return true
+    }
 
     var coarse = maxFontSp
-    var coarseResult = attempt(coarse)
-    while (coarse > minFontSp && !coarseResult.fits) {
+    while (coarse > minFontSp && !fits(coarse)) {
         coarse -= COARSE_STEP_SP
-        coarseResult = attempt(coarse)
     }
-    if (!coarseResult.fits) return ShapeFitResult(minFontSp, boxWidthPx)
+    if (!fits(coarse)) return ShapeFitResult(minFontSp, boxWidthPx)
 
     var fine = coarse
-    var fineResult = coarseResult
-    while (fine + FINE_STEP_SP <= maxFontSp) {
-        val next = attempt(fine + FINE_STEP_SP)
-        if (!next.fits) break
+    while (fine + FINE_STEP_SP <= maxFontSp && fits(fine + FINE_STEP_SP)) {
         fine += FINE_STEP_SP
-        fineResult = next
     }
-    return ShapeFitResult(fine.coerceIn(minFontSp, maxFontSp), fineResult.widthPx)
+    return ShapeFitResult(fine.coerceIn(minFontSp, maxFontSp), boxWidthPx)
 }
