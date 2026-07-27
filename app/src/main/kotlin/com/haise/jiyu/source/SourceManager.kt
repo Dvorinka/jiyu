@@ -11,7 +11,6 @@ import com.haise.jiyu.source.manhuabuddy.ManhuaBuddySource
 import com.haise.jiyu.source.woopread.WoopReadSource
 import com.haise.jiyu.source.dynasty.DynastySource
 import com.haise.jiyu.source.hitomi.HitomiSource
-import com.haise.jiyu.source.mangafire.MangaFireSource
 import com.haise.jiyu.source.mangapark.MangaParkSource
 import com.haise.jiyu.source.mangago.MangagoSource
 import com.haise.jiyu.source.asurascans.AsuraScansSource
@@ -82,7 +81,6 @@ class SourceManager @Inject constructor(
     mangaPlusSource: MangaPlusSource,
     hitomiSource: HitomiSource,
     nhentaiSource: NhentaiSource,
-    mangaFireSource: MangaFireSource,
     webtoonSource: WebtoonSource,
     dynastySource: DynastySource,
     mangaParkSource: MangaParkSource,
@@ -150,7 +148,16 @@ class SourceManager @Inject constructor(
         // Viz ComicKSource.kt / ComicKSourceTest.kt (ponecháno pro případ, že by se to vrátilo).
         hitomiSource,
         nhentaiSource,
-        mangaFireSource,
+        // MangaFire odstraněno 2026-07-27 (čtvrté kolo) - API (mangafire.to/api/titles)
+        // je od pohledu bez autentizace, ale vrací {"message":"Missing token."} (403).
+        // Analýza staženého JS bundlu (main-tit729-*.js) odhalila vzor axios
+        // withXSRFToken - klient musí poslat hlavičku X-XSRF-TOKEN podle hodnoty
+        // cookie XSRF-TOKEN, tu ale server nikdy nenastavuje přes Set-Cookie;
+        // v bundlu je i odkaz na "turnstile" - cookie se zjevně nastavuje až
+        // klientským JS po vyřešení neviditelné Cloudflare Turnstile výzvy, stejný
+        // architektonický limit jako u evilmanga/kunmanga/atd. (viz sekce 8b v
+        // docs/source-audit-2026-07-26.md). Viz MangaFireSource.kt (ponecháno pro
+        // případ, že by appka v budoucnu směrovala requesty přes WebView).
         // Bato.to odstraněno 2026-07-27 - z vývojářského stroje šlo jen o "connection
         // timed out" (možná blokace datacenter IP), ale uživatel potvrdil, že appka na
         // reálném telefonu Bato.to taky nenačte. Viz BatoToSource.kt (ponecháno pro

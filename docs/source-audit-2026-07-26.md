@@ -12,13 +12,13 @@ spousta "živých" domén vrací jen zaparkovanou/reklamní stránku).
 | ❌ Odstraněno — mrtvé / zaparkované / malvertising / kompromitované (nejde opravit) | 48 |
 | ❓ Nejisté, zatím ponecháno — potřeba ověřit z mobilu/reálné appky | 0 |
 
-**Stav po čtvrtém kole (2026-07-27, aktuální/finální):** **69 aktivně
-registrovaných zdrojů** v `SourceManager.kt` (54 vlastních `MangaSource`
+**Stav po čtvrtém kole (2026-07-27, aktuální/finální):** **68 aktivně
+registrovaných zdrojů** v `SourceManager.kt` (53 vlastních `MangaSource`
 tříd + 15 inline `MadaraSource` instancí, mimo dynamicky přidané uživatelské
 Madara zdroje). Od třetího kola dál: **+3 opraveno** (flamecomics, scanvf,
-wuxiabox), **-17 odstraněno** (viz sekce 8). Čísla v tabulce výše i v
-sekcích 1-7 odpovídají stavu PŘED čtvrtým kolem — sekce 8 je autoritativní
-pro finální/aktuální stav.
+wuxiabox), **-18 odstraněno** (17 ve čtvrtém kole + dodatečně mangafire,
+viz sekce 8). Čísla v tabulce výše i v sekcích 1-7 odpovídají stavu PŘED
+čtvrtým kolem — sekce 8 je autoritativní pro finální/aktuální stav.
 
 **Update 2026-07-27 (druhé kolo, na výslovné přání uživatele):** curl-only audit dal u
 ComicK a Bato.to falešně pozitivní výsledek (metadata/HTTP kódy vypadaly OK, ale appka
@@ -638,6 +638,7 @@ foxaholic, immortalupdates, manhuafast, manhuaus, scribblehub, manganato
 | inmanga | JS/AJAX-driven archiv | AngularJS "Factory" SPA, reálný endpoint `/manga/GetMangasConsultResult` nalezen, ale přesný JSON tvar `filterSettings` parametru se nepodařilo v rozumném čase uhodnout |
 | mangaboomers | JS/AJAX-driven detail/kapitoly | seznam (`/api/mangalist`) funguje, ale `/api/mangaInfo`/`/api/loadChapters` vyžadují neznámý tvar POST parametru (vyzkoušeny: `id`, `mangaId`, `manga_id`, `mangaID`, JSON body, cookie session — žádná varianta nefunguje) |
 | mangablaze | bespoke Madara varianta | vlastní `a.acard`/`.ac-t` karty, žádný výchozí Madara selektor nesedí — vyžadovalo by vlastní `MangaSource` třídu srovnatelnou s mangadenizi |
+| mangafire | Cloudflare Turnstile (token, ne klasická výzva) | dodatečně prošetřeno po dotazu uživatele, jestli je vše zapsané — API `mangafire.to/api/titles` vrací `{"message":"Missing token."}` (403). Analýza staženého JS bundlu (`main-tit729-*.js`) odhalila axios `withXSRFToken` vzor - klient musí poslat `X-XSRF-TOKEN` podle cookie `XSRF-TOKEN`, kterou ale server nikdy nenastaví přes `Set-Cookie` (ověřeno curlem); bundle navíc obsahuje řetězec `turnstile` - cookie se zjevně nastavuje až klientským JS po vyřešení neviditelné Turnstile výzvy. Stejná kategorie jako 8b. |
 
 Všechny `.kt` třídy a testy odstraněných zdrojů **zůstávají na disku**
 (mrtvý kód, stejná konvence jako u předchozích odstranění) pro případ
@@ -645,7 +646,5 @@ budoucí opravy — jen odebrány z `SourceManager.kt` (import, konstruktor,
 instance v `staticSources`). Komentáře s důvodem viz přímo v
 `SourceManager.kt` u místa, kde zdroj dřív byl.
 
-**Nezkoumáno dál v tomto kole** (mimo scope, nebyly součástí 6c-6f seznamu
-"needs bigger investigation"): mangafire (chybí auth token — 6f).
-
-Commit `faff271`.
+Commit `faff271` (17 zdrojů), dodatečně `mangafire` samostatným commitem
+poté, co uživatel zkontroloval, jestli je vše zapsané do seznamu.
