@@ -29,7 +29,12 @@ data class RawTextBlock(
     val bgColorBottomArgb: Int = DEFAULT_BUBBLE_BG_ARGB,
     /** Skutečný obrys bubliny (flood-fill) - viz [BubbleShapeDetector]. Null = detekce selhala, render použije heuristický obdélník. */
     val shape: List<BubbleShapePoint>? = null,
+    /** false = pozadí kolem textu je barevně nesourodé (text napsaný přímo přes kresbu) - viz [OcrEngine.isColorUniform]/[TranslatedBlock.bgUniform]. */
+    val bgUniform: Boolean = true,
 )
+
+/** Výsledek [OcrEngine.sampleBackgroundColor] - dvě barvy (gradient) + signál rovnoměrnosti pro [TranslatedBlock.bgUniform]. */
+private data class BgSample(val topArgb: Int, val bottomArgb: Int, val uniform: Boolean)
 
 /**
  * Čistá funkce (bez Bitmap) - body na obvodu OCR boxu s okrajem [margin], odkud je
@@ -118,7 +123,7 @@ class OcrEngine @Inject constructor() {
         // (jen relativní souřadnice).
         val pixelSource = BitmapPixelSource(bitmap)
         mergeNearbyLines(lines).map { block ->
-            val (bgTop, bgBottom) = sampleBackgroundColor(bitmap, block)
+            val bgSample = sampleBackgroundColor(bitmap, block)
             val shape = BubbleShapeDetector.detectShape(
                 source = pixelSource,
                 width = bitmap.width,
@@ -126,9 +131,14 @@ class OcrEngine @Inject constructor() {
                 seeds = ringSeeds(block.leftF, block.topF, block.rightF, block.bottomF, bitmap.width, bitmap.height),
                 // Detektor tvaru (flood-fill) potřebuje JEDNU referenční barvu pozadí, ne
                 // gradient - průměr obou polovin je pro tenhle účel dost přesný.
-                bgColorArgb = averageArgb(bgTop, bgBottom),
+                bgColorArgb = averageArgb(bgSample.topArgb, bgSample.bottomArgb),
             )
-            block.copy(bgColorTopArgb = bgTop, bgColorBottomArgb = bgBottom, shape = shape)
+            block.copy(
+                bgColorTopArgb = bgSample.topArgb,
+                bgColorBottomArgb = bgSample.bottomArgb,
+                bgUniform = bgSample.uniform,
+                shape = shape,
+            )
         }
     }
 
@@ -206,10 +216,10 @@ class OcrEngine @Inject constructor() {
      * celý do své poloviny; levý/pravý SLOUPEC se rozpadne mezi obě poloviny sám podle
      * y-pozice každého vzorku ([sample] níž), žádná speciální logika navíc není potřeba.
      */
-    private fun sampleBackgroundColor(bitmap: Bitmap, block: RawTextBlock): Pair<Int, Int> {
+    private fun sampleBackgroundColor(bitmap: Bitmap, block: RawTextBlock): BgSample {
         val w = bitmap.width
         val h = bitmap.height
-        if (w <= 0 || h <= 0) return DEFAULT_BUBBLE_BG_ARGB to DEFAULT_BUBBLE_BG_ARGB
+        if (w <= 0 || h <= 0) return BgSample(DEFAULT_BUBBLE_BG_ARGB, DEFAULT_BUBBLE_BG_ARGB, uniform = true)
         val margin = 4
 
         val left = (block.leftF * w).toInt()
@@ -221,23 +231,17 @@ class OcrEngine @Inject constructor() {
         val ringTop = (top - margin).coerceIn(0, h - 1)
         val ringRight = (right + margin).coerceIn(0, w - 1)
         val ringBottom = (bottom + margin).coerceIn(0, h - 1)
-        if (ringRight <= ringLeft || ringBottom <= ringTop) return DEFAULT_BUBBLE_BG_ARGB to DEFAULT_BUBBLE_BG_ARGB
+        if (ringRight <= ringLeft || ringBottom <= ringTop) return BgSample(DEFAULT_BUBBLE_BG_ARGB, DEFAULT_BUBBLE_BG_ARGB, uniform = true)
 
-        var topSumR = 0L; var topSumG = 0L; var topSumB = 0L; var topCount = 0
-        var bottomSumR = 0L; var bottomSumG = 0L; var bottomSumB = 0L; var bottomCount = 0
+        val topSamples = mutableListOf<IntArray>()
+        val bottomSamples = mutableListOf<IntArray>()
         val midY = (ringTop + ringBottom) / 2
 
         fun sample(x: Int, y: Int) {
             if (x < 0 || x >= w || y < 0 || y >= h) return
             val px = bitmap.getPixel(x, y)
-            val r = (px shr 16) and 0xFF
-            val g = (px shr 8) and 0xFF
-            val b = px and 0xFF
-            if (y <= midY) {
-                topSumR += r; topSumG += g; topSumB += b; topCount++
-            } else {
-                bottomSumR += r; bottomSumG += g; bottomSumB += b; bottomCount++
-            }
+            val rgb = intArrayOf((px shr 16) and 0xFF, (px shr 8) and 0xFF, px and 0xFF)
+            if (y <= midY) topSamples += rgb else bottomSamples += rgb
         }
 
         // Vzorkujeme jen obvod prstence (ne celou plochu) - max ~80 bodů, dost na stabilní
@@ -250,11 +254,53 @@ class OcrEngine @Inject constructor() {
         var y = ringTop
         while (y <= ringBottom) { sample(ringLeft, y); sample(ringRight, y); y += stepY }
 
-        val topColor = if (topCount == 0) DEFAULT_BUBBLE_BG_ARGB
-            else android.graphics.Color.rgb((topSumR / topCount).toInt(), (topSumG / topCount).toInt(), (topSumB / topCount).toInt())
-        val bottomColor = if (bottomCount == 0) DEFAULT_BUBBLE_BG_ARGB
-            else android.graphics.Color.rgb((bottomSumR / bottomCount).toInt(), (bottomSumG / bottomCount).toInt(), (bottomSumB / bottomCount).toInt())
-        return topColor to bottomColor
+        val uniform = isColorUniform(topSamples + bottomSamples)
+        return BgSample(colorFor(topSamples, uniform), colorFor(bottomSamples, uniform), uniform)
+    }
+
+    /**
+     * Vzorky pozadí jsou "rovnoměrné", když se navzájem barevně moc neliší - to je skutečná
+     * nakreslená bublina s jednolitou/lehce stínovanou výplní. Text napsaný přímo přes
+     * členitou kresbu (žádná bublina) má v prstenci kolem sebe mnohem větší rozptyl barev -
+     * tenhle signál pak [layoutHeuristic] použije, aby box kolem takového textu neroztahoval
+     * stejně štědře jako u skutečné bubliny (viz [TranslatedBlock.bgUniform]).
+     */
+    private fun isColorUniform(samples: List<IntArray>): Boolean {
+        if (samples.size < 2) return true
+        val avgR = samples.sumOf { it[0] } / samples.size
+        val avgG = samples.sumOf { it[1] } / samples.size
+        val avgB = samples.sumOf { it[2] } / samples.size
+        val maxDeviation = samples.maxOf { s -> maxOf(Math.abs(s[0] - avgR), Math.abs(s[1] - avgG), Math.abs(s[2] - avgB)) }
+        return maxDeviation <= UNIFORM_COLOR_THRESHOLD
+    }
+
+    /**
+     * Rovnoměrné pozadí: prostý průměr (jako dřív - stabilní pro skutečné bubliny).
+     * Nerovnoměrné (pestrá kresba): průměr jen z nejčastějšího barevného "kbelíku"
+     * (kvantizace po [COLOR_BUCKET_SIZE] úrovních na kanál) místo průměru přes úplně
+     * odlišné barvy - ten totiž skoro vždy vyjde jako neexistující "zabahněná" barva
+     * (viz uživatelská zpětná vazba - hnědá placka přes barevnou titulní kresbu),
+     * zatímco dominantní barva okolí aspoň vizuálně patří k té kresbě.
+     */
+    private fun colorFor(samples: List<IntArray>, uniform: Boolean): Int {
+        if (samples.isEmpty()) return DEFAULT_BUBBLE_BG_ARGB
+        val source = if (uniform) samples else {
+            val buckets = HashMap<Triple<Int, Int, Int>, MutableList<IntArray>>()
+            for (s in samples) {
+                val key = Triple(s[0] / COLOR_BUCKET_SIZE, s[1] / COLOR_BUCKET_SIZE, s[2] / COLOR_BUCKET_SIZE)
+                buckets.getOrPut(key) { mutableListOf() }.add(s)
+            }
+            buckets.values.maxByOrNull { it.size } ?: samples
+        }
+        val avgR = source.sumOf { it[0] } / source.size
+        val avgG = source.sumOf { it[1] } / source.size
+        val avgB = source.sumOf { it[2] } / source.size
+        return android.graphics.Color.rgb(avgR, avgG, avgB)
+    }
+
+    private companion object {
+        private const val UNIFORM_COLOR_THRESHOLD = 45
+        private const val COLOR_BUCKET_SIZE = 32
     }
 
     private fun shouldMerge(a: RawTextBlock, b: RawTextBlock): Boolean {

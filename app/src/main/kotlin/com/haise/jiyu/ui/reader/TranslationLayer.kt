@@ -52,11 +52,15 @@ import androidx.compose.ui.unit.sp
 import com.haise.jiyu.R
 import com.haise.jiyu.translate.BubbleShapePoint
 import com.haise.jiyu.translate.BubbleType
+import com.haise.jiyu.translate.LineMetrics
 import com.haise.jiyu.translate.PositionedTranslationBlock
+import com.haise.jiyu.translate.TextMeasurement
 import com.haise.jiyu.translate.TranslatedBlock
 import com.haise.jiyu.translate.averageArgb
+import com.haise.jiyu.translate.fitFontSizeToShape
 import com.haise.jiyu.translate.layoutTranslationBlocks
 import com.haise.jiyu.translate.matchOriginalCase
+import com.haise.jiyu.translate.shapeWidthAtYF
 import com.haise.jiyu.translate.snapBubbleBg
 
 // ── Translation overlay - sdíleno mezi MangaReader (ReaderPager.kt) a WebtoonReader.kt ──
@@ -128,7 +132,10 @@ fun BubbleOverlayLayer(
 ) {
     val positioned = remember(blocks) { layoutTranslationBlocks(blocks) }
     positioned.forEachIndexed { bubbleIndex, pos ->
-        if (!pos.block.isSfx) {
+        // isUntranslated = model vrátil UNTRANSLATED_MARKER (nečitelné OCR) - stejně jako u
+        // SFX bublin appka radši nic nekreslí a nechá prosvítat originál, než aby ukázala
+        // doslovný anglický placeholder tam, kde měl být český text (viz TranslateRepository).
+        if (!pos.block.isSfx && !pos.block.isUntranslated) {
             TranslationOverlay(
                 pos = pos,
                 imageRect = imageRect,
@@ -213,6 +220,12 @@ fun TranslationOverlay(
     val snappedBgTop = snapBubbleBg(pos.block.bgColorArgb)
     val snappedBgBottom = snapBubbleBg(pos.block.bgColorBottomArgb)
     val displayText = matchOriginalCase(pos.block.displayText, pos.block.originalText)
+    // Šířka tvaru bubliny v konkrétní výšce (absolutní yF na celé stránce, ne relativní k
+    // boxu) - viz [shapeWidthAtYF]/[fitFontSizeToShape]. Null u heuristických (bez tvaru)
+    // bloků, kde se fitter beze změny drží jediné šířky celého boxu jako dřív.
+    val widthAtYF: ((Float) -> Dp)? = pos.block.shape?.let { shape ->
+        { yF: Float -> (imageRect.width * shapeWidthAtYF(shape, yF)).dp }
+    }
 
     // Entrance animace - MutableTransitionState začíná na false a rovnou cílí na true, takže
     // AnimatedVisibility přehraje "enter" přesně jednou při prvním composnutí týhle bubliny
@@ -269,6 +282,9 @@ fun TranslationOverlay(
                     maxHeight = maxH,
                     textScale = textScale,
                     bubbleType = pos.block.bubbleType,
+                    shapeTopF = pos.minTopF,
+                    imageHeightDp = imageRect.height,
+                    widthAtYF = widthAtYF,
                 )
             }
         }
@@ -297,9 +313,16 @@ private fun fontFamilyFor(bubbleType: BubbleType): FontFamily = when (bubbleType
 /**
  * Přeložený text (čeština) bývá delší než originál (JP/KR/EN) - bez úpravy velikosti
  * písma by buď přetekl přes sousední bublinu, nebo by ho Text s overflow=Ellipsis tvrdě
- * uřízl. Místo pevné velikosti fontu tady najdeme největší velikost, která se ještě
- * vejde do [maxHeight] při dané [boxWidth] (měřeno přes TextMeasurer), a teprve tu
- * vykreslíme - box tak roste/mrští se podle skutečné potřeby textu, ne naopak.
+ * uřízl. Tady najdeme největší velikost, která se ještě vejde do [maxHeight] (viz
+ * [fitFontSizeToShape]) - box tak roste/mrští se podle skutečné potřeby textu, ne naopak.
+ *
+ * Na rozdíl od dřívějšího "jen zmenšuj od pevných 11sp" fitteru tahle verze umí i RŮST
+ * (velká "shout" bublina s krátkým textem už nekončí zbytečně malým písmem uprostřed
+ * hromady volného místa) a u bublin se skutečným tvarem ([shapeTopF]/[imageHeightDp]/
+ * [widthAtYF] zadané) zalamuje/centruje text do šířky, která odpovídá tvaru bubliny V
+ * MÍSTĚ KAŽDÉHO ŘÁDKU - ne jen do jedné globální (nejširší) šířky celého tvaru, což u
+ * nepravidelných/složených tvarů (dvojkruhové "myšlenkové" bubliny) dřív nechávalo
+ * krajní řádky přetéct přes obrys a oříznout se (viz [BubbleClipShape]).
  */
 @Composable
 private fun AutoFitTranslatedText(
@@ -309,11 +332,14 @@ private fun AutoFitTranslatedText(
     maxHeight: androidx.compose.ui.unit.Dp,
     textScale: Float,
     bubbleType: BubbleType,
+    shapeTopF: Float = 0f,
+    imageHeightDp: Float = 0f,
+    widthAtYF: ((Float) -> androidx.compose.ui.unit.Dp)? = null,
 ) {
     val density = LocalDensity.current
     val textMeasurer = rememberTextMeasurer()
     val fontFamily = fontFamilyFor(bubbleType)
-    val baseFontSp = 11f * textScale
+    val maxFontSp = 36f * textScale
     val minFontSp = 6f * textScale
     // boxWidth je šířka VNĚJŠÍHO Boxu (viz volající) - Text uvnitř má reálně k dispozici
     // o horizontal padding Boxu (4.dp na každé straně, viz .padding(horizontal = 4.dp, ...)
@@ -323,24 +349,39 @@ private fun AutoFitTranslatedText(
     // zalomil jinam/přetekl, a poslední slovo bylo uříznuté o okraj bubliny.
     val widthPx = (with(density) { boxWidth.roundToPx() } - with(density) { (TRANSLATION_TEXT_HORIZONTAL_PADDING * 2).roundToPx() }).coerceAtLeast(1)
     val maxHeightPx = with(density) { maxHeight.roundToPx() }.coerceAtLeast(1)
+    val imageHeightPx = with(density) { imageHeightDp.dp.toPx() }
+    val widthAtYFPx: ((Float) -> Float)? = widthAtYF?.let { fn -> { yF: Float -> with(density) { fn(yF).toPx() } } }
 
-    val fontSp = remember(text, widthPx, maxHeightPx, baseFontSp, fontFamily) {
-        var fs = baseFontSp
-        while (fs > minFontSp) {
-            // Rezerva na obrys (viz StrokedTranslatedText/STROKE_WIDTH_FACTOR) - obrys se
-            // kreslí kolem stejného textu ve stejné velikosti, takže vizuálně "vykousne"
-            // trochu místa navíc kolem glyphů. Bez rezervy by fitter vybral velikost, co se
-            // vejde jen do samotné výplně (Fill), a obrys by pak u okrajů/rohů bubliny přetekl.
-            val strokeReservePx = with(density) { maxOf(2.dp.toPx(), fs.sp.toPx() * STROKE_WIDTH_FACTOR) }
-            val measured = textMeasurer.measure(
-                text = text,
-                style = TextStyle(fontSize = fs.sp, lineHeight = (fs * 1.25f).sp, fontFamily = fontFamily),
-                constraints = Constraints(maxWidth = (widthPx - strokeReservePx).toInt().coerceAtLeast(1)),
-            )
-            if (measured.size.height + strokeReservePx <= maxHeightPx) break
-            fs -= 0.5f
-        }
-        fs.coerceAtLeast(minFontSp)
+    val fitResult = remember(text, widthPx, maxHeightPx, maxFontSp, fontFamily, shapeTopF, imageHeightPx, widthAtYF) {
+        fitFontSizeToShape(
+            minFontSp = minFontSp,
+            maxFontSp = maxFontSp,
+            boxWidthPx = widthPx.toFloat(),
+            maxHeightPx = maxHeightPx.toFloat(),
+            shapeTopF = shapeTopF,
+            imageHeightPx = imageHeightPx,
+            widthAtYF = widthAtYFPx,
+            measure = { fontSp, maxWidthPx ->
+                // Rezerva na obrys (viz StrokedTranslatedText/STROKE_WIDTH_FACTOR) - obrys se
+                // kreslí kolem stejného textu ve stejné velikosti, takže vizuálně "vykousne"
+                // trochu místa navíc kolem glyphů. Bez rezervy by fitter vybral velikost, co
+                // se vejde jen do samotné výplně (Fill), a obrys by pak u okrajů/rohů bubliny přetekl.
+                val strokeReservePx = with(density) { maxOf(2.dp.toPx(), fontSp.sp.toPx() * STROKE_WIDTH_FACTOR) }
+                val measured = textMeasurer.measure(
+                    text = text,
+                    style = TextStyle(fontSize = fontSp.sp, lineHeight = (fontSp * 1.25f).sp, fontFamily = fontFamily),
+                    constraints = Constraints(maxWidth = (maxWidthPx - strokeReservePx).toInt().coerceAtLeast(1)),
+                )
+                val lines = (0 until measured.lineCount).map { i ->
+                    LineMetrics(
+                        widthPx = measured.getLineRight(i) - measured.getLineLeft(i),
+                        topPx = measured.getLineTop(i),
+                        bottomPx = measured.getLineBottom(i),
+                    )
+                }
+                TextMeasurement(totalHeightPx = measured.size.height + strokeReservePx, lines = lines)
+            },
+        )
     }
 
     // Vzorkovaná barva pozadí bubliny (viz TranslatedBlock.bgColorArgb) může být i tmavá
@@ -351,13 +392,20 @@ private fun AutoFitTranslatedText(
     val textColor = if (luminance < 0.5f) Color.White else Color.Black
     val strokeColor = if (luminance < 0.5f) Color.Black else Color.White
 
-    StrokedTranslatedText(
-        text = text,
-        fontSp = fontSp,
-        fontFamily = fontFamily,
-        textColor = textColor,
-        strokeColor = strokeColor,
-    )
+    // Šířka z fitteru může být užší než plná šířka boxu (shape-aware zúžení kvůli užšímu
+    // místu tvaru, viz doc komentář výše) - explicitní Modifier.width tady zajistí, že se
+    // TOHLE zalomení skutečně použije i při vykreslení, ne jen při měření/volbě velikosti;
+    // okolní Box (viz TranslationOverlay, contentAlignment = Center) pak užší text vycentruje.
+    val fitWidthDp = with(density) { fitResult.widthPx.toDp() }
+    Box(modifier = Modifier.width(fitWidthDp), contentAlignment = Alignment.Center) {
+        StrokedTranslatedText(
+            text = text,
+            fontSp = fitResult.fontSp,
+            fontFamily = fontFamily,
+            textColor = textColor,
+            strokeColor = strokeColor,
+        )
+    }
 }
 
 /** Podíl velikosti písma použitý jako šířka obrysu (viz [StrokedTranslatedText]), s dolní hranicí 2.dp pro malá písmena, kde by procentuální obrys byl neviditelně tenký. */

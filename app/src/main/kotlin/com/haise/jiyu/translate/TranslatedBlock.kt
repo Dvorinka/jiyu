@@ -26,6 +26,15 @@ const val DEFAULT_BUBBLE_BG_ARGB: Int = android.graphics.Color.WHITE
  *   heuristický obdélník místo přesného tvaru.
  * @param bubbleType typ bubliny (SPEECH/SHOUT/THOUGHT/...) - viz [BubbleClassifier]. Určuje
  *   řez písma v ReaderScreen.kt (fontFamilyFor).
+ * @param isUntranslated model vrátil [GeminiUltraPrompt.UNTRANSLATED_MARKER] (nečitelné OCR/
+ *   nesmyslný text) místo skutečného překladu - [BubbleOverlayLayer] takovou bublinu vůbec
+ *   nevykresluje (stejně jako SFX), aby čtenář neviděl doslovný anglický placeholder tam,
+ *   kde měl být český text.
+ * @param bgUniform false = pozadí kolem textu je barevně nesourodé (typicky titulkový/
+ *   dekorativní text napsaný přímo přes kresbu, ne v nakreslené bublině) - viz
+ *   [OcrEngine.sampleBackgroundColor]. [layoutTranslationBlocks] u takového bloku (bez
+ *   detekovaného tvaru) neroztahuje heuristický box tak štědře jako u skutečné bubliny,
+ *   protože barevná výplň tam beztak nikdy nesplyne s pestrým okolím.
  */
 data class TranslatedBlock(
     val originalText: String,
@@ -41,4 +50,6 @@ data class TranslatedBlock(
     val lineCount: Int = 1,
     val shape: List<BubbleShapePoint>? = null,
     val bubbleType: BubbleType = BubbleType.SPEECH,
+    val isUntranslated: Boolean = false,
+    val bgUniform: Boolean = true,
 )

@@ -30,6 +30,38 @@ class TranslationLayoutTest {
     }
 
     @Test
+    fun `non-uniform background block expands far less than a uniform bubble background`() {
+        // Titulkový/dekorativní text napsaný přímo přes kresbu (bgUniform=false) by neměl
+        // roztahovat heuristický box stejně štědře jako skutečná bublina - jinak barevná
+        // placka (viz OcrEngine.sampleBackgroundColor) zbytečně zakryje spoustu kresby
+        // (viz uživatelská zpětná vazba - hnědá placka přes titulní stránku Chainsaw Man).
+        val uniformBlock = TranslatedBlock(
+            originalText = "x", translatedText = "x",
+            leftF = 0.4f, topF = 0.2f, rightF = 0.6f, bottomF = 0.25f,
+            bgUniform = true,
+        )
+        val nonUniformBlock = TranslatedBlock(
+            originalText = "x", translatedText = "x",
+            leftF = 0.4f, topF = 0.2f, rightF = 0.6f, bottomF = 0.25f,
+            bgUniform = false,
+        )
+        val uniformPositioned = layoutTranslationBlocks(listOf(uniformBlock))[0]
+        val nonUniformPositioned = layoutTranslationBlocks(listOf(nonUniformBlock))[0]
+
+        val uniformWidth = uniformPositioned.rightF - uniformPositioned.leftF
+        val nonUniformWidth = nonUniformPositioned.rightF - nonUniformPositioned.leftF
+        assertTrue(
+            "non-uniform background must expand less than uniform ($nonUniformWidth vs $uniformWidth)",
+            nonUniformWidth < uniformWidth * 0.8f,
+        )
+        // Uniformní bublina bez souseda roste až k okrajům stránky (existující chování).
+        assertEquals(1f, uniformWidth, 0.01f)
+        // Pořád musí krýt aspoň vlastní OCR rozsah, jen se štědře nenafukovat navíc.
+        assertTrue(nonUniformPositioned.leftF <= nonUniformBlock.leftF + 1e-4f)
+        assertTrue(nonUniformPositioned.rightF >= nonUniformBlock.rightF - 1e-4f)
+    }
+
+    @Test
     fun `single block expands horizontally to page edges but caps vertical growth when no neighbors`() {
         // Vodorovně beze zbytku sousedů roste až k okrajům stránky (bezpečné - box se
         // stejně zobrazí jen tak široký, jak potřebuje AutoFitTranslatedText).

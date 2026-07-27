@@ -32,6 +32,27 @@ class TranslatedBlockSerializationTest {
         assertEquals(1, blocks.size)
         assertNull(blocks[0].shape)
         assertEquals(BubbleType.SPEECH, blocks[0].bubbleType)
+        // Staré záznamy nemají "untrans"/"bgUniform" - musí se defaultnout na false/true
+        // (viz TranslatedBlock defaults), stejné chování jako před přidáním týhle dvojice.
+        assertEquals(false, blocks[0].isUntranslated)
+        assertEquals(true, blocks[0].bgUniform)
+    }
+
+    @Test
+    fun `isUntranslated and bgUniform round-trip through serialize and deserialize`() {
+        val original = TranslatedBlock(
+            originalText = "???", translatedText = "???",
+            leftF = 0.1f, topF = 0.1f, rightF = 0.5f, bottomF = 0.3f,
+            isUntranslated = true,
+            bgUniform = false,
+        )
+
+        val json = serializeForTest(listOf(original))
+        val roundTripped = deserializeForTest(json)
+
+        assertEquals(1, roundTripped.size)
+        assertEquals(true, roundTripped[0].isUntranslated)
+        assertEquals(false, roundTripped[0].bgUniform)
     }
 
     @Test
@@ -59,6 +80,7 @@ class TranslatedBlockSerializationTest {
             arr.put(JSONObject().apply {
                 put("orig", b.originalText); put("trans", b.translatedText); put("disp", b.displayText)
                 put("bg", b.bgColorArgb); put("sfx", b.isSfx); put("lc", b.lineCount); put("type", b.bubbleType.name)
+                put("untrans", b.isUntranslated); put("bgUniform", b.bgUniform)
                 b.shape?.let { shape ->
                     put("shape", JSONArray().apply {
                         shape.forEach { p -> put(JSONArray().apply { put(p.yF.toDouble()); put(p.leftF.toDouble()); put(p.rightF.toDouble()) }) }
@@ -88,6 +110,8 @@ class TranslatedBlockSerializationTest {
                 isSfx = o.optBoolean("sfx", false), lineCount = o.optInt("lc", 1),
                 shape = shape,
                 bubbleType = try { BubbleType.valueOf(o.optString("type", "SPEECH")) } catch (e: Exception) { BubbleType.SPEECH },
+                isUntranslated = o.optBoolean("untrans", false),
+                bgUniform = o.optBoolean("bgUniform", true),
             )
         }
     }

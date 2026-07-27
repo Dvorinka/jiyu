@@ -25,6 +25,14 @@ object GeminiUltraPrompt {
      */
     const val MODEL = "gemini-flash-latest"
 
+    /**
+     * Sentinel, který model vrátí místo hádaného překladu, když OCR text nedává smysl
+     * (viz prompt níže, sekce "CHYBY"). [TranslateRepository] tuhle hodnotu zachytává a
+     * bublinu vůbec nevykresluje (necháme prosvítat originál) - bez tyhle kontroly by se
+     * doslovný "[UNTRANSLATED]" vykreslil čtenáři přímo do bubliny jako by to byl překlad.
+     */
+    const val UNTRANSLATED_MARKER = "[UNTRANSLATED]"
+
     fun buildSystemPrompt(glossary: Map<String, String>): String {
         val glossaryBlock = if (glossary.isEmpty()) {
             "(žádné zatím uložené pojmy pro tuhle mangu)"
@@ -111,7 +119,7 @@ object GeminiUltraPrompt {
 
             === CHYBY ===
             Pokud text nejde smysluplně přeložit (nečitelné OCR, útržek), vrať "translated":
-            "[UNTRANSLATED]" - nikdy nehádej význam nazdařbůh.
+            "$UNTRANSLATED_MARKER" - nikdy nehádej význam nazdařbůh.
 
             === VÝSTUPNÍ FORMÁT (POUZE JSON, žádný text mimo JSON, žádné markdown bloky) ===
             {

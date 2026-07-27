@@ -236,7 +236,12 @@ class TranslateRepository @Inject constructor(
         val result = classified.mapIndexed { i, c ->
             if (c.isSfx) return@mapIndexed sfxBlock(c)
             val t = byId[i]
-            val translatedText = t?.translated ?: c.raw.text
+            // Model vrací UNTRANSLATED_MARKER, když OCR text nedává smysl (viz prompt) -
+            // zobrazit ho doslova by čtenáři ukázalo anglický placeholder mísro překladu
+            // (viz uživatelská zpětná vazba), proto se bublina rovnou označí isUntranslated
+            // a BubbleOverlayLayer ji vůbec nevykreslí (originál zůstane čitelný).
+            val isUntranslated = t?.translated?.trim() == GeminiUltraPrompt.UNTRANSLATED_MARKER
+            val translatedText = if (isUntranslated) c.raw.text else (t?.translated ?: c.raw.text)
             TranslatedBlock(
                 originalText = c.raw.text,
                 translatedText = translatedText,
@@ -244,13 +249,15 @@ class TranslateRepository @Inject constructor(
                 topF = c.raw.topF,
                 rightF = c.raw.rightF,
                 bottomF = c.raw.bottomF,
-                displayText = t?.syllableBreaks?.ifBlank { translatedText } ?: translatedText,
+                displayText = if (isUntranslated) c.raw.text else (t?.syllableBreaks?.ifBlank { translatedText } ?: translatedText),
                 bgColorArgb = c.raw.bgColorTopArgb,
                 bgColorBottomArgb = c.raw.bgColorBottomArgb,
                 isSfx = false,
                 lineCount = c.lineCount,
                 shape = c.raw.shape,
                 bubbleType = c.bubbleType,
+                isUntranslated = isUntranslated,
+                bgUniform = c.raw.bgUniform,
             )
         }
         return result.ifEmpty { null }
@@ -285,8 +292,13 @@ class TranslateRepository @Inject constructor(
             if (c.isSfx) {
                 sfxBlock(c)
             } else {
-                val translated = translations.getOrElse(ti) { c.raw.text }
+                val raw = translations.getOrElse(ti) { c.raw.text }
                 ti++
+                // Groq/OpenRouter cesta nepoužívá GeminiUltraPrompt, takže by tenhle sentinel
+                // normálně vracet neměla - kontrola je jen levná pojistka pro případ, že by ho
+                // model přesto někdy vyplivl (viz translateWithGemini pro hlavní cestu).
+                val isUntranslated = raw.trim() == GeminiUltraPrompt.UNTRANSLATED_MARKER
+                val translated = if (isUntranslated) c.raw.text else raw
                 TranslatedBlock(
                     originalText = c.raw.text,
                     translatedText = translated,
@@ -301,6 +313,8 @@ class TranslateRepository @Inject constructor(
                     lineCount = c.lineCount,
                     shape = c.raw.shape,
                     bubbleType = c.bubbleType,
+                    isUntranslated = isUntranslated,
+                    bgUniform = c.raw.bgUniform,
                 )
             }
         }
@@ -321,6 +335,7 @@ class TranslateRepository @Inject constructor(
         lineCount = c.lineCount,
         shape = c.raw.shape,
         bubbleType = c.bubbleType,
+        bgUniform = c.raw.bgUniform,
     )
 
     /**
@@ -509,6 +524,8 @@ class TranslateRepository @Inject constructor(
                 put("sfx", b.isSfx)
                 put("lc", b.lineCount)
                 put("type", b.bubbleType.name)
+                put("untrans", b.isUntranslated)
+                put("bgUniform", b.bgUniform)
                 b.shape?.let { shape ->
                     put("shape", JSONArray().apply {
                         shape.forEach { p ->
@@ -556,6 +573,12 @@ class TranslateRepository @Inject constructor(
                 lineCount = o.optInt("lc", 1),
                 shape = shape,
                 bubbleType = try { BubbleType.valueOf(o.optString("type", "SPEECH")) } catch (e: Exception) { BubbleType.SPEECH },
+                isUntranslated = o.optBoolean("untrans", false),
+                // Starší cache záznamy nemají "bgUniform" - default true (rovnoměrné pozadí)
+                // odpovídá chování PŘED touhle změnou (heuristika roztahovala box stejně
+                // štědře pro všechny bloky bez tvaru), takže staré záznamy vypadají stejně,
+                // dokud se stránka znovu nepřeloží.
+                bgUniform = o.optBoolean("bgUniform", true),
             )
         }
     } catch (e: Exception) { emptyList() }

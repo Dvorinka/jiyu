@@ -70,10 +70,16 @@ private fun layoutHeuristic(blocks: List<TranslatedBlock>): List<PositionedTrans
         // Bez souseda by expandLimit spadl na 0f/1f (okraj celé stránky) - box teď fyzicky
         // vyplňuje celý vypočtený prostor (viz ReaderScreen.kt .heightIn/.width), takže
         // "žádný soused = roztáhni se přes půl stránky" už není neškodné, ale viditelná chyba.
-        // Strop 3x vlastní OCR rozměr dá dost místa na kompresi překladu, ne ale celou stránku.
+        // Strop 3x vlastní OCR rozměr dá dost místa na kompresi překladu - ALE jen u
+        // rovnoměrného pozadí (skutečná bublina, jen se jí nepodařilo najít uzavřený tvar).
+        // U nerovnoměrného pozadí (titulkový/dekorativní text přímo přes kresbu, viz
+        // OcrEngine.isColorUniform) je box beztak jen barevná placka, co nikdy nesplyne s
+        // pestrým okolím - roztahovat ji 3x by zbytečně zakrylo mnohem víc kresby, než kolik
+        // zabíral původní text (viz uživatelská zpětná vazba - hnědá placka přes titulní stránku).
+        val expandFactor = if (b.bgUniform) 3f else 1.15f
         val ownWidth = b.rightF - b.leftF
-        val expandLimitLeft = leftNeighbor?.let { (b.leftF + it.rightF) / 2f } ?: (b.leftF - ownWidth * 3f).coerceAtLeast(0f)
-        val expandLimitRight = rightNeighbor?.let { (b.rightF + it.leftF) / 2f } ?: (b.rightF + ownWidth * 3f).coerceAtMost(1f)
+        val expandLimitLeft = leftNeighbor?.let { (b.leftF + it.rightF) / 2f } ?: (b.leftF - ownWidth * expandFactor).coerceAtLeast(0f)
+        val expandLimitRight = rightNeighbor?.let { (b.rightF + it.leftF) / 2f } ?: (b.rightF + ownWidth * expandFactor).coerceAtMost(1f)
 
         // Symetrická expanze kolem středu originálu - vizuálně stabilnější než nezávislé
         // roztažení každou stranou zvlášť (bublina pak "nesedí" mimo střed originálu).
@@ -89,8 +95,11 @@ private fun layoutHeuristic(blocks: List<TranslatedBlock>): List<PositionedTrans
         // Strop odvozený z výšky JEDNOHO řádku (ne z celé výšky bloku) - u bloku sloučeného
         // z 5 OCR řádků by "3x vlastní výška" znamenalo 15 řádků volného místa, což je
         // přesně to, co způsobilo box přetékající přes zbytek stránky až za sousední SFX.
+        // Stejný důvod jako u expandFactor výše - nerovnoměrné pozadí dostává jen minimální
+        // rezervu, ne plných 2 řádky navíc.
         val avgLineHeightForCap = (b.bottomF - b.topF) / b.lineCount.coerceAtLeast(1)
-        val maxBottom = (belowNeighbor?.let { it.topF - 0.005f } ?: (b.bottomF + avgLineHeightForCap * 2f))
+        val verticalExpandFactor = if (b.bgUniform) 2f else 0.5f
+        val maxBottom = (belowNeighbor?.let { it.topF - 0.005f } ?: (b.bottomF + avgLineHeightForCap * verticalExpandFactor))
             .coerceAtLeast(b.bottomF).coerceIn(0f, 1f)
 
         // Jen víceřádkové bloky (viz doc komentář [PositionedTranslationBlock.minTopF]) -
