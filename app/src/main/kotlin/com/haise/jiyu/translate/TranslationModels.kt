@@ -4,21 +4,31 @@ package com.haise.jiyu.translate
  * Velikostní třída bubliny podle délky originálu - určuje, kolik znaků smí mít český
  * překlad, aby se vešel do bubliny bez přetečení (viz [GeminiUltraPrompt]).
  * [SFX] není skutečná velikost, ale značka "nepřekládat" pro zvukové efekty.
+ *
+ * Hodnoty byly zvýšeny (2026-07-27) poté, co render dostal shape-aware auto-fit textu
+ * (viz BubbleTextFit.kt) - box i písmo teď skutečně rostou podle potřeby, ne podle
+ * pevné malé velikosti, takže původní extrémně těsné limity (TINY=8, SMALL=18...) nutily
+ * model obětovat smysl/nuanci věty kvůli limitu, který renderer už tak přísně nepotřebuje.
+ * [GeminiUltraPrompt.buildSystemPrompt] tyhle hodnoty interpoluje přímo do promptu, aby
+ * text limitů a skutečná čísla nemohly rozejít.
  */
 enum class SizeTag(val maxChars: Int) {
-    TINY(8),
-    SMALL(18),
-    MEDIUM(45),
-    LARGE(90),
-    WIDE(70),
-    TALL(70),
+    TINY(12),
+    SMALL(26),
+    MEDIUM(60),
+    LARGE(110),
+    WIDE(85),
+    TALL(85),
     SFX(0),
 }
 
 /**
- * Typ bubliny odhadnutý z textu (VELKÁ PÍSMENA, interpunkce, klíčová slova) - OCR nám
- * nedává tvar/obrys bubliny, takže SPEECH/NARRATION/SYSTEM/SFX jsou rozlišitelné celkem
- * spolehlivě, zatímco THOUGHT/WHISPER/SHOUT jsou jen odhad z obsahu textu, ne z kresby.
+ * Typ bubliny odhadnutý primárně z textu (VELKÁ PÍSMENA, interpunkce, klíčová slova) -
+ * SPEECH/NARRATION/SYSTEM/SFX jsou rozlišitelné celkem spolehlivě, WHISPER/THOUGHT jen
+ * z interpunkce (appka nemá spolehlivý signál z kresby, který by je odlišil). SHOUT navíc
+ * (od 2026-07-27) používá i skutečný detekovaný obrys bubliny jako doplňkový signál -
+ * viz [isJaggedShape]/[BubbleClassifier] - trsovitý/hvězdicovitý tvar je silný indikátor
+ * i když text sám o sobě není celý velkými písmeny.
  */
 enum class BubbleType {
     SPEECH,
@@ -58,7 +68,16 @@ data class GeminiBubbleTranslation(
     val notes: String = "",
 )
 
+/**
+ * Jedno vlastní jméno (postava/místo/organizace/technika), které model rozpoznal v téhle
+ * dávce a NEBYLO ještě v glosáři - viz [GeminiUltraPrompt] sekce "NOVÉ POJMY" a
+ * [TranslateRepository] (auto-upsert do [GlossaryRepository], jen když tam uživatel už
+ * nemá vlastní ruční záznam pro stejný zdrojový termín - ten má vždycky přednost).
+ */
+data class GlossarySuggestion(val source: String, val target: String)
+
 /** Naparsovaná odpověď z Gemini API - viz [GeminiTranslateClient]. */
 data class GeminiTranslationResponse(
     val bubbles: List<GeminiBubbleTranslation>,
+    val newTerms: List<GlossarySuggestion> = emptyList(),
 )

@@ -1,5 +1,6 @@
 package com.haise.jiyu.translate
 
+import com.haise.jiyu.data.db.MangaDao
 import com.haise.jiyu.data.db.TranslatedNovelDao
 import com.haise.jiyu.data.db.TranslatedPageDao
 import com.haise.jiyu.data.db.entity.TranslatedNovelEntity
@@ -23,6 +24,7 @@ class TranslateRepository @Inject constructor(
     private val groqClient: GroqTranslateClient,
     private val geminiClient: GeminiTranslateClient,
     private val glossaryRepository: GlossaryRepository,
+    private val mangaDao: MangaDao,
     private val dao: TranslatedPageDao,
     private val novelDao: TranslatedNovelDao,
 ) {
@@ -30,6 +32,21 @@ class TranslateRepository @Inject constructor(
 
     private suspend fun glossaryFor(mangaId: String, targetLanguage: String): Map<String, String> =
         glossaryRepository.getMap(mangaId, targetLanguage)
+
+    /**
+     * Krátký kontext o samotné maze (název/typ obsahu/žánry) pro [GeminiUltraPrompt] -
+     * model bez něj nemá tušení, jestli překládá temné fantasy, komedii nebo herní systém,
+     * a volí tón/slovník podle toho. Prázdný řetězec, když se manga nenajde nebo nemá
+     * vyplněné žánry (starý/ještě nenačtený záznam) - prompt takový řádek prostě vynechá.
+     */
+    private suspend fun mangaContextFor(mangaId: String): String {
+        val manga = mangaDao.getById(mangaId) ?: return ""
+        val genres = manga.genres.split(",").map { it.trim() }.filter { it.isNotBlank() }
+        return buildString {
+            append("Název: \"${manga.title}\" (${manga.contentType.lowercase()})")
+            if (genres.isNotEmpty()) append(", žánry: ${genres.joinToString(", ")}")
+        }
+    }
 
     /**
      * Vrátí přeložené bloky pro jednu stránku.
@@ -51,6 +68,7 @@ class TranslateRepository @Inject constructor(
         if (rawBlocks.isEmpty()) return emptyList()
 
         val glossary = glossaryFor(mangaId, targetLanguage)
+        val mangaContext = mangaContextFor(mangaId)
         val classified = rawBlocks.map { raw -> BubbleClassifier.classify(raw, raw.lineCount) }
 
         // GeminiUltraPrompt je napsaný natvrdo pro češtinu (znakové limity a kompresní
@@ -67,9 +85,9 @@ class TranslateRepository @Inject constructor(
             // denní kvótu pro všechny cesty (viz translate-proxy checkQuota), takže jakmile je
             // vyčerpaná, další pokus by dopadl stejně - rovnou se propaguje až do ReaderViewModelu,
             // který na to má vlastní hlášku.
-            translateWithGemini(classified, glossary, provider = "gemini")
-                ?: translateWithGemini(classified, glossary, provider = "groq")
-                ?: translateWithGemini(classified, glossary, provider = "openrouter")
+            translateWithGemini(classified, glossary, mangaContext, provider = "gemini", mangaId, targetLanguage)
+                ?: translateWithGemini(classified, glossary, mangaContext, provider = "groq", mangaId, targetLanguage)
+                ?: translateWithGemini(classified, glossary, mangaContext, provider = "openrouter", mangaId, targetLanguage)
                 ?: translateWithGroq(classified, glossary, targetLanguage, sourceLanguage, provider = "groq")
                 ?: translateWithGroq(classified, glossary, targetLanguage, sourceLanguage, provider = "openrouter")
                 ?: emptyList()
@@ -127,6 +145,7 @@ class TranslateRepository @Inject constructor(
         if (uncached.isEmpty()) return
 
         val glossary = glossaryFor(mangaId, targetLanguage)
+        val mangaContext = mangaContextFor(mangaId)
 
         // Stahování bitmap (síť, viz PageBitmapLoader) a OCR (ML Kit, viz OcrEngine) mají
         // rozdílnou povahu souběžnosti - stahování je I/O čekání, snese víc paralelních
@@ -161,9 +180,9 @@ class TranslateRepository @Inject constructor(
             // odpovědi se doplní originálem, nikdy se nezahodí), takže rozdělení jedné
             // odpovědi zpátky po stránkách podle počtu bublin níž je bezpečné.
             val blocks = if (targetLanguage == "Czech") {
-                translateWithGemini(flatBubbles, glossary, provider = "gemini")
-                    ?: translateWithGemini(flatBubbles, glossary, provider = "groq")
-                    ?: translateWithGemini(flatBubbles, glossary, provider = "openrouter")
+                translateWithGemini(flatBubbles, glossary, mangaContext, provider = "gemini", mangaId, targetLanguage)
+                    ?: translateWithGemini(flatBubbles, glossary, mangaContext, provider = "groq", mangaId, targetLanguage)
+                    ?: translateWithGemini(flatBubbles, glossary, mangaContext, provider = "openrouter", mangaId, targetLanguage)
                     ?: translateWithGroq(flatBubbles, glossary, targetLanguage, sourceLanguage, provider = "groq")
                     ?: translateWithGroq(flatBubbles, glossary, targetLanguage, sourceLanguage, provider = "openrouter")
                     ?: emptyList()
@@ -223,11 +242,25 @@ class TranslateRepository @Inject constructor(
     private suspend fun translateWithGemini(
         classified: List<ClassifiedBubble>,
         glossary: Map<String, String>,
+        mangaContext: String,
         provider: String,
+        mangaId: String,
+        targetLanguage: String,
     ): List<TranslatedBlock>? {
         if (!geminiClient.isConfigured) return null
-        val response = geminiClient.translateBubbles(classified, glossary, provider) ?: return null
+        val response = geminiClient.translateBubbles(classified, glossary, provider, mangaContext) ?: return null
         val byId = response.bubbles.associateBy { it.id }
+
+        // Auto-učení glosáře (viz GeminiUltraPrompt sekce "NOVÉ POJMY") - model sám
+        // identifikuje vlastní jména v téhle dávce, appka je uloží, aby byla konzistentní
+        // i v dalších kapitolách BEZ nutnosti ručního zásahu. Ruční záznam uživatele má
+        // vždycky přednost - proto se přeskočí, když glosář už stejný zdrojový termín má
+        // (ignoreCase, protože ID záznamu je case-insensitive, viz GlossaryRepository.upsert).
+        for (term in response.newTerms) {
+            if (glossary.keys.none { it.equals(term.source, ignoreCase = true) }) {
+                glossaryRepository.upsert(mangaId, term.source, term.target, targetLanguage)
+            }
+        }
 
         // mapIndexed (ne mapIndexedNotNull) - chybějící "id" v odpovědi musí zůstat na svém
         // místě jako blok s originálem místo zmizet, jinak by se posunula pozice ostatních

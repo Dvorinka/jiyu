@@ -36,7 +36,11 @@ object BubbleClassifier {
         val bubbleType = when {
             isSfx -> BubbleType.SFX
             systemKeywords.any { trimmed.uppercase().contains(it) } -> BubbleType.SYSTEM
-            letters.isNotEmpty() && letters.all { it.isUpperCase() } && trimmed.endsWith("!") -> BubbleType.SHOUT
+            // Text (VELKÁ PÍSMENA + "!") NEBO skutečný detekovaný tvar bubliny (trsovitý/
+            // hvězdicovitý obrys, viz isJaggedShape) - dřív se SHOUT hádal jen z textu, i
+            // když appka od nedávna zná skutečný obrys bubliny (BubbleShapeDetector).
+            (letters.isNotEmpty() && letters.all { it.isUpperCase() } && trimmed.endsWith("!")) ||
+                raw.shape?.let { isJaggedShape(it) } == true -> BubbleType.SHOUT
             trimmed.startsWith("(") && trimmed.endsWith(")") -> BubbleType.WHISPER
             trimmed.endsWith("...") || trimmed.startsWith("...") -> BubbleType.THOUGHT
             lineCount >= 3 && letters.length > 60 -> BubbleType.NARRATION

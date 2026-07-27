@@ -122,7 +122,12 @@ class OcrEngine @Inject constructor() {
         // proto běží tady a ne až v TranslateRepository, kam se bitmapa vůbec nedostane
         // (jen relativní souřadnice).
         val pixelSource = BitmapPixelSource(bitmap)
-        mergeNearbyLines(lines).map { block ->
+        // Pořadí, ve kterém tenhle seznam skončí, je i pořadí, ve kterém bubliny uvidí
+        // překladový model (viz GeminiUltraPrompt.buildUserPrompt) - bez řazení do
+        // skutečného pořadí čtení dostával model repliky v podstatě náhodně (podle
+        // union-find indexu z mergeNearbyLines), což kazilo návaznost dialogu.
+        val merged = sortIntoReadingOrder(mergeNearbyLines(lines), rightToLeft = language == "Japanese")
+        merged.map { block ->
             val bgSample = sampleBackgroundColor(bitmap, block)
             val shape = BubbleShapeDetector.detectShape(
                 source = pixelSource,

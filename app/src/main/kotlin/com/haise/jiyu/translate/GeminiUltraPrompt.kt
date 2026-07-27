@@ -33,38 +33,47 @@ object GeminiUltraPrompt {
      */
     const val UNTRANSLATED_MARKER = "[UNTRANSLATED]"
 
-    fun buildSystemPrompt(glossary: Map<String, String>): String {
+    fun buildSystemPrompt(glossary: Map<String, String>, mangaContext: String = ""): String {
         val glossaryBlock = if (glossary.isEmpty()) {
             "(žádné zatím uložené pojmy pro tuhle mangu)"
         } else {
             glossary.entries.joinToString("\n") { (source, target) -> "- \"$source\" -> \"$target\"" }
         }
+        val contextBlock = mangaContext.ifBlank { "(neznámé - žádný dodatečný kontext k dispozici)" }
 
         return """
             Jsi profesionální překladatel manga/manhwa/manhua bublin do češtiny. Překládáš pro
-            čtenáře komiksu, ne pro titulky filmu - text musí být krátký, přirozený a musí se
-            vejít do malé bubliny.
+            čtenáře komiksu, ne pro titulky filmu - text musí znít přirozeně a vejít se do
+            bubliny, ale PŘESNOST A ZACHOVÁNÍ SMYSLU MAJÍ VŽDY PŘEDNOST před zkracováním - render
+            appky umí bublinu i písmo zvětšit, takže není nutné obětovat nuanci věty jen kvůli
+            co nejkratšímu překladu.
 
-            === LIMITY VELIKOSTI BUBLINY (TVRDÝ POŽADAVEK) ===
-            Každá bublina má SIZE tag s maximálním počtem znaků českého překladu:
-            [TINY]    max 8 znaků   -> "Vítej." "Jasné." "Co?" "Jdem!"
-            [SMALL]   max 18 znaků  -> "Co děláš?" "Promiň." "Ne, díky."
-            [MEDIUM]  max 45 znaků  -> "Zkusím všechna kouzla."
-            [LARGE]   max 90 znaků  -> "Magie tíže: Ovládá tíži objektu."
-            [WIDE]    max 70 znaků, 1-2 řádky
-            [TALL]    max 70 znaků, 4-5 řádků
+            === KONTEXT DÍLA ===
+            $contextBlock
+            Zohledni tón/žánr při volbě slovní zásoby a formálnosti (temné fantasy vs. komedie
+            vs. herní systémové okno apod.).
+
+            === LIMITY VELIKOSTI BUBLINY ===
+            Každá bublina má SIZE tag s ORIENTAČNÍM maximem znaků českého překladu - je to
+            měkký strop pro přirozeně stručnou češtinu, ne důvod měnit nebo vynechávat význam:
+            [TINY]    max ${SizeTag.TINY.maxChars} znaků   -> "Vítej." "Jasné." "Co se děje?"
+            [SMALL]   max ${SizeTag.SMALL.maxChars} znaků  -> "Co tady děláš?" "Omlouvám se." "Ne, díky."
+            [MEDIUM]  max ${SizeTag.MEDIUM.maxChars} znaků  -> "Zkusím všechna kouzla, co mám."
+            [LARGE]   max ${SizeTag.LARGE.maxChars} znaků  -> "Magie tíže: Ovládá tíži libovolného objektu."
+            [WIDE]    max ${SizeTag.WIDE.maxChars} znaků, 1-2 řádky
+            [TALL]    max ${SizeTag.TALL.maxChars} znaků, 4-5 řádků
             [SFX]     NEPŘEKLÁDAT - tyhle bubliny se ti vůbec neposílají.
-            Pokud se překlad nevejde do limitu, ZKRAŤ ho - nikdy limit nepřekračuj.
+            Pokud se přesný, věrný překlad do limitu přesto nevejde, teprve pak ho zkrať - ale
+            nikdy neztrácej informaci, která je pro pochopení scény důležitá.
 
-            === AGRESIVNÍ ČESKÁ KOMPRESE ===
-            - Vynechávej, co jde vynechat beze změny smyslu: "Co se děje?" -> "Co je?"
-            - Kratší synonyma: "dům" ne "budova", "běž" ne "utíkej"
+            === PŘIROZENÁ ČEŠTINA (ne umělé zkracování) ===
+            - Piš, jak by to skutečně řekl český mluvčí - přirozená stručnost, ne mrzačení věty:
+              "Co se děje?" -> "Co je?" (obojí přirozené, druhé jen běžnější v hovorové řeči)
             - Neformální tykání, nikdy vykání
-            - Příklady zkracování:
+            - Příklady přirozeného zkrácení (pořád zachovávají smysl):
               "promiň mi to" -> "promiň" | "jsem si jistý" -> "jsem si jist"
               "podívej se na to" -> "podívej" | "všechno je v pořádku" -> "vše OK"
-              "to není možné" -> "nemožné" | "musíme jít" -> "jdem"
-              "počkej chvíli" -> "počkej" | "kam jdeš?" -> "kam?" | "proč jsi to udělal?" -> "proč?"
+              "počkej chvíli" -> "počkej" | "kam jdeš?" -> "kam?"
 
             === PŘÍKLADY (zdroj -> špatně/dlouze -> správně) ===
             "Welcome." [SMALL] -> "Vítejte." (8) -> "Vítej." (6)
@@ -102,6 +111,14 @@ object GeminiUltraPrompt {
             === GLOSÁŘ POJMŮ (ZÁVAZNÉ, dodržuj přesně, má přednost před pravidly výše) ===
             $glossaryBlock
 
+            === NOVÉ POJMY (učení glosáře) ===
+            Kromě "bubbles" vrať i pole "new_terms" - vlastní jména (postavy, místa,
+            organizace, pojmenované techniky/schopnosti) z TÉHLE dávky, která NEJSOU už
+            uvedená v glosáři výše. Každá položka {"source": "<originál>", "target":
+            "<tvůj český přepis v 1. pádě>"} - "target" vždy v ZÁKLADNÍM (1.) pádě, i když
+            se jméno v textu objevilo skloňované, aby šlo použít jako budoucí glosářový
+            záznam. Neopakuj termíny, které už glosář obsahuje. Žádná nová jména -> prázdné pole.
+
             === TYP BUBLINY ===
             SPEECH: normální neformální čeština. NARRATION: může být formálnější/delší.
             SHOUT: VELKÁ PÍSMENA, co nejkratší. THOUGHT: měkčí, introspektivní tón.
@@ -133,9 +150,14 @@ object GeminiUltraPrompt {
                   "syllable_breaks": "Vítej.",
                   "notes": ""
                 }
+              ],
+              "new_terms": [
+                {"source": "Frodo", "target": "Frodo"},
+                {"source": "Gravity Magic", "target": "Magie tíže"}
               ]
             }
-            Vrať přesně jednu položku pro každou bublinu z requestu, ve stejném pořadí "id".
+            Vrať přesně jednu položku "bubbles" pro každou bublinu z requestu, ve stejném
+            pořadí "id". "new_terms" vrať vždy (klidně jako prázdné pole [], nikdy nechybí).
         """.trimIndent()
     }
 
@@ -184,6 +206,21 @@ object GeminiUltraPrompt {
                 notes = o.optString("notes", ""),
             )
         }
-        return GeminiTranslationResponse(bubbles)
+
+        // Chybí u starších/degradovaných odpovědí (model instrukci nedodrží, nebo jde o
+        // fallback cestu) - prázdný seznam, ne pád parsování.
+        val newTermsArr = root.optJSONArray("new_terms")
+        val newTerms = if (newTermsArr != null) {
+            (0 until newTermsArr.length()).mapNotNull { i ->
+                val o = newTermsArr.optJSONObject(i) ?: return@mapNotNull null
+                val source = o.optString("source", "").trim()
+                val target = o.optString("target", "").trim()
+                if (source.isBlank() || target.isBlank()) null else GlossarySuggestion(source, target)
+            }
+        } else {
+            emptyList()
+        }
+
+        return GeminiTranslationResponse(bubbles, newTerms)
     }
 }
