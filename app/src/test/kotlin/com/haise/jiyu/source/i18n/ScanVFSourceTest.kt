@@ -19,22 +19,27 @@ class ScanVFSourceTest {
 
     private val listHtml = """
         <html><body>
-        <div class="manga-poster"><a href="https://www.scan-vf.net/manga/test-series" title="Test Series"><img src="https://cdn.example.com/test.jpg" /></a></div>
+        <div class="media">
+            <div class="media-left"><a href="https://www.scan-vf.net/manga/test-series" class="thumbnail"><img src="https://cdn.example.com/test.jpg" /></a></div>
+            <div class="media-body"><h5 class="media-heading"><a href="https://www.scan-vf.net/manga/test-series" class="chart-title"><strong>Test Series</strong></a></h5></div>
+        </div>
         </body></html>
     """.trimIndent()
 
     private val detailHtml = """
         <html><body>
-        <h1>Test Series</h1>
-        <div class="thumb"><img src="https://cdn.example.com/test.jpg" /></div>
-        <div class="summary"><p>A summary.</p></div>
-        <div class="genres"><a>Action</a></div>
-        <ul class="chapter-list"><li><a href="https://www.scan-vf.net/manga/test-series/chapter-1">Chapitre 1</a></li></ul>
+        <div class="thumbnail"><img src="https://cdn.example.com/test.jpg" /></div>
+        <dl class="dl-horizontal">
+            <dt>Statut</dt><dd>En cours</dd>
+            <dt>Auteur(s)</dt><dd>Some Author</dd>
+        </dl>
+        <div class="tag-links"><a>Action</a></div>
+        <h5 class="chapter-title-rtl"><a href="https://www.scan-vf.net/manga/test-series/chapter-1">Chapitre 1</a></h5>
         </body></html>
     """.trimIndent()
 
     private val pagesHtml = """
-        <html><body><div class="reading-content"><img data-src="https://cdn.example.com/test/1/01.jpg" /></div></body></html>
+        <html><body><img class="img-responsive" data-src=" https://cdn.example.com/test/1/01.jpg " /></body></html>
     """.trimIndent()
 
     @Before
@@ -61,7 +66,7 @@ class ScanVFSourceTest {
     }
 
     @Test
-    fun `getPopular parses title from anchor title attribute and cover`() = runTest {
+    fun `getPopular parses title from media card and cover`() = runTest {
         val result = source.getPopular(1)
         assertEquals(1, result.size)
         assertEquals("Test Series", result[0].title)
@@ -72,13 +77,15 @@ class ScanVFSourceTest {
     fun `full flow parses details, chapters and pages via absolute URLs`() = runTest {
         val manga = source.getPopular(1).first()
         val details = source.getMangaDetails(manga)
-        assertEquals("A summary.", details.description)
+        assertEquals("Some Author", details.author)
+        assertEquals("En cours", details.status)
 
         val chapters = source.getChapterList(manga)
         assertEquals(1, chapters.size)
 
         val pages = source.getPageList(chapters[0])
         assertEquals(1, pages.size)
+        assertEquals("https://cdn.example.com/test/1/01.jpg", pages[0].imageUrl)
     }
 
     @Test

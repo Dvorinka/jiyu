@@ -9,17 +9,27 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import org.jsoup.Jsoup
-import java.net.URLEncoder
+import org.json.JSONObject
 import javax.inject.Inject
 import javax.inject.Singleton
 
+/**
+ * FlameComics prešel z Madara sablony na kompletne prepsanou Next.js appku
+ * (zjisteno auditem 2026-07-27) - stare Madara URL (/manga/?...) uz vubec
+ * neexistuji. Archiv (/browse) i detail (/series/{id}) i ctecka
+ * (/series/{id}/{token}) jsou staticky generovane (__N_SSG__) stranky
+ * s celym datovym modelem vlozenym primo do <script id="__NEXT_DATA__">
+ * jako JSON - zdroj tedy vubec nepotrebuje HTML/CSS selektory, jen JSON
+ * parsing. Obrazky jsou na cdn.flamecomics.xyz/uploads/images/series/{id}/{token}/{name}.
+ */
 @Singleton
 class FlameComicsSource @Inject constructor(private val client: OkHttpClient) : MangaSource {
     override val id = "flamecomics"
     override val name = "Flame Comics"
     override val homepageUrl get() = base
     private val base = "https://flamecomics.xyz"
+    private val cdn = "https://cdn.flamecomics.xyz/uploads/images/series"
+    private val pageSize = 30
 
     private fun get(url: String): String {
         val req = Request.Builder().url(url)
@@ -29,69 +39,108 @@ class FlameComicsSource @Inject constructor(private val client: OkHttpClient) : 
         return client.newCall(req).execute().use { it.body?.string() ?: "" }
     }
 
-    private fun parseList(html: String): List<SManga> {
-        val doc = Jsoup.parse(html)
-        return doc.select(".page-item-detail, .manga").mapNotNull { el ->
-            val link = el.selectFirst("h3 a, h2 a, .post-title a") ?: return@mapNotNull null
-            val href = link.attr("href").removePrefix(base)
-            val title = link.text().trim().takeIf { it.isNotBlank() } ?: return@mapNotNull null
-            val cover = el.selectFirst("img")?.let {
-                it.attr("data-src").takeIf { s -> s.isNotBlank() } ?: it.attr("src")
-            }
-            SManga(sourceId = id, url = href, title = title, coverUrl = cover)
-        }
+    /** Vytahne JSON z <script id="__NEXT_DATA__" type="application/json">...</script>. */
+    private fun nextDataPageProps(html: String): JSONObject? {
+        val json = Regex(
+            """__NEXT_DATA__"\s+type="application/json">(.*?)</script>""",
+            RegexOption.DOT_MATCHES_ALL,
+        ).find(html)?.groupValues?.get(1) ?: return null
+        return JSONObject(json).optJSONObject("props")?.optJSONObject("pageProps")
+    }
+
+    private fun coverUrl(seriesId: Int, cover: String?) =
+        if (cover.isNullOrBlank()) null else "$cdn/$seriesId/$cover"
+
+    private fun seriesToManga(s: JSONObject): SManga? {
+        val seriesId = s.optInt("series_id", -1).takeIf { it > 0 } ?: return null
+        val title = s.optString("title").ifBlank { return null }
+        return SManga(
+            sourceId = id,
+            url = "/series/$seriesId",
+            title = title,
+            coverUrl = coverUrl(seriesId, s.optString("cover").ifBlank { null }),
+        )
+    }
+
+    private fun allSeries(): List<JSONObject> {
+        val props = nextDataPageProps(get("$base/browse")) ?: return emptyList()
+        val arr = props.optJSONArray("series") ?: return emptyList()
+        return (0 until arr.length()).mapNotNull { arr.optJSONObject(it) }
     }
 
     override suspend fun getPopular(page: Int, filter: MangaFilter): List<SManga> = withContext(Dispatchers.IO) {
-        try { parseList(get("$base/manga/?m_orderby=views&page=$page")) } catch (_: Exception) { emptyList() }
+        try {
+            val all = allSeries()
+            val from = (page - 1) * pageSize
+            if (from >= all.size) emptyList() else all.subList(from, minOf(from + pageSize, all.size)).mapNotNull(::seriesToManga)
+        } catch (_: Exception) { emptyList() }
     }
 
     override suspend fun search(query: String, page: Int, filter: MangaFilter): List<SManga> = withContext(Dispatchers.IO) {
         try {
-            val q = URLEncoder.encode(query, "UTF-8")
-            parseList(get("$base/?s=$q&post_type=wp-manga"))
+            val q = query.trim().lowercase()
+            val matches = allSeries().filter { it.optString("title").lowercase().contains(q) }
+            val from = (page - 1) * pageSize
+            if (from >= matches.size) emptyList() else matches.subList(from, minOf(from + pageSize, matches.size)).mapNotNull(::seriesToManga)
         } catch (_: Exception) { emptyList() }
     }
 
     override suspend fun getMangaDetails(manga: SManga): SManga = withContext(Dispatchers.IO) {
         try {
-            val doc = Jsoup.parse(get("$base${manga.url}"))
+            val seriesId = manga.url.substringAfterLast("/")
+            val props = nextDataPageProps(get("$base${manga.url}")) ?: return@withContext manga
+            val s = props.optJSONObject("series") ?: return@withContext manga
+            val genres = s.optJSONArray("tags")?.let { arr -> (0 until arr.length()).map { arr.optString(it) } } ?: emptyList()
+            val authors = s.optJSONArray("author")?.let { arr -> (0 until arr.length()).map { arr.optString(it) } } ?: emptyList()
             manga.copy(
-                title = doc.selectFirst("h1, .post-title")?.text()?.trim() ?: manga.title,
-                coverUrl = doc.selectFirst(".summary_image img")?.let {
-                    it.attr("data-src").takeIf { s -> s.isNotBlank() } ?: it.attr("src")
-                } ?: manga.coverUrl,
-                description = doc.selectFirst(".summary__content p")?.text(),
-                genres = doc.select(".genres-content a").map { it.text() },
-                author = doc.selectFirst(".author-content a")?.text(),
+                title = s.optString("title").ifBlank { manga.title },
+                coverUrl = coverUrl(seriesId.toIntOrNull() ?: -1, s.optString("cover").ifBlank { null }) ?: manga.coverUrl,
+                description = org.jsoup.Jsoup.parse(s.optString("description")).text().ifBlank { null },
+                genres = genres,
+                author = authors.joinToString(", ").ifBlank { null },
+                status = s.optString("status").ifBlank { null },
             )
         } catch (_: Exception) { manga }
     }
 
     override suspend fun getChapterList(manga: SManga): List<SChapter> = withContext(Dispatchers.IO) {
         try {
-            val doc = Jsoup.parse(get("$base${manga.url}"))
-            val chapters = doc.select(".wp-manga-chapter a")
-            chapters.mapIndexed { i, a ->
-                val href = a.attr("href").removePrefix(base)
-                val text = a.text().trim()
-                val num = Regex("""(\d+(?:\.\d+)?)""").find(text)?.groupValues?.get(1)?.toFloatOrNull()
-                    ?: (chapters.size - i).toFloat()
-                SChapter(sourceId = id, mangaUrl = manga.url, url = href, name = text.ifBlank { "Chapter $num" },
-                    chapterNumber = num, dateUpload = 0L)
+            val seriesId = manga.url.substringAfterLast("/")
+            val props = nextDataPageProps(get("$base${manga.url}")) ?: return@withContext emptyList()
+            val chapters = props.optJSONArray("chapters") ?: return@withContext emptyList()
+            (0 until chapters.length()).mapNotNull { i ->
+                val c = chapters.optJSONObject(i) ?: return@mapNotNull null
+                val token = c.optString("token").ifBlank { return@mapNotNull null }
+                val num = c.optString("chapter").toFloatOrNull() ?: 0f
+                val title = c.optString("title").ifBlank { null }
+                SChapter(
+                    sourceId = id,
+                    mangaUrl = manga.url,
+                    url = "/series/$seriesId/$token",
+                    name = buildString { append("Ch.").append(c.optString("chapter")); if (title != null) append(" – ").append(title) },
+                    chapterNumber = num,
+                    dateUpload = c.optLong("release_date", 0L) * 1000L,
+                )
             }
         } catch (_: Exception) { emptyList() }
     }
 
     override suspend fun getPageList(chapter: SChapter): List<Page> = withContext(Dispatchers.IO) {
         try {
-            val doc = Jsoup.parse(get("$base${chapter.url}"))
-            doc.select(".reading-content img, div.page-break img").mapIndexedNotNull { i, img ->
-                val url = img.attr("data-src").takeIf { it.isNotBlank() }
-                    ?: img.attr("src").takeIf { it.isNotBlank() }
-                    ?: return@mapIndexedNotNull null
-                Page(i, url.trim(), url.trim())
-            }
+            val parts = chapter.url.split("/").filter { it.isNotBlank() }
+            val seriesId = parts.getOrNull(1) ?: return@withContext emptyList()
+            val token = parts.getOrNull(2) ?: return@withContext emptyList()
+            val props = nextDataPageProps(get("$base${chapter.url}")) ?: return@withContext emptyList()
+            val images = props.optJSONObject("chapter")?.optJSONObject("images") ?: return@withContext emptyList()
+            images.keys().asSequence()
+                .mapNotNull { key -> key.toIntOrNull()?.let { it to images.optJSONObject(key) } }
+                .sortedBy { it.first }
+                .mapIndexedNotNull { i, (_, img) ->
+                    val name = img?.optString("name")?.ifBlank { null } ?: return@mapIndexedNotNull null
+                    val url = "$cdn/$seriesId/$token/$name"
+                    Page(i, url, url)
+                }
+                .toList()
         } catch (_: Exception) { emptyList() }
     }
 }

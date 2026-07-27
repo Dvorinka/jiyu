@@ -49,8 +49,14 @@ class WuxiaBoxSource @Inject constructor(private val client: OkHttpClient) : Man
         }
     }
 
+    // "/updates/{page}.html" vypisuje karty JEDNOTLIVYCH KAPITOL (odkaz na
+    // /novel/{slug}_{cislo}.html), ne mangu samotnou - manga.url pak ukazoval na
+    // kapitolu misto na detail, takze getChapterList() se slugem "{slug}_{cislo}"
+    // u fy.php vzdy vratilo prazdno (audit 2026-07-27). Spravny katalog vsech
+    // titulu je "/list/all/all-onclick-{page}.html" (0-indexovane, razeno podle
+    // poctu prokliku = "popularni"), ktery odkazuje primo na /novel/{slug}.html.
     override suspend fun getPopular(page: Int, filter: MangaFilter): List<SManga> = withContext(Dispatchers.IO) {
-        try { parseList(get("$base/updates/$page.html")) } catch (_: Exception) { emptyList() }
+        try { parseList(get("$base/list/all/all-onclick-${page - 1}.html")) } catch (_: Exception) { emptyList() }
     }
 
     // Vyhledavani jde pres POST na EmpireCMS endpoint, ktery presmeruje

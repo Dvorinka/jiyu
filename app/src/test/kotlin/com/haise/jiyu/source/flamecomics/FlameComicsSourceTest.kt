@@ -17,26 +17,21 @@ class FlameComicsSourceTest {
     private lateinit var server: MockWebServer
     private lateinit var source: FlameComicsSource
 
-    private val listHtml = """
-        <html><body>
-        <div class="page-item-detail"><h3><a href="/manga/test-series">Test Series</a></h3><img data-src="https://cdn.example.com/test.jpg" /></div>
-        </body></html>
+    private fun nextDataHtml(pageProps: String) = """
+        <html><body><script id="__NEXT_DATA__" type="application/json">{"props":{"pageProps":$pageProps}}</script></body></html>
     """.trimIndent()
 
-    private val detailHtml = """
-        <html><body>
-        <h1>Test Series</h1>
-        <div class="summary__content"><p>A summary.</p></div>
-        <div class="genres-content"><a>Action</a></div>
-        <div class="wp-manga-chapter"><a href="/manga/test-series/chapter-1">Chapter 1</a></div>
-        </body></html>
-    """.trimIndent()
+    private val browseHtml = nextDataHtml(
+        """{"series":[{"series_id":165,"title":"Test Series","cover":"thumbnail.webp"}]}"""
+    )
 
-    private val pagesHtml = """
-        <html><body>
-        <div class="reading-content"><img data-src="https://cdn.example.com/test/1/01.jpg" /></div>
-        </body></html>
-    """.trimIndent()
+    private val detailHtml = nextDataHtml(
+        """{"series":{"series_id":165,"title":"Test Series","description":"<p>A summary.</p>","tags":["Action"],"author":["Someone"],"status":"Ongoing","cover":"thumbnail.webp"},"chapters":[{"chapter_id":1,"series_id":165,"chapter":"1.00","title":"Beginning","token":"abc123","release_date":1700000000}]}"""
+    )
+
+    private val pagesHtml = nextDataHtml(
+        """{"chapter":{"series_id":165,"chapter_id":1,"images":{"0":{"name":"page-00.jpg"},"1":{"name":"page-01.jpg"}}}}"""
+    )
 
     @Before
     fun setUp() {
@@ -45,9 +40,9 @@ class FlameComicsSourceTest {
             override fun dispatch(request: RecordedRequest): MockResponse {
                 val path = request.path.orEmpty()
                 return when {
-                    path.startsWith("/manga/?m_orderby=") -> MockResponse().setBody(listHtml)
-                    path == "/manga/test-series" -> MockResponse().setBody(detailHtml)
-                    path == "/manga/test-series/chapter-1" -> MockResponse().setBody(pagesHtml)
+                    path == "/browse" -> MockResponse().setBody(browseHtml)
+                    path == "/series/165" -> MockResponse().setBody(detailHtml)
+                    path == "/series/165/abc123" -> MockResponse().setBody(pagesHtml)
                     else -> MockResponse().setResponseCode(404)
                 }
             }
@@ -62,10 +57,11 @@ class FlameComicsSourceTest {
     }
 
     @Test
-    fun `getPopular parses title and cover`() = runTest {
+    fun `getPopular parses title and cover from NEXT_DATA`() = runTest {
         val result = source.getPopular(1)
         assertEquals(1, result.size)
         assertEquals("Test Series", result[0].title)
+        assertEquals("/series/165", result[0].url)
     }
 
     @Test
@@ -73,13 +69,16 @@ class FlameComicsSourceTest {
         val manga = source.getPopular(1).first()
         val details = source.getMangaDetails(manga)
         assertEquals("A summary.", details.description)
+        assertEquals("Someone", details.author)
 
         val chapters = source.getChapterList(manga)
         assertEquals(1, chapters.size)
         assertEquals(1f, chapters[0].chapterNumber)
+        assertEquals("/series/165/abc123", chapters[0].url)
 
         val pages = source.getPageList(chapters[0])
-        assertEquals(1, pages.size)
+        assertEquals(2, pages.size)
+        assertTrue(pages[0].imageUrl!!.endsWith("/165/abc123/page-00.jpg"))
     }
 
     @Test

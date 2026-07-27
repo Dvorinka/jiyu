@@ -74,7 +74,7 @@ class WuxiaBoxSourceTest {
             override fun dispatch(request: RecordedRequest): MockResponse {
                 val path = request.path.orEmpty()
                 return when {
-                    path.startsWith("/updates/") -> MockResponse().setBody(listHtml)
+                    path.startsWith("/list/all/all-onclick-") -> MockResponse().setBody(listHtml)
                     path == "/novel/test-series.html" -> MockResponse().setBody(detailHtml)
                     path.startsWith("/e/extend/fy.php?page=0") -> MockResponse().setBody(chaptersFragment0)
                     path.startsWith("/e/extend/fy.php") -> MockResponse().setBody("<div id=\"chpagedlist\"><ul class=\"chapter-list\"></ul></div>")

@@ -209,17 +209,19 @@ class ScanVFSource @Inject constructor(private val client: OkHttpClient) : Manga
             .header("Referer", base).build()
     ).execute().use { it.body?.string() ?: "" }
 
+    // Web prošel redesignem na Bootstrap "media" karty (audit 2026-07-27) - stare
+    // selektory (.manga-poster/.bsx/.novel-item) uz nikde v HTML neexistuji, proto
+    // appka vzdy vracela prazdny seznam. Karta: div.media > div.media-left a.thumbnail
+    // (obalka obrazku) + div.media-body h5.media-heading a.chart-title (nazev+odkaz).
     override suspend fun getPopular(page: Int, filter: MangaFilter): List<SManga> = withContext(Dispatchers.IO) {
         try {
-            Jsoup.parse(get("$base/manga-list?page=$page&sort=views")).select(".manga-poster, .novel-item, .bsx").mapNotNull { el ->
-                val a    = el.selectFirst("a") ?: return@mapNotNull null
+            Jsoup.parse(get("$base/manga-list?page=$page&sort=views")).select("div.media").mapNotNull { el ->
+                val a = el.selectFirst(".media-heading a.chart-title") ?: return@mapNotNull null
                 val href = a.attr("href").ifBlank { return@mapNotNull null }
-                val titleText = (el.selectFirst("a[title], .manga-name")?.attr("title")
-                    ?: el.selectFirst(".manga-name, h3")?.text()?.trim())
-                    ?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
+                val titleText = a.text().trim().takeIf { it.isNotBlank() } ?: return@mapNotNull null
                 SManga(sourceId = id, url = href,
                     title    = titleText,
-                    coverUrl = el.selectFirst("img")?.let { img -> img.attr("data-src").ifBlank { img.attr("src") } })
+                    coverUrl = el.selectFirst(".media-left img")?.attr("src"))
             }
         } catch (_: Exception) { emptyList() }
     }
@@ -227,13 +229,12 @@ class ScanVFSource @Inject constructor(private val client: OkHttpClient) : Manga
     override suspend fun search(query: String, page: Int, filter: MangaFilter): List<SManga> = withContext(Dispatchers.IO) {
         try {
             val q = URLEncoder.encode(query, "UTF-8")
-            Jsoup.parse(get("$base/?s=$q")).select(".manga-poster, .bsx").mapNotNull { el ->
-                val a = el.selectFirst("a") ?: return@mapNotNull null
-                val titleText = (el.selectFirst("a[title]")?.attr("title") ?: el.selectFirst("h3")?.text()?.trim())
-                    ?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
+            Jsoup.parse(get("$base/?s=$q")).select("div.media").mapNotNull { el ->
+                val a = el.selectFirst(".media-heading a.chart-title") ?: return@mapNotNull null
+                val titleText = a.text().trim().takeIf { it.isNotBlank() } ?: return@mapNotNull null
                 SManga(sourceId = id, url = a.attr("href"),
                     title    = titleText,
-                    coverUrl = el.selectFirst("img")?.attr("src"))
+                    coverUrl = el.selectFirst(".media-left img")?.attr("src"))
             }
         } catch (_: Exception) { emptyList() }
     }
@@ -241,19 +242,22 @@ class ScanVFSource @Inject constructor(private val client: OkHttpClient) : Manga
     override suspend fun getMangaDetails(manga: SManga): SManga = withContext(Dispatchers.IO) {
         try {
             val doc = Jsoup.parse(get(manga.url))
+            val author = doc.select("dt:matchesOwn((?i)Auteur)").first()?.nextElementSibling()?.text()?.trim()
+            val status = doc.select("dt:matchesOwn((?i)Statut)").first()?.nextElementSibling()?.text()?.trim()
             manga.copy(
-                title       = doc.selectFirst("h1")?.text()?.trim() ?: manga.title,
-                coverUrl    = doc.selectFirst(".thumb img, .manga-poster img")?.attr("src") ?: manga.coverUrl,
-                description = doc.selectFirst(".summary p, .description")?.text()?.trim(),
-                genres      = doc.select(".genres a, .categories a").map { it.text().trim() }.filter { it.isNotBlank() },
+                coverUrl    = doc.selectFirst(".thumbnail img, img[itemprop=image]")?.attr("src") ?: manga.coverUrl,
+                author      = author?.takeIf { it.isNotBlank() },
+                status      = status?.takeIf { it.isNotBlank() },
+                genres      = doc.select(".tag-links a").map { it.text().trim() }.filter { it.isNotBlank() },
             )
         } catch (_: Exception) { manga }
     }
 
+    // Kapitoly jsou v h5.chapter-title-rtl > a (ne .chapter-list li a - ten uz neexistuje).
     override suspend fun getChapterList(manga: SManga): List<SChapter> = withContext(Dispatchers.IO) {
         try {
             val doc = Jsoup.parse(get(manga.url))
-            doc.select(".chapter-list li a, ul.row-content-chapter li a").mapIndexed { i, a ->
+            doc.select("h5.chapter-title-rtl a").mapIndexed { i, a ->
                 val href = a.attr("href")
                 val name = a.text().trim().ifBlank { "Chapitre ${i + 1}" }
                 SChapter(sourceId = id, mangaUrl = manga.url, url = href, name = name,
@@ -266,8 +270,8 @@ class ScanVFSource @Inject constructor(private val client: OkHttpClient) : Manga
     override suspend fun getPageList(chapter: SChapter): List<Page> = withContext(Dispatchers.IO) {
         try {
             val doc = Jsoup.parse(get(chapter.url))
-            doc.select(".reading-content img, .container-chapter-reader img").mapIndexedNotNull { i, img ->
-                val url = img.attr("data-src").ifBlank { img.attr("src") }.takeIf { it.startsWith("http") }
+            doc.select("img.img-responsive").mapIndexedNotNull { i, img ->
+                val url = img.attr("data-src").trim().ifBlank { img.attr("src").trim() }.takeIf { it.startsWith("http") }
                     ?: return@mapIndexedNotNull null
                 Page(i, url, url)
             }
