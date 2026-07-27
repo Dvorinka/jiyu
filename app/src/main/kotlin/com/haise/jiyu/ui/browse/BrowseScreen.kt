@@ -260,7 +260,7 @@ fun BrowseScreen(
             // jen ONA sama scrolluje, ne celá obrazovka - hlavička s filtry zůstává
             // připevněná nahoře při scrollování mřížky.
             LazyVerticalGrid(
-                columns = GridCells.Fixed(3),
+                columns = GridCells.Fixed(2),
                 contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 12.dp, bottom = 16.dp + navBottom),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -469,66 +469,93 @@ private fun SourceCard(
     var showMenu by remember { mutableStateOf(false) }
     var showReportDialog by remember { mutableStateOf(false) }
 
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
+            .clip(RoundedCornerShape(16.dp))
             .background(NightBlue)
-            .border(1.dp, CardBorder, RoundedCornerShape(14.dp))
+            .border(1.dp, if (isFavorite) Pink.copy(alpha = 0.35f) else CardBorder, RoundedCornerShape(16.dp))
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
                 onClick = onClick,
             )
-            .padding(10.dp),
+            .padding(12.dp),
     ) {
-        // Ikona a "…" menu na společném řádku (samostatně, ne vedle názvu) - u úzkého
-        // 3-sloupcového gridu by název vedle ikony neměl dost místa a lámal by se
-        // uprostřed slova (zdroje typu "MangaDex"/"nhentai" nemají mezeru, kam
-        // zalomit).
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-            Box(
-                modifier = Modifier
-                    .size(34.dp)
-                    .clip(RoundedCornerShape(9.dp))
-                    .background(accent.copy(alpha = 0.18f)),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = initials.ifBlank { "?" },
-                    color = accent,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold,
-                )
-                // Favicona webu zdroje přes veřejnou službu (zdroje nemají bundlované
-                // logo) - dokud se nenačte (nebo web faviconu nemá/blokuje), zůstává
-                // vidět barevný monogram pod ní, žádné bliknutí prázdného místa.
-                source.homepageUrl?.let { homepage ->
-                    var showFavicon by remember(source.id) { mutableStateOf(false) }
-                    AsyncImage(
-                        model = faviconUrlFor(homepage),
-                        contentDescription = null,
-                        contentScale = ContentScale.Fit,
-                        modifier = Modifier
-                            .matchParentSize()
-                            .padding(6.dp)
-                            .alpha(if (showFavicon) 1f else 0f),
-                        onState = { state -> showFavicon = state is AsyncImagePainter.State.Success },
+        // Ikona vlevo + název vedle ní na jednom řádku, typ/jazyk pod tím přes celou
+        // šířku (ne vtěsnané do úzkého sloupečku vedle ikony) - čistší, vzdušnější
+        // rozvržení než dřívější "vše pod sebou" karta. Srdíčko + menu jsou
+        // samostatně přilepené do pravého horního rohu (viz Box níže), aby
+        // nesoutěžily o místo s názvem v hlavním řádku - se 48dp minimálním
+        // dotykovým cílem IconButtonu by se tam jinak název vešel sotva na 2 znaky.
+        Column(modifier = Modifier.fillMaxWidth().padding(end = 34.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(accent.copy(alpha = 0.18f)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = initials.ifBlank { "?" },
+                        color = accent,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
                     )
+                    // Favicona webu zdroje přes veřejnou službu (zdroje nemají bundlované
+                    // logo) - dokud se nenačte (nebo web faviconu nemá/blokuje), zůstává
+                    // vidět barevný monogram pod ní, žádné bliknutí prázdného místa.
+                    source.homepageUrl?.let { homepage ->
+                        var showFavicon by remember(source.id) { mutableStateOf(false) }
+                        AsyncImage(
+                            model = faviconUrlFor(homepage),
+                            contentDescription = null,
+                            contentScale = ContentScale.Fit,
+                            modifier = Modifier
+                                .matchParentSize()
+                                .padding(6.dp)
+                                .alpha(if (showFavicon) 1f else 0f),
+                            onState = { state -> showFavicon = state is AsyncImagePainter.State.Success },
+                        )
+                    }
                 }
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = source.name,
+                    color = TextPrimary,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
             }
-            Spacer(Modifier.weight(1f))
+            Spacer(Modifier.height(6.dp))
+            Text(
+                text = "${contentTypeLabel(source.contentType)} · ${languageFlag(source.language)} ${source.language.uppercase()}",
+                color = TextSecondary,
+                fontSize = 10.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(start = 44.dp),
+            )
+        }
+
+        Row(
+            modifier = Modifier.align(Alignment.TopEnd),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             if (isFavorite) {
                 Icon(
                     TablerIcons.Heart,
                     contentDescription = null,
                     tint = Pink,
-                    modifier = Modifier.size(12.dp).padding(end = 4.dp),
+                    modifier = Modifier.size(13.dp).padding(end = 2.dp),
                 )
             }
             Box {
                 // IconButton (ne holý Icon) - vlastní clickable zastaví tap dřív, než se
-                // dostane ke klikatelnému Column celé karty (jinak by klik na tři tečky
+                // dostane ke klikatelnému Box celé karty (jinak by klik na tři tečky
                 // rovnou otevřel zdroj místo menu).
                 IconButton(onClick = { showMenu = true }, modifier = Modifier.size(20.dp)) {
                     Icon(
@@ -560,36 +587,6 @@ private fun SourceCard(
                     )
                 }
             }
-        }
-        Spacer(Modifier.height(6.dp))
-        Text(
-            text = source.name,
-            color = TextPrimary,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.SemiBold,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            lineHeight = 14.sp,
-        )
-        Spacer(Modifier.height(2.dp))
-        Text(
-            text = contentTypeLabel(source.contentType),
-            color = TextSecondary,
-            fontSize = 10.sp,
-            maxLines = 1,
-        )
-        Spacer(Modifier.height(8.dp))
-        Box(
-            modifier = Modifier
-                .clip(RoundedCornerShape(6.dp))
-                .background(DeepSpace.copy(alpha = 0.5f))
-                .padding(horizontal = 6.dp, vertical = 3.dp),
-        ) {
-            Text(
-                text = "${languageFlag(source.language)} ${source.language.uppercase()}",
-                color = TextSecondary,
-                fontSize = 10.sp,
-            )
         }
     }
 
