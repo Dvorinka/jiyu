@@ -76,6 +76,10 @@ private fun layoutHeuristic(blocks: List<TranslatedBlock>): List<PositionedTrans
         // OcrEngine.isColorUniform) je box beztak jen barevná placka, co nikdy nesplyne s
         // pestrým okolím - roztahovat ji 3x by zbytečně zakrylo mnohem víc kresby, než kolik
         // zabíral původní text (viz uživatelská zpětná vazba - hnědá placka přes titulní stránku).
+        // Platí i bez souseda (izolovaný odznak/praporek) - riziko "zakrytí barevné kresby"
+        // je stejné, ať už má blok souseda, nebo ne (viz BubbleTextFit.DEFAULT_MAX_ITERATIONS
+        // pro řešení namačkaného textu jinou, bezpečnější cestou - přes fitter, ne přes
+        // rozšiřování boxu do kresby).
         val expandFactor = if (b.bgUniform) 3f else 1.15f
         val ownWidth = b.rightF - b.leftF
         val expandLimitLeft = leftNeighbor?.let { (b.leftF + it.rightF) / 2f } ?: (b.leftF - ownWidth * expandFactor).coerceAtLeast(0f)

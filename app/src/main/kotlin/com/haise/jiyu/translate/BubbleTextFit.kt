@@ -37,8 +37,15 @@ private const val COARSE_STEP_SP = 2f
 /** Jemný krok doladění kolem hrubě nalezené hranice. */
 private const val FINE_STEP_SP = 0.25f
 
-/** Kolik kol zpřesnění šířky smí [attemptFit] udělat, než se vzdá dané velikosti písma. */
-private const val DEFAULT_MAX_ITERATIONS = 3
+/**
+ * Kolik kol zpřesnění šířky smí [attemptFit] udělat, než se vzdá dané velikosti písma.
+ * Zvednuto z 3 na 6 (viz uživatelská zpětná vazba - text namačkaný do úzkého sloupečku
+ * u zubatých/hvězdicovitých tvarů) - u hodně nepravidelných tvarů (starburst odznak) tři
+ * kola nestačí na stabilizaci šířky (řádek v úzkém místě vynutí užší šířku, což vytvoří
+ * NOVÝ řádek, který může padnout do jiného úzkého místa) a algoritmus se vzdá na zbytečně
+ * pesimistické (příliš úzké) hodnotě dřív, než by mohl najít stabilnější rovnováhu.
+ */
+private const val DEFAULT_MAX_ITERATIONS = 6
 
 private data class FitAttempt(val fits: Boolean, val widthPx: Float)
 

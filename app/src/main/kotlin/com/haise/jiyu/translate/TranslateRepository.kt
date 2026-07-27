@@ -279,6 +279,18 @@ class TranslateRepository @Inject constructor(
             // a BubbleOverlayLayer ji vůbec nevykreslí (originál zůstane čitelný).
             val isUntranslated = t?.translated?.trim() == GeminiUltraPrompt.UNTRANSLATED_MARKER
             val translatedText = if (isUntranslated) c.raw.text else (t?.translated ?: c.raw.text)
+            // Model syllable_breaks se použije JEN, když opravdu odpovídá translatedText po
+            // odstranění rozdělovníků (viz isValidSyllableBreaks) - jinak by poškozený/
+            // neshodující se výstup modelu potichu nahradil správný překlad viditelně
+            // rozbitým textem (viz uživatelská zpětná vazba - "OKAMŽITĚ" -> "OKAM" + zbytek).
+            // ensureFallbackHyphens navíc doplní rozdělovník do dlouhých slov, která ho
+            // nemají ani po týhle validaci (model ho pro ně nevrátil vůbec).
+            val syllableBreaks = t?.syllableBreaks
+            val validatedDisplay = if (syllableBreaks != null && isValidSyllableBreaks(translatedText, syllableBreaks)) {
+                syllableBreaks
+            } else {
+                translatedText
+            }
             TranslatedBlock(
                 originalText = c.raw.text,
                 translatedText = translatedText,
@@ -286,7 +298,7 @@ class TranslateRepository @Inject constructor(
                 topF = c.raw.topF,
                 rightF = c.raw.rightF,
                 bottomF = c.raw.bottomF,
-                displayText = if (isUntranslated) c.raw.text else (t?.syllableBreaks?.ifBlank { translatedText } ?: translatedText),
+                displayText = if (isUntranslated) c.raw.text else ensureFallbackHyphens(validatedDisplay),
                 bgColorArgb = c.raw.bgColorTopArgb,
                 bgColorBottomArgb = c.raw.bgColorBottomArgb,
                 isSfx = false,
@@ -343,7 +355,10 @@ class TranslateRepository @Inject constructor(
                     topF = c.raw.topF,
                     rightF = c.raw.rightF,
                     bottomF = c.raw.bottomF,
-                    displayText = translated,
+                    // Groq/OpenRouter cesta nemá žádný syllable_breaks od modelu (jen
+                    // GeminiUltraPrompt ho umí) - ensureFallbackHyphens je tu JEDINÁ ochrana
+                    // proti tomu, aby dlouhé slovo přeteklo a Compose ho useklo bez pomlčky.
+                    displayText = if (isUntranslated) translated else ensureFallbackHyphens(translated),
                     bgColorArgb = c.raw.bgColorTopArgb,
                     bgColorBottomArgb = c.raw.bgColorBottomArgb,
                     isSfx = false,

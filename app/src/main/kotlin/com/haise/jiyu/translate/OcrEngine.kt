@@ -21,7 +21,7 @@ data class RawTextBlock(
     val topF: Float,
     val rightF: Float,
     val bottomF: Float,
-    /** Kolik původních ML Kit "lines" bylo sloučeno do tohoto bloku - viz [OcrEngine.mergeNearbyLines]. */
+    /** Kolik původních ML Kit "lines" bylo sloučeno do tohoto bloku - viz [mergeNearbyLines]. */
     val lineCount: Int = 1,
     /** Barva pozadí horní poloviny prstence kolem bubliny - viz [OcrEngine.sampleBackgroundColor]. */
     val bgColorTopArgb: Int = DEFAULT_BUBBLE_BG_ARGB,
@@ -126,7 +126,16 @@ class OcrEngine @Inject constructor() {
         // překladový model (viz GeminiUltraPrompt.buildUserPrompt) - bez řazení do
         // skutečného pořadí čtení dostával model repliky v podstatě náhodně (podle
         // union-find indexu z mergeNearbyLines), což kazilo návaznost dialogu.
-        val merged = sortIntoReadingOrder(mergeNearbyLines(lines), rightToLeft = language == "Japanese")
+        //
+        // noWallBetween: čistě geometrická blízkost (shouldMerge) nestačí - dvě RŮZNÉ
+        // bubliny/captions vedle sebe můžou geometrii splňovat, ale mezi nimi je vždycky
+        // vizuální hranice (obrys, jiná barva boxu). Bez týhle kontroly se sloučily do
+        // jednoho bloku: jedna bublina zmizela beze zbytku (viz uživatelská zpětná vazba),
+        // druhá na stránce s reklamou vytvořila jednu přebujelou barevnou plochu.
+        val merged = sortIntoReadingOrder(
+            mergeNearbyLines(lines) { a, b -> !hasWallBetween(pixelSource, bitmap.width, bitmap.height, a, b) },
+            rightToLeft = language == "Japanese",
+        )
         merged.map { block ->
             val bgSample = sampleBackgroundColor(bitmap, block)
             val shape = BubbleShapeDetector.detectShape(
@@ -167,46 +176,6 @@ class OcrEngine @Inject constructor() {
                 bgColorArgb = tb.bgColorArgb,
             )
             tb.copy(shape = shape)
-        }
-    }
-
-    /**
-     * Spojí OCR řádky, které leží blízko sebe (malá svislá mezera vůči výšce písma a
-     * vodorovné překrytí/blízkost), do jednoho bloku - to bývá jedna bublina s víc řádky.
-     * Union-Find nad dvojicovým testem [shouldMerge]: O(n²), ale n (řádků na stránku)
-     * bývá v řádu jednotek až nízkých desítek, takže to není problém výkonu.
-     */
-    private fun mergeNearbyLines(lines: List<RawTextBlock>): List<RawTextBlock> {
-        if (lines.isEmpty()) return emptyList()
-        val parent = IntArray(lines.size) { it }
-        fun find(x: Int): Int {
-            var r = x
-            while (parent[r] != r) r = parent[r]
-            var c = x
-            while (parent[c] != r) { val next = parent[c]; parent[c] = r; c = next }
-            return r
-        }
-        fun union(a: Int, b: Int) {
-            val ra = find(a); val rb = find(b)
-            if (ra != rb) parent[ra] = rb
-        }
-
-        for (i in lines.indices) {
-            for (j in i + 1 until lines.size) {
-                if (shouldMerge(lines[i], lines[j])) union(i, j)
-            }
-        }
-
-        return lines.indices.groupBy { find(it) }.map { (_, idxs) ->
-            val group = idxs.map { lines[it] }.sortedWith(compareBy({ it.topF }, { it.leftF }))
-            RawTextBlock(
-                text = group.joinToString(" ") { it.text },
-                leftF = group.minOf { it.leftF },
-                topF = group.minOf { it.topF },
-                rightF = group.maxOf { it.rightF },
-                bottomF = group.maxOf { it.bottomF },
-                lineCount = group.size,
-            )
         }
     }
 
@@ -307,18 +276,4 @@ class OcrEngine @Inject constructor() {
         private const val UNIFORM_COLOR_THRESHOLD = 45
         private const val COLOR_BUCKET_SIZE = 32
     }
-
-    private fun shouldMerge(a: RawTextBlock, b: RawTextBlock): Boolean {
-        val avgHeight = ((a.bottomF - a.topF) + (b.bottomF - b.topF)) / 2f
-        if (avgHeight <= 0f) return false
-
-        val verticalGap = maxOf(0f, maxOf(a.topF, b.topF) - minOf(a.bottomF, b.bottomF))
-        val horizontalOverlap = minOf(a.rightF, b.rightF) - maxOf(a.leftF, b.leftF)
-        val horizontalGap = maxOf(0f, maxOf(a.leftF, b.leftF) - minOf(a.rightF, b.rightF))
-
-        // Řádky stejné bubliny mívají mezeru mnohem menší než výška písma; mezi bublinami
-        // bývá mezera srovnatelná s výškou písma nebo větší (okraj bubliny, kresba).
-        return verticalGap < avgHeight * 0.9f && (horizontalOverlap > 0f || horizontalGap < avgHeight * 1.8f)
-    }
-
 }
