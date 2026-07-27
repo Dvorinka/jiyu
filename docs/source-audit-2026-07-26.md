@@ -12,6 +12,14 @@ spousta "živých" domén vrací jen zaparkovanou/reklamní stránku).
 | ❌ Odstraněno — mrtvé / zaparkované / malvertising / kompromitované (nejde opravit) | 48 |
 | ❓ Nejisté, zatím ponecháno — potřeba ověřit z mobilu/reálné appky | 0 |
 
+**Stav po čtvrtém kole (2026-07-27, aktuální/finální):** **69 aktivně
+registrovaných zdrojů** v `SourceManager.kt` (54 vlastních `MangaSource`
+tříd + 15 inline `MadaraSource` instancí, mimo dynamicky přidané uživatelské
+Madara zdroje). Od třetího kola dál: **+3 opraveno** (flamecomics, scanvf,
+wuxiabox), **-17 odstraněno** (viz sekce 8). Čísla v tabulce výše i v
+sekcích 1-7 odpovídají stavu PŘED čtvrtým kolem — sekce 8 je autoritativní
+pro finální/aktuální stav.
+
 **Update 2026-07-27 (druhé kolo, na výslovné přání uživatele):** curl-only audit dal u
 ComicK a Bato.to falešně pozitivní výsledek (metadata/HTTP kódy vypadaly OK, ale appka
 je reálně nemohla použít ke čtení). Proto teď probíhá druhé kolo ověřování **přímo v
@@ -26,6 +34,18 @@ poplach** z minulého kola (fungují beze změny na reálném titulu/kapitole), 
 zůstává jako needs bigger investigation** (buď skutečná Cloudflare JS výzva čekající
 na živý test, nebo web mezitím kompletně změnil platformu/strukturu a vyžaduje
 srovnatelné úsilí jako dřívější mangadenizi přepis). Detaily viz sekce 6c-6f.
+
+**Update 2026-07-27 (čtvrté kolo — finální rozhodnutí, live debug test):**
+dořešeny všechny zbývající "needs bigger investigation" položky ze sekcí
+6c-6f. **3 zdroje opraveny** (flamecomics, scanvf, wuxiabox — kompletní
+přepis/oprava selektorů). **17 zdrojů odstraněno** jako definitivně
+nefunkční — mj. živý debug test přímo v appce (dočasné logování v
+`CloudflareInterceptor`/`EvilMangaSource`, viz sekce 8) odhalil, že
+`CloudflareInterceptor` sice u reálné Turnstile výzvy získá platný
+`cf_clearance` cookie (tichý i interaktivní WebView solve), ale OkHttp
+replay s tímhle cookie je origin serverem STEJNĚ odmítnut — jde o
+architektonický TLS/HTTP-otisk mismatch mezi WebView a OkHttp klientem,
+ne o chybějící kód. Detaily a úplný seznam viz **sekce 8**.
 
 Ve `SourceManager.kt` u každého odstraněného zdroje zůstal komentář s důvodem
 (datum 2026-07-26), takže se dá kdykoliv dohledat, co a proč zmizelo.
@@ -545,3 +565,87 @@ nebo API endpointu:
    odstranit jako definitivně mrtvé (mangaboomers vypadá jako kandidát na
    odstranění/náhradu podobně jako dřívější SPA případy, pokud se nenajde
    API stejně jako u mangadenizi).
+
+Aktualizace: viz sekce 8 — všechny čtyři body výše byly v následujícím kole
+dořešeny (dořešeno = fix nebo definitivní odstranění, nic nezůstalo viset).
+
+---
+
+## 8) Čtvrté kolo — 2026-07-27, live debug test + finální rozhodnutí (fix vs. remove)
+
+Cíl tohoto kola: u každé zbývající "needs bigger investigation" položky ze
+sekcí 6c-6f buď najít skutečnou opravu, nebo definitivně rozhodnout o
+odstranění — žádná položka nezůstává trvale v limbu.
+
+### 8a. ✅ Opraveno (3)
+
+| ID | Příčina | Oprava |
+|---|---|---|
+| flamecomics | web přešel z Madara na Next.js (`/browse`, `/series/{id}`, `/series/{id}/{token}`) | Kompletní přepis `FlameComicsSource.kt` na parsování `__NEXT_DATA__` JSON (`props.pageProps.series`/`chapters`/`chapter.images`) místo mrtvých Madara HTML selektorů. Obrázky na `cdn.flamecomics.xyz/uploads/images/series/{id}/{token}/{name}`. Testy přepsány na JSON fixtures. |
+| scanvf (scan-vf.net) | web prošel redesignem na Bootstrap "media" karty — staré selektory (`.manga-poster`/`.bsx`/`.novel-item`, `.chapter-list li a`) v HTML vůbec neexistují | Nové selektory: archiv `div.media > .media-heading a.chart-title`, detail `dt`/`dd` páry (`Auteur(s)`/`Statut`) přes `:matchesOwn`, kapitoly `h5.chapter-title-rtl a`, čtečka `img.img-responsive[data-src]`. |
+| wuxiabox | `getPopular()` scrapoval `/updates/{page}.html`, což jsou karty JEDNOTLIVÝCH KAPITOL (`/novel/{slug}_{číslo}.html`), ne katalog titulů — `manga.url` pak ukazoval na kapitolu místo na detail, takže `getChapterList()` posílalo špatný `wjm=` slug do `fy.php` a vždy dostalo prázdno | Přepnuto na skutečný katalog `/list/all/all-onclick-{page-1}.html` (0-indexováno, řazeno podle počtu prokliků), který odkazuje přímo na `/novel/{slug}.html`. `fy.php` endpoint samotný byl vždy funkční — chyba byla jen ve zdrojové URL. |
+
+Všechny tři mají aktualizované/přepsané unit testy, `:app:testDebugUnitTest`
+prochází. Commit `1536a6f`.
+
+### 8b. 🔬 Klíčový nález — architektonický limit `CloudflareInterceptor` (evilmanga)
+
+Živý debug test přímo v appce na emulátoru (`jiyu_test` AVD), s dočasným
+`android.util.Log.e` instrumentováním `CloudflareInterceptor.kt` a
+`EvilMangaSource.kt` (odstraněno po testu, žádná trvalá změna v kódu):
+
+1. Request na `evil-manga.eu/manga/page/1/?m_orderby=` → `403`,
+   `Cf-Mitigated: challenge` → `isCloudflareBlocked()` = `true`, cooldown
+   `false` → interceptor spustí solve flow.
+2. Tichý WebView solve (`solveCloudflareSynchronously`) **uspěje** (~12 s) —
+   `silentCookies=true`, `cookiesLen=674`, i přes `blockNetworkImage=true`.
+3. Retry originálního requestu s tímhle cookie (`request.withClearance`) →
+   **`retriedCode=403 retriedBlocked=true`** — origin server cookie
+   odmítne, i když je z pohledu WebView "platná" (obsahuje `cf_clearance`).
+
+Závěr: Cloudflare Turnstile váže `cf_clearance` na TLS/HTTP otisk klienta,
+který výzvu vyřešil (WebView/Chromium engine) — když stejný cookie
+"přehraje" úplně jiný HTTP klient (OkHttp), Cloudflare to vyhodnotí jako
+podezřelé a blokuje dál. Tohle **není bug v appce** ani chybějící
+try/catch — je to zásadní architektonické omezení současného přístupu
+(WebView řeší výzvu, OkHttp dělá reálné requesty). Oprava by vyžadovala
+směrovat VŠECHNY requesty na takhle chráněné domény přes WebView síťovou
+vrstvu (zásadní přestavba, ne "quick fix").
+
+Stejná kategorie (curl 2026-07-27 reconfirmed skutečnou `Just a moment...`
+403 Turnstile výzvu na všech): **kunmanga, webtoonxyz, aquareader,
+foxaholic, immortalupdates, manhuafast, manhuaus, scribblehub, manganato
+(natomanga.com), ranovel** (stránky kapitol, ne archiv/detail).
+
+### 8c. ❌ Odstraněno (17)
+
+| ID | Kategorie | Důvod |
+|---|---|---|
+| evilmanga | Cloudflare Turnstile (viz 8b) | živě potvrzený TLS-otisk mismatch, needs bigger investigation → definitivně unfixable v současné architektuře |
+| kunmanga | Cloudflare Turnstile | stejná kategorie jako evilmanga (potvrzeno už ve 3. kole — čerstvá clearance stejně 403) |
+| webtoonxyz | Cloudflare Turnstile | curl reconfirmed `Just a moment...` 403 |
+| aquareader | Cloudflare Turnstile | curl reconfirmed `Just a moment...` 403 |
+| foxaholic | Cloudflare Turnstile | curl reconfirmed `Just a moment...` 403 |
+| immortalupdates | Cloudflare Turnstile | curl reconfirmed `Just a moment...` 403 |
+| manhuafast | Cloudflare Turnstile | curl reconfirmed `Just a moment...` 403 |
+| manhuaus | Cloudflare Turnstile | curl reconfirmed `Just a moment...` 403 |
+| scribblehub | Cloudflare Turnstile | curl reconfirmed `Just a moment...` 403 |
+| manganato (natomanga.com) | Cloudflare Turnstile | nově chráněno (dřív fungovalo bez ochrany) |
+| ranovel | Cloudflare Turnstile na stránkách kapitol | archiv/detail OK, ale čtení kapitoly nikdy nepůjde — NOVEL oprava z 6e zůstává v `MadaraSource.kt` pro budoucí zdroje |
+| madaradex | CDN WAF blok (ne Turnstile) | `cdn.madaradex.org` vrací 403 i se správným Refererem (viz 6d) — archiv by fungoval, čtení kapitoly ne |
+| mangahub | anti-adblock/bot JS gate (NE Cloudflare) | **ověřeno živě v appce**: GraphQL API vrací HTTP 200, ale tělo je "Redirecting..." JS interstitial, ne JSON — `JSONObject` parsing tiše selže, appka nemá infrastrukturu na řešení tohohle typu gate |
+| rawkuma | přesun na novou doménu/strukturu + CF hard-block | `rawkuma.net` (WordPress+htmx) má skrytý JS lazyload mechanismus pro archiv karty (ne standardní `hx-get`); opakované curl requesty navíc narazily na skutečný Cloudflare "you have been blocked" hard-block |
+| inmanga | JS/AJAX-driven archiv | AngularJS "Factory" SPA, reálný endpoint `/manga/GetMangasConsultResult` nalezen, ale přesný JSON tvar `filterSettings` parametru se nepodařilo v rozumném čase uhodnout |
+| mangaboomers | JS/AJAX-driven detail/kapitoly | seznam (`/api/mangalist`) funguje, ale `/api/mangaInfo`/`/api/loadChapters` vyžadují neznámý tvar POST parametru (vyzkoušeny: `id`, `mangaId`, `manga_id`, `mangaID`, JSON body, cookie session — žádná varianta nefunguje) |
+| mangablaze | bespoke Madara varianta | vlastní `a.acard`/`.ac-t` karty, žádný výchozí Madara selektor nesedí — vyžadovalo by vlastní `MangaSource` třídu srovnatelnou s mangadenizi |
+
+Všechny `.kt` třídy a testy odstraněných zdrojů **zůstávají na disku**
+(mrtvý kód, stejná konvence jako u předchozích odstranění) pro případ
+budoucí opravy — jen odebrány z `SourceManager.kt` (import, konstruktor,
+instance v `staticSources`). Komentáře s důvodem viz přímo v
+`SourceManager.kt` u místa, kde zdroj dřív byl.
+
+**Nezkoumáno dál v tomto kole** (mimo scope, nebyly součástí 6c-6f seznamu
+"needs bigger investigation"): mangafire (chybí auth token — 6f).
+
+Commit `faff271`.
