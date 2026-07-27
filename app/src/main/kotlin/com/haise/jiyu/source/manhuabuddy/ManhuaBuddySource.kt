@@ -49,7 +49,11 @@ class ManhuaBuddySource @Inject constructor(private val client: OkHttpClient) : 
                 .ifBlank { link.selectFirst("img")?.attr("alt")?.trim().orEmpty() }
                 .ifBlank { return@mapNotNull null }
             val cover = link.selectFirst("img")?.attr("data-original")?.takeIf { it.startsWith("http") }
-            SManga(sourceId = id, url = href, title = title, coverUrl = cover)
+            // Web pri redesignu 2026 zmenil "div.visual a" na relativni href (drive
+            // absolutni) - OkHttp Request.Builder().url() na relativni URL vyhodi
+            // IllegalArgumentException, ktera se ztrati v try/catch jako prazdny seznam.
+            val absoluteHref = href.takeIf { it.startsWith("http") } ?: (base + href)
+            SManga(sourceId = id, url = absoluteHref, title = title, coverUrl = cover)
         }
 
     override suspend fun getPopular(page: Int, filter: MangaFilter): List<SManga> = withContext(Dispatchers.IO) {

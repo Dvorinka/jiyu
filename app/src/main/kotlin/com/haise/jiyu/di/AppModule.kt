@@ -86,10 +86,17 @@ private class ThrottleInterceptor(private val maxConcurrentPerHost: Int = 5) : I
  * request ještě nemá (aby to nerozbilo zdroje, které si ho nastavují samy).
  */
 private val hotlinkReferers = mapOf(
-    "rx.resmk.org" to "https://mangak.io/",
     "webtoon-phinf.pstatic.net" to "https://www.webtoons.com/",
     "comicbookplus.com" to "https://comicbookplus.com/",
     "cdn.readdetectiveconan.com" to "https://mangapill.com/",
+    // Audit 2026-07-27 (6d) - dohledane CDN domeny chybejici v mape:
+    "cdn.manhwaz.com" to "https://manhwaz.com/",
+    "data.tnlycdn.com" to "https://toonily.com/",
+    "shadowabyss.com" to "https://kuramanga.com/",
+    "cdn.manhuabuddy.com" to "https://manhuabuddy.com/",
+    // weebcentral obrazky prochazely i bez Refereru pri testu, ale pridano
+    // defenzivne - hotlink ochrana bezi na strane CDN a muze byt nekonzistentni.
+    "hot.planeptune.us" to "https://weebcentral.com/",
 )
 
 // Hitomi.La serví thumbnaily (tn.*) i plné stránky (w1.*/w2.*/…) na
@@ -101,6 +108,17 @@ private val hotlinkRefererSuffixes = mapOf(
     // fmcdn.mangahere.com, ...) - suffix match pokryje obe TLD varianty.
     "mangahere.org" to "https://www.mangatown.com/",
     "mangahere.com" to "https://www.mangatown.com/",
+    // Comizy (drive MangaBuddy) servi obrazky na x{N}.cmzcdn.org, cislo subdomeny
+    // se meni chapter od chapteru - suffix match pokryje vsechny varianty.
+    "cmzcdn.org" to "https://comizy.io/",
+)
+
+// MangaK servi obrazky na rx.{nahodne-slovo}.org - CELA druha uroven domeny
+// (ne jen subdomena) se meni chapter od chapteru (rx.qvzrg.org, rx.resmk.org, ...),
+// takze ani presny host, ani prípona nefunguje spolehlive. Spolecny je jen prefix
+// "rx." - match je proto podle zacatku hostu.
+private val hotlinkRefererPrefixes = mapOf(
+    "rx." to "https://mangak.io/",
 )
 
 /**
@@ -147,6 +165,7 @@ private class HotlinkRefererInterceptor : Interceptor {
         val host = request.url.host
         val referer = hotlinkReferers[host]
             ?: hotlinkRefererSuffixes.entries.find { (suffix, _) -> host == suffix || host.endsWith(".$suffix") }?.value
+            ?: hotlinkRefererPrefixes.entries.find { (prefix, _) -> host.startsWith(prefix) }?.value
 
         val finalRequest = if (referer != null) {
             request.newBuilder().header("Referer", referer).build()

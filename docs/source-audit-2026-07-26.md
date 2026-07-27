@@ -405,29 +405,28 @@ Vzhledem k mixed výsledku (1/2 prošel Cloudflare ale je rozbitý jinak, 1/2
 neprošel ani Cloudflare) je pravděpodobné, že podobný podíl bude rozbitý i
 u zbylých 7 - **potřeba doopakovat stejný živý test**, viz sekce 7 (TODO).
 
-### 6d. ❌/⚠️ Obrázky kapitoly vrací chybu (potřeba další referer/hlavička)
+### 6d. 🔧 Obrázky kapitoly vrací chybu — druhé kolo oprav 2026-07-27
 
 Appka má `HotlinkRefererInterceptor` s mapou domén, které potřebují specifický
-`Referer` (viz `AppModule.kt`). Tahle mapa u následujících CHYBÍ - obrázky
-dostávají 403/404/520 i po úspěšném načtení seznamu kapitol:
+`Referer` (viz `AppModule.kt`). U 6 z 10 zdrojů šlo o skutečně chybějící/zastaralý
+záznam v mapě - **opraveno**:
 
-| ID | Chyba | Poznámka |
-|---|---|---|
-| manhwaz | `403` | **živě potvrzeno v appce** - čtečka zobrazí úplně černou/prázdnou stránku |
-| weebcentral | `403` | 1189 kapitol nalezeno, obrázek 403 |
-| mangak | `403` | rx.resmk.org je v referer mapě, ale i tak 403 - možná potřeba i jiná hlavička |
-| kuramanga | `403` | |
-| comizy | `403` | |
-| mangaworld | `404` | |
-| manhuabuddy | `520` (Cloudflare origin down/timeout) | může být dočasné přetížení serveru |
-| toonily | `403` | nově odhaleno po opravě archivu (6b) |
-| madaradex | `403` | nově odhaleno po opravě archivu (6b) |
-| cocomic | obrázek jen 766 bajtů | pravděpodobně lazy-load placeholder pixel místo skutečné stránky |
+| ID | CDN doména obrázků | Zjištěno / oprava | Stav |
+|---|---|---|---|
+| manhwaz | `cdn.manhwaz.com` | chybějící přesný host, přidáno do `hotlinkReferers` | **opraveno** |
+| toonily | `data.tnlycdn.com` | chybějící přesný host, přidáno do `hotlinkReferers` | **opraveno** |
+| kuramanga | `shadowabyss.com` | chybějící přesný host, přidáno do `hotlinkReferers` | **opraveno** |
+| manhuabuddy | `cdn.manhuabuddy.com` | 520 byl ve skutečnosti hotlink-block CDN, ne výpadek originu; navíc `ManhuaBuddySource.kt` mělo druhou, závažnější chybu - `div.visual a` teď vrací **relativní** href (dřív absolutní, web prošel redesignem), což shazovalo `getMangaDetails`/`getChapterList` přes `IllegalArgumentException` v OkHttp (chyceno tichým try/catch). Opraveno absolutizací URL + referer mapou. | **opraveno** |
+| comizy | `x{N}.cmzcdn.org` (subdoména se mění chapter od chapteru) | přidáno do `hotlinkRefererSuffixes` (suffix `cmzcdn.org`) | **opraveno** |
+| mangak | `rx.{náhodné-slovo}.org` (CELÁ 2. úroveň domény rotuje - `rx.resmk.org` v mapě byl zastaralý a prakticky nikdy nesedí) | přidán nový mechanismus `hotlinkRefererPrefixes` (match podle prefixu hostu `rx.`), starý přesný záznam smazán | **opraveno** |
+| weebcentral | `hot.planeptune.us` | naživo funkčně i bez Refereru, přesto přidáno defenzivně (levné, CDN hotlink pravidla bývají nekonzistentní) | **opraveno (defenzivně)** |
+| cocomic | - | znovu otestováno - obrázky (`img.cocomic.co`) se teď stahují normálně bez úpravy, dřívější "766 bajtů" pozorování bylo zřejmě jednorázové/dočasné | **funguje beze změny** |
+| mangaworld | - | znovu otestováno - `cdn.mangaworld.mx/.../{n}.jpg` vrací 200 pro všechny stránky testované kapitoly bez Refereru, 404 se nereprodukoval | **funguje beze změny** |
+| madaradex | `cdn.madaradex.org` | **NEOPRAVENO** - vrací 403 i s Refereru (vlastní stránka "MadaraDex • 403", `server: cloudflare`), tzn. jde o skutečné Cloudflare WAF pravidlo na CDN subdoméně, ne jen chybějící hlavičku. Web/archiv/hledání dál funguje, jen čtení konkrétní kapitoly ne. Řešilo by se jedině rozšířením `CloudflareInterceptor` i na CDN subdomény obrázků (výzva/cookie tam může být jiná než na hlavní doméně) - **needs bigger investigation**, ponecháno v appce (browse/search funguje). | **needs bigger investigation** |
 
-**Doporučení:** rozšířit `hotlinkReferers`/`hotlinkRefererSuffixes` v
-`AppModule.kt` o domény, na kterých tyhle zdroje hostují obrázky (potřeba
-zjistit skutečnou CDN doménu u každého - curl na `getPageList()` výstup).
-Nestihnuto v tomhle kole z časových důvodů.
+Kód: `app/src/main/kotlin/com/haise/jiyu/di/AppModule.kt` (referer mapy +
+nový `hotlinkRefererPrefixes`), `app/src/main/kotlin/com/haise/jiyu/source/manhuabuddy/ManhuaBuddySource.kt`
+(absolutizace URL).
 
 ### 6e. ❌ Prázdný/chybný seznam kapitol nebo stránek
 
