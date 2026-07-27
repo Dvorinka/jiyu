@@ -14,3 +14,6 @@ app/google-services.json
 
 # Supabase CLI - lokální metadata linknutého projektu, ne zdrojový kód
 supabase/.temp
+
+# Interní poznámky pro AI asistenta - nemá se zveřejňovat mezi soubory repa
+CLAUDE.md
