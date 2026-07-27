@@ -49,7 +49,11 @@ class EvilMangaSource @Inject constructor(private val client: OkHttpClient) : Ma
     }
 
     override suspend fun getPopular(page: Int, filter: MangaFilter): List<SManga> = withContext(Dispatchers.IO) {
-        try { parseList(get("$base/?page=$page")) } catch (_: Exception) { emptyList() }
+        // "$base/?page=N" je jen strankovani WP blogu (homepage), ne archiv titulu -
+        // selektory (.page-item-detail apod.) prozrazuji, ze web bezi na Madara sablone,
+        // ktera ma archiv na standardni Madara ceste. Puvodni URL proto po projiti
+        // Cloudflare vzdy vratila "0 vysledku", ne chybu.
+        try { parseList(get("$base/manga/page/$page/?m_orderby=")) } catch (_: Exception) { emptyList() }
     }
 
     override suspend fun search(query: String, page: Int, filter: MangaFilter): List<SManga> = withContext(Dispatchers.IO) {

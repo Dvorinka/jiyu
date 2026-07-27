@@ -383,27 +383,35 @@ U posledních čtyř oprava odhalila DALŠÍ, hlubší problém (obrázky/strán
 zůstávají v appce (fungují alespoň částečně - prohlížení/hledání), ale
 čtení konkrétní kapitoly může selhat, viz 6d/6e.
 
-### 6c. 🌐 Cloudflare-gated (9) - živě otestováno 2/9, mixed výsledek
+### 6c. 🌐 Cloudflare-gated (9) - třetí kolo 2026-07-27, evilmanga doladěno, zbytek needs bigger investigation
 
 Appka má `CloudflareInterceptor` (tichý WebView pokus + interaktivní dialog
-pro uživatele). Naživo v emulátoru otestováno:
-- **evilmanga**: interaktivní Cloudflare výzva se **úspěšně vyřešila** (appka
-  správně zobrazila checkbox dialog, po kliknutí prošla), ALE web pak vrátil
-  "Sin resultados" (0 titulů) - **samostatná chyba parsování/struktury webu**,
-  ne Cloudflare. Web živě existuje, ale appka z něj nic nevytáhne ani po
-  úspěšném ověření.
-- **kunmanga**: interaktivní výzva se zdánlivě vyřešila ("Verificando..." →
-  zmizelo), ale následný request stejně dostal 403 - `cf_clearance` cookie
-  z WebView zjevně nestačila (viz komentář v `CloudflareInterceptor.kt` o
-  neplatné clearance). Retry v appce dal znovu 403 (10min cooldown na hostu).
-  **Reálně nefunkční i s plným Cloudflare-solving mechanismem appky.**
-
-Zbylých 7 (aquareader, foxaholic, immortalupdates, manhuafast, manhuaus,
-webtoonxyz, scribblehub) nebylo z časových důvodů živě otestováno v tomhle
-kole - dřív jen ověřeno, že bez interceptoru dávají 403/"Just a moment".
-Vzhledem k mixed výsledku (1/2 prošel Cloudflare ale je rozbitý jinak, 1/2
-neprošel ani Cloudflare) je pravděpodobné, že podobný podíl bude rozbitý i
-u zbylých 7 - **potřeba doopakovat stejný živý test**, viz sekce 7 (TODO).
+pro uživatele). Naživo v emulátoru dotestováno:
+- **evilmanga**: znovu naživo otestováno po opravě - `getPopular()` používal
+  `$base/?page=N` (jen stránkování WP blogu/homepage), zatímco CSS selektory
+  v kódu (`.page-item-detail` aj.) prozrazují, že web běží na Madara šabloně
+  se standardním archivem. Opraveno na `$base/manga/page/N/?m_orderby=`
+  (`EvilMangaSource.kt`). **Přesto i po opravě URL appka pořád vrací "Sin
+  resultados"** - tentokrát se navíc při live testu vůbec nezobrazil žádný
+  Cloudflare interaktivní dialog (na rozdíl od dřívějšího pozorování), takže
+  buď `CloudflareInterceptor` požadavek řeší tiše a neúspěšně, nebo appka
+  dostává jinou chybu, kterou tichý try/catch v `getPopular()` polyká beze
+  stopy v logcatu. Oprava URL zůstává v kódu (je správná bez ohledu na CF),
+  ale **zdroj zůstává nefunkční - needs bigger investigation** (potřeba
+  dočasně odstranit try/catch a zjistit skutečnou výjimku/HTTP kód).
+- **kunmanga**: nedotestováno znovu tento kruh (viz předchozí kolo - CF výzva
+  se zdánlivě vyřeší, ale `cf_clearance` cookie z WebView je neplatná, 403
+  přetrvává i po retry). **needs bigger investigation** (vyžadovalo by opravu
+  přímo v `CloudflareInterceptor`/WebView cookie handlingu).
+- **webtoonxyz**: reálná URL (`www.webtoon.xyz/read/page/1/?m_orderby=`,
+  ne uhodnutá `webtoonxyz.com`) reconfirmed jako Cloudflare "Just a moment"
+  (403) i s běžnou prohlížečovou hlavičkou - živě nedotestováno.
+- **aquareader, foxaholic, immortalupdates, manhuafast, manhuaus,
+  scribblehub**: reconfirmed curlem 2026-07-27 - všech 6 pořád vrací skutečnou
+  Cloudflare JS výzvu (`<title>Just a moment...</title>`, 403) i s běžnou
+  prohlížečovou hlavičkou, nejde tedy o odumřelé domény. **Živé UI otestování
+  v appce nestihnuto** z časových důvodů (každý test = několik minut
+  navigace přes uiautomator) - zůstává jako TODO, viz sekce 7.
 
 ### 6d. 🔧 Obrázky kapitoly vrací chybu — druhé kolo oprav 2026-07-27
 

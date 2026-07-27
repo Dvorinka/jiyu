@@ -50,7 +50,7 @@ class EvilMangaSourceTest {
             override fun dispatch(request: RecordedRequest): MockResponse {
                 val path = request.path.orEmpty()
                 return when {
-                    path.startsWith("/?page=") -> MockResponse().setBody(listHtml)
+                    path.startsWith("/manga/page/") -> MockResponse().setBody(listHtml)
                     path == "/manga/test-series" -> MockResponse().setBody(detailHtml.plus(chaptersHtml))
                     path == "/manga/test-series/chapter-1" -> MockResponse().setBody(pagesHtml)
                     else -> MockResponse().setResponseCode(404)
