@@ -5,6 +5,7 @@ import com.haise.jiyu.data.db.TranslatedNovelDao
 import com.haise.jiyu.data.db.TranslatedPageDao
 import com.haise.jiyu.data.db.entity.TranslatedNovelEntity
 import com.haise.jiyu.data.db.entity.TranslatedPageEntity
+import com.haise.jiyu.util.report
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -747,7 +748,13 @@ class TranslateRepository @Inject constructor(
                 nativeLineHeightF = o.optDouble("nlh", 0.0).toFloat(),
             )
         }
-    } catch (e: Exception) { emptyList() }
+    } catch (e: Exception) {
+        // Poškozený/nečitelný cache záznam. Prázdný seznam je správná reakce (stránka se
+        // přeloží znovu), ale tiše to spolknout znamenalo, že se rozbitá serializace nikdy
+        // neprojevila jinak než "překlad se občas záhadně dělá znovu".
+        e.report("translate:cache:deserialize")
+        emptyList()
+    }
 }
 
 /**

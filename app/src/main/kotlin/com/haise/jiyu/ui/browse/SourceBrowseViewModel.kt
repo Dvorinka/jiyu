@@ -11,6 +11,7 @@ import com.haise.jiyu.source.MangaSource
 import com.haise.jiyu.source.SManga
 import com.haise.jiyu.source.SourceManager
 import com.haise.jiyu.util.NetworkMonitor
+import com.haise.jiyu.util.report
 import com.haise.jiyu.util.toFriendlyMessage
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -89,6 +90,11 @@ class SourceBrowseViewModel @Inject constructor(
                     _hasMore.value = page.size >= 20
                 }
             } catch (e: Exception) {
+                // Načtení stránky selhalo - vracíme čítač, ať retry zkusí tu samou. Bez
+                // hlášení se rozbitý zdroj (změněné HTML, blokace) navenek projeví úplně
+                // stejně jako "tady prostě nic není", což je přesně to, co dlouhodobě
+                // maskovalo mrtvé zdroje v katalogu.
+                e.report("source:$sourceId:${if (q == null) "popular" else "search"}")
                 currentPage--
             } finally {
                 _loading.value = false

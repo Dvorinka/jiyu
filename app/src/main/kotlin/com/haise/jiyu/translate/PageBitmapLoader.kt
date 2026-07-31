@@ -10,6 +10,7 @@ import coil.request.SuccessResult
 import coil.transform.Transformation
 import com.haise.jiyu.ui.reader.TileDescrambleTransformation
 import com.haise.jiyu.util.ScrambledImageUrl
+import com.haise.jiyu.util.report
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -56,6 +57,9 @@ class PageBitmapLoader @Inject constructor(
                 (result as? SuccessResult)?.drawable?.let { (it as? BitmapDrawable)?.bitmap }
             }
         } catch (e: Exception) {
+            // Nenačtená stránka = nepřeložená stránka. Bez hlášení se to navenek projeví jen
+            // tím, že překlad "některé stránky přeskočil", bez jakékoli stopy proč.
+            e.report("translate:bitmap:load")
             null
         }
     }

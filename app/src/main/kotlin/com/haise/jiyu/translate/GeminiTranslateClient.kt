@@ -1,6 +1,8 @@
 package com.haise.jiyu.translate
 
+import android.util.Log
 import com.haise.jiyu.BuildConfig
+import com.haise.jiyu.util.report
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -92,8 +94,12 @@ class GeminiTranslateClient @Inject constructor(
             when (val outcome = executeOnce(request, provider)) {
                 is ProxyOutcome.Text -> return@withContext try {
                     GeminiUltraPrompt.parseResponse(outcome.value)
-                } catch (_: Exception) {
-                    null // neparsovatelná odpověď - nemá smysl retryovat, model to znovu nespraví
+                } catch (e: Exception) {
+                    // Neparsovatelná odpověď - nemá smysl retryovat, model to znovu nespraví.
+                    // Hlásíme ale ven: tohle je přesně ten druh tiché chyby, kdy se překlad
+                    // "prostě neudělá" a bez hlášení není podle čeho zjistit proč.
+                    e.report("translate:gemini:parseResponse:provider=$provider")
+                    null
                 }
                 ProxyOutcome.ProviderDown, ProxyOutcome.BatchFailed -> return@withContext null
                 ProxyOutcome.Retryable -> if (attempt < MAX_ATTEMPTS - 1) delay(RETRY_DELAY_MILLIS)
@@ -129,6 +135,10 @@ class GeminiTranslateClient @Inject constructor(
                 UPSTREAM_EMPTY -> ProxyOutcome.BatchFailed
                 else -> {
                     // upstream_rate_limited / upstream_error - provider odmítá obsluhu.
+                    // Proxy sem posílá KONKRÉTNÍ důvod (viz UpstreamErrorCode v
+                    // translate-proxy/index.ts) a ten se dřív beze stopy zahodil - přitom je
+                    // to jediné, podle čeho jde poznat "došla kvóta" od "upstream je rozbitý".
+                    Log.w(LOG_TAG, "proxy odmítla providera $provider: $error")
                     providerHealth.markUnavailable(provider)
                     ProxyOutcome.ProviderDown
                 }
@@ -138,7 +148,8 @@ class GeminiTranslateClient @Inject constructor(
         throw e
     } catch (_: IOException) {
         ProxyOutcome.Retryable // síť/timeout - druhý pokus o chvíli později běžně projde
-    } catch (_: Exception) {
+    } catch (e: Exception) {
+        e.report("translate:gemini:executeOnce:provider=$provider")
         ProxyOutcome.BatchFailed // neparsovatelné tělo odpovědi - opakování to nespraví
     }
 
@@ -163,6 +174,8 @@ class GeminiTranslateClient @Inject constructor(
          */
         const val MAX_ATTEMPTS = 2
         const val RETRY_DELAY_MILLIS = 800L
+
+        const val LOG_TAG = "Jiyu"
 
         /** Viz UpstreamErrorCode v translate-proxy/index.ts. */
         const val UPSTREAM_EMPTY = "upstream_empty"
