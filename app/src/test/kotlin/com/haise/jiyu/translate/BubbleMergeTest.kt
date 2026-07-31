@@ -166,4 +166,24 @@ class BubbleMergeTest {
 
         assertFalse(hasWallBetween(canvas, 240, 240, a, b))
     }
+
+    @Test
+    fun `no wall reported when a thin tiled watermark stamp crosses only part of the gap`() {
+        // Reprodukuje uzivatelskou zpetnou vazbu (Half Blood kap. 1, "Baxter/merchants"
+        // bublina): "VORTEXSCANS.COM" vodoznak lezi FYZICKY mezi dvema pulkami textu jedne
+        // bubliny. Puvodni kod bere jako "zed" UZ jeden jediny bod z 5 na usecce, ktery
+        // nesedi na barvu ani jednoho bloku - tenky/diagonalni vodoznak snadno protne
+        // jen 1 z 5 vzorku, i kdyz zbytek mezery je poradna spojita bila vypln stejne
+        // bubliny. Oprava: az VETSINA vzorku musi ukazovat na cizi barvu.
+        val canvas = FakeCanvas(400, 400, 0xFF000000.toInt())
+        canvas.fillRect(20, 20, 380, 380, 0xFFFFFFFF.toInt()) // jedna velka bila bublina
+        // Tenky vodorovny pruh vodoznaku presne v miste t=0.5 vzorku (y=160), zbylych
+        // 4 vzorku (y=144,152,168,176) zustava cistou bilou vyplni bubliny.
+        canvas.fillRect(190, 158, 210, 162, 0xFF444444.toInt())
+
+        val a = block("IF THOSE DAMN MERCHANTS AREN'T LYING,", 0.10f, 0.10f, 0.90f, 0.30f)
+        val b = block("DOESN'T THAT MEAN SOME EXTERNAL FACTOR COLLECTIVELY ALTERED THE TERRAIN?", 0.10f, 0.50f, 0.90f, 0.70f)
+
+        assertFalse(hasWallBetween(canvas, 400, 400, a, b))
+    }
 }

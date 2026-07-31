@@ -157,13 +157,18 @@ fun hasWallBetween(
     // Jen prostřední úsek úsečky (t=0.3..0.7) - blízko konců bychom snadno vzorkovali
     // ještě uvnitř samotného textu jednoho z bloků, ne skutečnou mezeru mezi nimi.
     val gapFractions = listOf(0.3f, 0.4f, 0.5f, 0.6f, 0.7f)
+    var wallHits = 0
     for (t in gapFractions) {
         val x = (p1x + (p2x - p1x) * t).toInt().coerceIn(0, width - 1)
         val y = (p1y + (p2y - p1y) * t).toInt().coerceIn(0, height - 1)
         val c = source.colorAt(x, y)
         val distA = colorDistance(c, aColor)
         val distB = colorDistance(c, bColor)
-        if (distA >= colorDistanceThreshold && distB >= colorDistanceThreshold) return true
+        if (distA >= colorDistanceThreshold && distB >= colorDistanceThreshold) wallHits++
     }
-    return false
+    // Skutečná zeď (obrys, jiný box) zabírá souvislý úsek cesty - VĚTŠINA vzorků na ni
+    // narazí. Tenký/diagonální vodoznak nastříknutý přes bublinu (viz uživatelská zpětná
+    // vazba - "VORTEXSCANS.COM" ležící mezi dvěma půlkami jedné bubliny) protne přímou
+    // úsečku typicky jen v 1-2 bodech z 5 - jediný zásah proto nesmí stačit na verdikt "zeď".
+    return wallHits > gapFractions.size / 2
 }
