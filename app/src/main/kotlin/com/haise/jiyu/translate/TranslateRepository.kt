@@ -12,6 +12,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
+import kotlinx.coroutines.withTimeoutOrNull
 import org.json.JSONArray
 import org.json.JSONObject
 import javax.inject.Inject
@@ -67,8 +68,13 @@ class TranslateRepository @Inject constructor(
         // překlad z toho stejně nevznikne. Viz [ProviderHealth.allUnavailable].
         if (providerHealth.allUnavailable()) throw RateLimitedException()
 
-        val bitmap = pageBitmapLoader.load(pageUrl) ?: return emptyList()
-        val rawBlocks = ocrEngine.recognize(bitmap, sourceLanguage)
+        // Stejný strop jako v translateChapter - bez něj by jedna zaseklá síťová odpověď
+        // (viz komentář tam, až 180s na jeden obrázek) nechala appku bez zpětné vazby
+        // stejně dlouho i tady, jen na jedné stránce místo celé kapitoly.
+        val rawBlocks = withTimeoutOrNull(PAGE_OCR_TIMEOUT_MILLIS) {
+            val bitmap = pageBitmapLoader.load(pageUrl) ?: return@withTimeoutOrNull emptyList()
+            ocrEngine.recognize(bitmap, sourceLanguage)
+        } ?: emptyList()
         if (rawBlocks.isEmpty()) return emptyList()
 
         val glossary = glossaryFor(mangaId, targetLanguage)
@@ -163,8 +169,18 @@ class TranslateRepository @Inject constructor(
         val bubblesByPage: Map<Int, List<ClassifiedBubble>> = coroutineScope {
             uncached.map { pageIndex ->
                 async(Dispatchers.IO) {
-                    val bitmap = bitmapLoadSemaphore.withPermit { pageBitmapLoader.load(pages[pageIndex]) }
-                    val raw = bitmap?.let { bmp -> ocrSemaphore.withPermit { ocrEngine.recognize(bmp, sourceLanguage) } } ?: emptyList()
+                    // Postup se hlásí (onPageReady) až PO téhle celé awaitAll - jedna jediná
+                    // stránka s pomalým/zaseklým síťovým požadavkem (OkHttp má 30s connect +
+                    // 30s read, RetryInterceptor to opakuje 3x = až 180s na jeden obrázek)
+                    // by bez stropu zamrazila ukazatel postupu na 0/N pro CELOU kapitolu, i
+                    // kdyby zbylých deset stránek dávno doběhlo (viz uživatelská zpětná vazba
+                    // "3 minuty prekladam a porad 0/11" - 3 minuty odpovídá přesně tomu
+                    // nejhoršímu případu). Timeout tu stránku prostě přeskočí jako bez textu,
+                    // místo aby nechal viset celou dávku na neurčito.
+                    val raw = withTimeoutOrNull(PAGE_OCR_TIMEOUT_MILLIS) {
+                        val bitmap = bitmapLoadSemaphore.withPermit { pageBitmapLoader.load(pages[pageIndex]) }
+                        bitmap?.let { bmp -> ocrSemaphore.withPermit { ocrEngine.recognize(bmp, sourceLanguage) } } ?: emptyList()
+                    } ?: emptyList()
                     pageIndex to raw.map { r -> BubbleClassifier.classify(r, r.lineCount) }
                 }
             }.awaitAll()
@@ -441,10 +457,15 @@ class TranslateRepository @Inject constructor(
         val needsShapeMigration = cached.any { !it.isSfx && it.shape == null }
         if (!needsShapeMigration) return cached
 
-        val bitmap = pageBitmapLoader.load(pageUrl) ?: return cached
-        val migrated = ocrEngine.detectShapesOnly(bitmap, cached)
-        dao.upsert(TranslatedPageEntity(id = id, blocksJson = migrated.serialize()))
-        return migrated
+        // translateChapter volá getCachedPage SEKVENČNĚ pro každou stránku (viz cache-check
+        // smyčka) ještě PŘED paralelní dávkou nepřeložených stránek - stejný strop jako tam,
+        // ať zaseklá migrace jedné staré stránky nezablokuje i tenhle úvodní průchod.
+        return withTimeoutOrNull(PAGE_OCR_TIMEOUT_MILLIS) {
+            val bitmap = pageBitmapLoader.load(pageUrl) ?: return@withTimeoutOrNull cached
+            val migrated = ocrEngine.detectShapesOnly(bitmap, cached)
+            dao.upsert(TranslatedPageEntity(id = id, blocksJson = migrated.serialize()))
+            migrated
+        } ?: cached
     }
 
     private fun cacheId(chapterId: String, pageIndex: Int, targetLanguage: String, sourceLanguage: String) =
@@ -486,6 +507,25 @@ class TranslateRepository @Inject constructor(
         /** Kolik stránek smí [translateChapter] stahovat (přes [PageBitmapLoader]) souběžně -
          *  čistě síťové I/O čekání, snese vyšší souběžnost než samotné OCR ([OCR_PARALLELISM]). */
         private const val BITMAP_LOAD_PARALLELISM = 5
+
+        /**
+         * Tvrdý strop na stažení bitmapy + OCR JEDNÉ stránky (viz [translateChapter],
+         * [translatePage], [getCachedPage] migrace).
+         *
+         * Bez něj mohla jediná stránka s pomalou/mrtvou síťovou odpovědí viset neomezeně
+         * dlouho: OkHttp klient má 30s connect + 30s read timeout a RetryInterceptor to
+         * opakuje 3x (viz AppModule), takže jeden nešťastný obrázek dokázal zablokovat
+         * celý požadavek až 180 sekund - a [translateChapter] hlásí postup (onPageReady)
+         * teprve AŽ PO dokončení OCR úplně všech stránek dávky, takže ta jedna zaseklá
+         * stránka zamrazila ukazatel na 0/N pro CELOU kapitolu, i kdyby zbytek dávno
+         * doběhl (viz uživatelská zpětná vazba "3 minuty prekladam a porad 0/11" -
+         * 3 minuty odpovídají přesně tomu nejhoršímu případu 30s×2×3).
+         *
+         * 40 sekund je dost pro pomalou mobilní síť, ale citelně pod oněmi 180s - stránka,
+         * která tenhle strop nestihne, se prostě přeskočí jako bez textu místo toho, aby
+         * appka vypadala zaseklá donekonečna.
+         */
+        private const val PAGE_OCR_TIMEOUT_MILLIS = 40_000L
     }
 
     // ── Light novel překlad (prostý text, ne obrázek) ────────────────────────
