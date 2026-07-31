@@ -54,6 +54,24 @@ class GeminiUltraPromptTest {
     }
 
     @Test
+    fun `warns against literal word-for-word translation of idioms`() {
+        // Uzivatelska zpetna vazba: "coming all this way" prelozeno doslovne ("po tom, co jsme
+        // se sem vydali") ztratilo duraz na delku/namahu cesty, ktery idiom nese.
+        val prompt = GeminiUltraPrompt.buildSystemPrompt(emptyMap())
+        assertTrue(prompt.contains("coming all this way"))
+        assertTrue(prompt.contains("IDIOMY"))
+    }
+
+    @Test
+    fun `warns against the non-standard reflexive verb combination`() {
+        // Uzivatelska zpetna vazba: "zbloudit se" je negramaticke - "zbloudit" uz zvratnost
+        // vyjadruje samo, pridane "se" mixuje dva vzory.
+        val prompt = GeminiUltraPrompt.buildSystemPrompt(emptyMap())
+        assertTrue(prompt.contains("zbloudit"))
+        assertTrue(prompt.contains("ZVRATNÁ SLOVESA"))
+    }
+
+    @Test
     fun `parses new_terms from the response`() {
         val json = """
             {

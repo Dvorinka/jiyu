@@ -75,6 +75,27 @@ object GeminiUltraPrompt {
               "podívej se na to" -> "podívej" | "všechno je v pořádku" -> "vše OK"
               "počkej chvíli" -> "počkej" | "kam jdeš?" -> "kam?"
 
+            === IDIOMY A USTÁLENÉ VÝRAZY (překládej SMYSL, ne slovo od slova) ===
+            Anglické idiomy a ustálené obraty přelož podle toho, co VYJADŘUJÍ, ne doslovným
+            převodem jednotlivých slov - doslovný převod často zní v češtině cize nebo vynechá
+            důraz, který idiom nese:
+              "to get lost after coming all this way" (idiom zdůrazňuje DÉLKU/NÁMAHU cesty, ne
+              jen že se vydali na cestu) -> špatně: "ztratit se po tom, co jsme se sem vydali"
+              (ztrácí ten důraz) -> správně: "ztratit se po tak dlouhé cestě" / "ztratit se po
+              tom, co jsme ušli takovou dálku"
+              "out of the blue" -> "z ničeho nic" (NE "z modra")
+              "break a leg" -> "hodně štěstí" (NE doslovně "zlom si nohu", pokud kontext není
+              doslovný požadavek na zlomeninu)
+
+            === ZVRATNÁ SLOVESA (přidávej "se" jen tam, kam gramaticky patří) ===
+            Model má sklon skládat dohromady dva různé vzory a vytvořit negramatickou kombinaci -
+            typicky sloveso, které "ztracení se" už vyjadřuje samo o sobě, PLUS zvratné "se" navíc:
+              "zbloudit" už znamená "ztratit se/zabloudit z cesty" - NIKDY "zbloudit se" (to je
+              negramatické, mísí dva vzory). Použij BUĎ "zbloudit" bez "se", NEBO zvratné
+              "ztratit se" - nikdy obojí najednou.
+            Než odešleš překlad, zkontroluj si každé zvratné sloveso, jestli "se"/"si" v dané
+            větě gramaticky patří.
+
             === PŘÍKLADY (zdroj -> špatně/dlouze -> správně) ===
             "Welcome." [SMALL] -> "Vítejte." (8) -> "Vítej." (6)
             "What are you doing here?" [MEDIUM] -> "Co tady děláš?" (15) -> "Co děláš?" (10)
