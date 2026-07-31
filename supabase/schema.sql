@@ -73,3 +73,52 @@ CREATE INDEX IF NOT EXISTS idx_chapter_sync_manga ON chapter_sync(manga_id);
 ALTER TABLE chapter_sync ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users can manage own chapter_sync" ON chapter_sync
   USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+
+-- ── translate_usage ──────────────────────────────────────────────────────────
+-- Denní strop pro překladovou proxy (viz supabase/functions/translate-proxy/index.ts).
+-- Tahle tabulka i funkce níž dlouho existovaly JEN v živém projektu a chyběly ve
+-- verzování - kdyby se projekt obnovoval, překlad by se tiše rozbil na chybějící RPC.
+--
+-- POZOR: strop je ZÁMĚRNĚ globální (jedna řádka na den za celý projekt), ne per-uživatel.
+-- Appka je osobní a proxy běží s verify_jwt=false, takže tu není koho identifikovat.
+-- Důsledek: kdokoli, kdo z APK vytáhne URL + anon key, může strop vyčerpat. Pokud by
+-- appku někdy používal někdo další, tohle je první místo, které je potřeba předělat
+-- (přidat identifikátor volajícího do klíče a do PRIMARY KEY).
+CREATE TABLE IF NOT EXISTS translate_usage (
+  day           DATE PRIMARY KEY,
+  request_count INTEGER NOT NULL DEFAULT 0,
+  char_count    BIGINT  NOT NULL DEFAULT 0
+);
+
+-- RLS zapnuté ZÁMĚRNĚ bez jediné policy: k tabulce se dostane pouze service role
+-- (edge funkce), nikdy klient s anon klíčem. Prázdný seznam policies tady tedy není
+-- opomenutí - je to ta nejpřísnější varianta.
+ALTER TABLE translate_usage ENABLE ROW LEVEL SECURITY;
+
+-- Atomicky započítá jeden požadavek a vrátí, jestli se ještě vejde do denního stropu.
+-- Limity chodí jako parametry (ne konstanty v SQL), aby se daly měnit v jednom místě -
+-- v index.ts, kde se o nich rozhoduje.
+CREATE OR REPLACE FUNCTION public.increment_translate_usage(
+  p_chars                INTEGER,
+  p_daily_char_limit     BIGINT,
+  p_daily_request_limit  INTEGER
+)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public'
+AS $function$
+declare
+  v_count integer;
+  v_chars bigint;
+begin
+  insert into public.translate_usage (day, request_count, char_count)
+  values (current_date, 1, p_chars)
+  on conflict (day) do update
+    set request_count = translate_usage.request_count + 1,
+        char_count = translate_usage.char_count + excluded.char_count
+  returning request_count, char_count into v_count, v_chars;
+
+  return v_count <= p_daily_request_limit and v_chars <= p_daily_char_limit;
+end;
+$function$;

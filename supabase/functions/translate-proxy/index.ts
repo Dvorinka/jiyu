@@ -134,6 +134,19 @@ function upstreamErrorCode(status: number): UpstreamErrorCode {
     : "upstream_error";
 }
 
+/**
+ * Denní strop. ZÁMĚRNĚ globální (jedna řádka na den za celý projekt), ne per-uživatel -
+ * funkce běží s verify_jwt=false a appka je osobní, takže tu není koho identifikovat.
+ *
+ * Důsledek, o kterém je dobré vědět: kdo si z veřejného APK vytáhne URL + anon klíč,
+ * může tenhle strop vyčerpat a tím odstavit překlad i skutečnému uživateli. U osobní
+ * appky je to přijatelné; kdyby ji začal používat někdo další, tohle je první místo,
+ * které je potřeba předělat - přidat identifikátor volajícího do RPC i do primárního
+ * klíče `translate_usage` (viz supabase/schema.sql).
+ *
+ * Schéma tabulky i funkce jsou od 2026-07-31 verzované v supabase/schema.sql - dřív
+ * existovaly jen v živém projektu a jejich ztráta by překlad tiše rozbila.
+ */
 async function checkQuota(charCount: number): Promise<{ allowed: boolean; errored: boolean }> {
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
   const { data: allowed, error: quotaError } = await supabase.rpc(
