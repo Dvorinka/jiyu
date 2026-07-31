@@ -31,6 +31,8 @@ data class RawTextBlock(
     val shape: List<BubbleShapePoint>? = null,
     /** false = pozadí kolem textu je barevně nesourodé (text napsaný přímo přes kresbu) - viz [OcrEngine.isColorUniform]/[TranslatedBlock.bgUniform]. */
     val bgUniform: Boolean = true,
+    /** Průměrná výška JEDNOHO řádku originálu (zlomek výšky stránky) - viz [TranslatedBlock.nativeLineHeightF]. */
+    val nativeLineHeightF: Float = 0f,
 )
 
 /** Výsledek [OcrEngine.sampleBackgroundColor] - dvě barvy (gradient) + signál rovnoměrnosti pro [TranslatedBlock.bgUniform]. */

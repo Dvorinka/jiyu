@@ -36,6 +36,24 @@ class TranslatedBlockSerializationTest {
         // (viz TranslatedBlock defaults), stejné chování jako před přidáním týhle dvojice.
         assertEquals(false, blocks[0].isUntranslated)
         assertEquals(true, blocks[0].bgUniform)
+        // Stary zaznam nema "nlh" - musi se defaultnout na 0f (neznama nativni velikost),
+        // aby render spadl na drivejsi chovani (hledej rovnou nejvetsi velikost, co se vejde).
+        assertEquals(0f, blocks[0].nativeLineHeightF, 0.0001f)
+    }
+
+    @Test
+    fun `nativeLineHeightF round-trips through serialize and deserialize`() {
+        val original = TranslatedBlock(
+            originalText = "Hi", translatedText = "Ahoj",
+            leftF = 0.1f, topF = 0.1f, rightF = 0.5f, bottomF = 0.3f,
+            nativeLineHeightF = 0.042f,
+        )
+
+        val json = serializeForTest(listOf(original))
+        val roundTripped = deserializeForTest(json)
+
+        assertEquals(1, roundTripped.size)
+        assertEquals(0.042f, roundTripped[0].nativeLineHeightF, 0.0001f)
     }
 
     @Test
@@ -81,6 +99,7 @@ class TranslatedBlockSerializationTest {
                 put("orig", b.originalText); put("trans", b.translatedText); put("disp", b.displayText)
                 put("bg", b.bgColorArgb); put("sfx", b.isSfx); put("lc", b.lineCount); put("type", b.bubbleType.name)
                 put("untrans", b.isUntranslated); put("bgUniform", b.bgUniform)
+                put("nlh", b.nativeLineHeightF.toDouble())
                 b.shape?.let { shape ->
                     put("shape", JSONArray().apply {
                         shape.forEach { p -> put(JSONArray().apply { put(p.yF.toDouble()); put(p.leftF.toDouble()); put(p.rightF.toDouble()) }) }
@@ -112,6 +131,7 @@ class TranslatedBlockSerializationTest {
                 bubbleType = try { BubbleType.valueOf(o.optString("type", "SPEECH")) } catch (e: Exception) { BubbleType.SPEECH },
                 isUntranslated = o.optBoolean("untrans", false),
                 bgUniform = o.optBoolean("bgUniform", true),
+                nativeLineHeightF = o.optDouble("nlh", 0.0).toFloat(),
             )
         }
     }

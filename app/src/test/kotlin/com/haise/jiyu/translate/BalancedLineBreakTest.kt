@@ -157,7 +157,12 @@ class BalancedLineBreakTest {
     }
 
     /** Monospace model písma: šířka znaku = 0.6 * fontSp, výška řádku = 1.25 * fontSp. */
-    private fun fitOval(text: String, pageWidthPx: Float = 1000f, pageHeightPx: Float = 1000f) =
+    private fun fitOval(
+        text: String,
+        pageWidthPx: Float = 1000f,
+        pageHeightPx: Float = 1000f,
+        preferredFontSp: Float? = null,
+    ) =
         fitTextToShape(
             words = text.split(" ").filter { it.isNotBlank() },
             minFontSp = 6f,
@@ -171,6 +176,7 @@ class BalancedLineBreakTest {
             measureWord = { word, fontSp -> word.length * fontSp * 0.6f },
             spaceWidth = { fontSp -> fontSp * 0.6f },
             lineHeightPx = { fontSp -> fontSp * 1.25f },
+            preferredFontSp = preferredFontSp,
         )
 
     @Test
@@ -240,6 +246,49 @@ class BalancedLineBreakTest {
         val layout = fitOval("AHOJ")
         assertNotNull(layout)
         assertTrue("expected a large font for short text in a big oval, got ${layout!!.fontSp}", layout.fontSp > 20f)
+    }
+
+    // ── fitTextToShape: preferredFontSp (nativni velikost originalu) ──
+
+    @Test
+    fun `uses the preferred size exactly when it fits, instead of maximizing`() {
+        // Bez preferredFontSp by kratky text v prostornem ovalu dorostl pres 20sp (viz test
+        // vys) - s preferredFontSp ma sednout presne na nativni velikost originalu.
+        val layout = fitOval("AHOJ", preferredFontSp = 14f)
+        assertNotNull(layout)
+        assertEquals(14f, layout!!.fontSp, 0.01f)
+    }
+
+    @Test
+    fun `shrinks below the preferred size when the translation does not fit at it`() {
+        // Dost dlouhy text, aby se do 12 radku ovalu pri preferovanych 30sp nevesel (12 radku
+        // po ~44 znacich pri 30sp a sirce ovalu 800px), a fitter tak musel zmensit.
+        val longText = (1..60).joinToString(" ") { "SLOVOSLOVO$it" }
+        val layout = fitOval(longText, preferredFontSp = 30f)
+        assertNotNull(layout)
+        assertTrue("expected a shrink below the preferred 30sp, got ${layout!!.fontSp}", layout!!.fontSp < 30f)
+    }
+
+    @Test
+    fun `never grows past the preferred size even with room to spare`() {
+        val layout = fitOval("AHOJ", preferredFontSp = 10f)
+        assertNotNull(layout)
+        assertTrue("must not exceed the preferred 10sp, got ${layout!!.fontSp}", layout!!.fontSp <= 10f + 0.01f)
+    }
+
+    @Test
+    fun `the preferred size still never breaks a word apart`() {
+        // I s velkou preferovanou velikosti musi zustat cele slovo na jednom radku.
+        val layout = fitOval("NEJNEPRAVDEPODOBNEJSIMI", preferredFontSp = 34f)
+        assertNotNull(layout)
+        assertEquals(listOf("NEJNEPRAVDEPODOBNEJSIMI"), layout!!.lines)
+    }
+
+    @Test
+    fun `omitting preferredFontSp keeps the old maximize behavior`() {
+        val layout = fitOval("AHOJ")
+        assertNotNull(layout)
+        assertTrue("expected the old maximize behavior when preferredFontSp is null, got ${layout!!.fontSp}", layout!!.fontSp > 20f)
     }
 
     // ── maxLineWidthPx (strop podle skutečného boxu, do kterého se text kreslí) ──

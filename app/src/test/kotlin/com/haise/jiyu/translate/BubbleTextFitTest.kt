@@ -220,4 +220,97 @@ class BubbleTextFitTest {
             finalMeasurement.longestWordWidthPx <= boxWidthPx + 0.5f,
         )
     }
+
+    // ── fitFontSizeToBox: preferredFontSp (nativni velikost originalu) ──
+
+    @Test
+    fun `uses the preferred size exactly when it fits, instead of maximizing`() {
+        // Bublina ma spoustu mista (600x600), takze bez preferredFontSp by fitter vybral
+        // velikost hluboko pres 20sp (viz test vys) - s preferredFontSp ma sedet presne na
+        // nativni velikosti originalu, ne se nafouknout na maximum jen proto, ze je misto.
+        val result = fitFontSizeToBox(
+            minFontSp = 6f,
+            maxFontSp = 36f,
+            boxWidthPx = 600f,
+            maxHeightPx = 600f,
+            preferredFontSp = 14f,
+            measure = { fontSp, maxW -> fakeMeasure("UZ JDOU", fontSp, maxW) },
+        )
+        assertEquals(14f, result.fontSp, 0.01f)
+    }
+
+    @Test
+    fun `shrinks below the preferred size when the translation does not fit at it`() {
+        val result = fitFontSizeToBox(
+            minFontSp = 6f,
+            maxFontSp = 36f,
+            boxWidthPx = 120f,
+            maxHeightPx = 60f,
+            preferredFontSp = 24f,
+            measure = { fontSp, maxW -> fakeMeasure("TOHLE JE DLOUHY PREKLAD CO SE MUSI VEJIT DO MALE BUBLINY", fontSp, maxW) },
+        )
+        assertTrue("expected a shrink below the preferred 24sp, got ${result.fontSp}", result.fontSp < 24f)
+    }
+
+    @Test
+    fun `never grows past the preferred size even with room to spare`() {
+        // I kdyby se do bubliny vesla i vetsi velikost (viz "grows font size..." test vys,
+        // kde stejny text s timhle boxem dorostl pres 20sp), preferovana velikost je STROP -
+        // cilem je vizualne sednout na original, ne vyuzit kazdy volny pixel.
+        val result = fitFontSizeToBox(
+            minFontSp = 6f,
+            maxFontSp = 36f,
+            boxWidthPx = 600f,
+            maxHeightPx = 600f,
+            preferredFontSp = 10f,
+            measure = { fontSp, maxW -> fakeMeasure("UZ JDOU", fontSp, maxW) },
+        )
+        assertTrue("must not exceed the preferred 10sp, got ${result.fontSp}", result.fontSp <= 10f + 0.01f)
+    }
+
+    @Test
+    fun `a preferred size above the absolute max is clamped down to it`() {
+        val result = fitFontSizeToBox(
+            minFontSp = 6f,
+            maxFontSp = 20f,
+            boxWidthPx = 600f,
+            maxHeightPx = 600f,
+            preferredFontSp = 99f,
+            measure = { fontSp, maxW -> fakeMeasure("UZ JDOU", fontSp, maxW) },
+        )
+        assertTrue("expected the clamp to the absolute max 20sp, got ${result.fontSp}", result.fontSp <= 20f + 0.01f)
+    }
+
+    @Test
+    fun `the preferred size still respects the no-character-break rule`() {
+        // Preferovana velikost nesmi obejit ochranu proti rozseknuti dlouheho slova - viz
+        // hlavni regresni test tridy.
+        val text = "NEJNEPRAVDEPODOBNEJSIMI"
+        val boxWidthPx = 100f
+        val result = fitFontSizeToBox(
+            minFontSp = 6f,
+            maxFontSp = 36f,
+            boxWidthPx = boxWidthPx,
+            maxHeightPx = 400f,
+            preferredFontSp = 30f, // pri 30sp by se slovo rozseklo
+            measure = { fontSp, maxW -> fakeMeasure(text, fontSp, maxW) },
+        )
+        val finalMeasurement = fakeMeasure(text, result.fontSp, result.widthPx)
+        assertTrue(
+            "longest word must still fit whole even with a large preferred size (${finalMeasurement.longestWordWidthPx}px vs $boxWidthPx at ${result.fontSp}sp)",
+            finalMeasurement.longestWordWidthPx <= boxWidthPx + 0.5f,
+        )
+    }
+
+    @Test
+    fun `omitting preferredFontSp keeps the old maximize behavior`() {
+        val result = fitFontSizeToBox(
+            minFontSp = 6f,
+            maxFontSp = 36f,
+            boxWidthPx = 600f,
+            maxHeightPx = 600f,
+            measure = { fontSp, maxW -> fakeMeasure("UZ JDOU", fontSp, maxW) },
+        )
+        assertTrue("expected the old maximize behavior when preferredFontSp is null, got ${result.fontSp}", result.fontSp > 20f)
+    }
 }

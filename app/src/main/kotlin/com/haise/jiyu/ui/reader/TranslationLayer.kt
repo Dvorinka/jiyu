@@ -331,6 +331,7 @@ fun TranslationOverlay(
                     shapeBottomF = pos.maxBottomF,
                     imageWidthDp = imageRect.width,
                     imageHeightDp = imageRect.height,
+                    nativeLineHeightF = pos.block.nativeLineHeightF,
                 )
             }
         }
@@ -387,12 +388,28 @@ private fun AutoFitTranslatedText(
     shapeBottomF: Float = 0f,
     imageWidthDp: Float = 0f,
     imageHeightDp: Float = 0f,
+    /** Průměrná výška JEDNOHO řádku originálu (zlomek výšky stránky) - viz [TranslatedBlock.nativeLineHeightF]. */
+    nativeLineHeightF: Float = 0f,
 ) {
     val density = LocalDensity.current
     val textMeasurer = rememberTextMeasurer()
     val fontFamily = fontFamilyFor(bubbleType)
     val maxFontSp = 36f * textScale
     val minFontSp = 6f * textScale
+
+    // Velikost, jakou mělo písmo v ORIGINÁLU, převedená na sp - viz [fitFontSizeToBox]/
+    // [fitTextToShape] parametr preferredFontSp. Řádek o výšce nativeLineHeightF (zlomek výšky
+    // stránky) se na obrazovce vykreslí jako nativeLineHeightF * imageHeightDp - a protože
+    // Compose řádkuje s výškou fontSp*1.25 (viz lineHeightPx níž), zpětně z toho dostaneme
+    // fontSp. Vynásobeno textScale, ať respektuje i uživatelovo nastavení velikosti textu -
+    // jinak by "nativní" velikost ignorovala jeho vlastní preferenci.
+    val preferredFontSp = if (nativeLineHeightF > 0f && imageHeightDp > 0f) {
+        val nativeLineHeightPx = with(density) { (nativeLineHeightF * imageHeightDp).dp.toPx() }
+        val nativeFontPx = nativeLineHeightPx / 1.25f
+        with(density) { nativeFontPx.toSp() }.value * textScale
+    } else {
+        null
+    }
 
     // Vzorkovaná barva pozadí bubliny může být i tmavá (stínovaný/černý shout box) - černý text
     // na černém pozadí by byl nečitelný, proto volíme barvu textu (a opačnou barvu obrysu)
@@ -421,7 +438,7 @@ private fun AutoFitTranslatedText(
     // způsobovalo překrývající se řádky).
     val shapedLayout = if (shape != null && shapeCenterF != null && imageHeightDp > 0f) {
         val words = remember(text) { text.split(' ', '\n').filter { it.isNotBlank() } }
-        remember(text, shape, shapeCenterF, shapeTopF, shapeBottomF, imageWidthDp, imageHeightDp, maxFontSp, fontFamily, renderableWidthPx) {
+        remember(text, shape, shapeCenterF, shapeTopF, shapeBottomF, imageWidthDp, imageHeightDp, maxFontSp, fontFamily, renderableWidthPx, preferredFontSp) {
             fitTextToShape(
                 words = words,
                 minFontSp = minFontSp,
@@ -447,6 +464,7 @@ private fun AutoFitTranslatedText(
                 },
                 lineHeightPx = { fontSp -> with(density) { (fontSp * 1.25f).sp.toPx() } },
                 maxLineWidthPx = renderableWidthPx,
+                preferredFontSp = preferredFontSp,
             )
         }
     } else {
@@ -483,12 +501,13 @@ private fun AutoFitTranslatedText(
         .coerceAtLeast(1)
     val maxHeightPx = with(density) { maxHeight.roundToPx() }.coerceAtLeast(1)
 
-    val fitResult = remember(text, widthPx, maxHeightPx, maxFontSp, fontFamily) {
+    val fitResult = remember(text, widthPx, maxHeightPx, maxFontSp, fontFamily, preferredFontSp) {
         fitFontSizeToBox(
             minFontSp = minFontSp,
             maxFontSp = maxFontSp,
             boxWidthPx = widthPx.toFloat(),
             maxHeightPx = maxHeightPx.toFloat(),
+            preferredFontSp = preferredFontSp,
             measure = { fontSp, maxWidthPx ->
                 // Rezerva na obrys (viz StrokedTranslatedText/STROKE_WIDTH_FACTOR) - obrys se
                 // kreslí kolem stejného textu ve stejné velikosti, takže vizuálně "vykousne"

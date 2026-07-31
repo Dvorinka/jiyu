@@ -116,6 +116,10 @@ private const val SHAPED_FINE_STEP_SP = 0.25f
  *   ale box kopíruje jen užší OCR rozsah textu. Sazba pak prošla kontrolou ("slovo se do řádku
  *   vejde"), ale Compose měl při vykreslení k dispozici míň místa a slovo rozsekal uprostřed
  *   po písmenech - viz uživatelský screenshot "SPOLEČNOS" + "T" na dalším řádku.
+ * @param preferredFontSp velikost, jakou mělo písmo v ORIGINÁLU (viz [TranslatedBlock.nativeLineHeightF])
+ *   - když je zadaná, hledání ji použije jako strop místo [maxFontSp]: zkusí ji jako první
+ *   volbu a teprve když se text nevejde, zmenšuje, ale nikdy nezvětší nad tuhle hodnotu.
+ *   Null = dřívější chování (hledej rovnou největší velikost, co se vejde).
  * @return null, když se text nevejde ani při [minFontSp] - volající pak spadne na jednodušší
  *   sazbu do vepsaného obdélníku.
  */
@@ -134,10 +138,12 @@ fun fitTextToShape(
     lineHeightPx: (fontSp: Float) -> Float,
     maxLines: Int = 12,
     maxLineWidthPx: Float = Float.MAX_VALUE,
+    preferredFontSp: Float? = null,
 ): ShapedTextLayout? {
     if (words.isEmpty() || shape.size < 2 || pageHeightPx <= 0f) return null
     val shapeHeightF = shapeBottomF - shapeTopF
     if (shapeHeightF <= 0f) return null
+    val searchCeiling = preferredFontSp?.coerceIn(minFontSp, maxFontSp) ?: maxFontSp
 
     fun attempt(fontSp: Float): List<String>? {
         val wordWidths = words.map { measureWord(it, fontSp) }
@@ -165,7 +171,7 @@ fun fitTextToShape(
         return null
     }
 
-    var coarse = maxFontSp
+    var coarse = searchCeiling
     var result = attempt(coarse)
     while (result == null && coarse - SHAPED_COARSE_STEP_SP >= minFontSp) {
         coarse -= SHAPED_COARSE_STEP_SP
@@ -174,7 +180,7 @@ fun fitTextToShape(
     var fineLines = result ?: return null
 
     var fine = coarse
-    while (fine + SHAPED_FINE_STEP_SP <= maxFontSp) {
+    while (fine + SHAPED_FINE_STEP_SP <= searchCeiling) {
         val next = attempt(fine + SHAPED_FINE_STEP_SP) ?: break
         fine += SHAPED_FINE_STEP_SP
         fineLines = next

@@ -35,6 +35,12 @@ const val DEFAULT_BUBBLE_BG_ARGB: Int = android.graphics.Color.WHITE
  *   [OcrEngine.sampleBackgroundColor]. [layoutTranslationBlocks] u takového bloku (bez
  *   detekovaného tvaru) neroztahuje heuristický box tak štědře jako u skutečné bubliny,
  *   protože barevná výplň tam beztak nikdy nesplyne s pestrým okolím.
+ * @param nativeLineHeightF průměrná výška JEDNOHO řádku originálního textu (zlomek výšky
+ *   stránky), zjištěná z OCR ještě před sloučením řádků do bubliny - viz [mergeNearbyLines].
+ *   0f = neznámé (starý cache záznam bez tohohle pole). Render z toho odvodí velikost
+ *   písma, jakou měl originál, a zkusí ji jako první volbu místo rovnou hledat největší
+ *   velikost, co se vejde - překlad tak vizuálně sedí na originální lettering, dokud se
+ *   do bubliny vejde (viz [fitFontSizeToBox]/[fitTextToShape] parametr preferredFontSp).
  */
 data class TranslatedBlock(
     val originalText: String,
@@ -52,4 +58,5 @@ data class TranslatedBlock(
     val bubbleType: BubbleType = BubbleType.SPEECH,
     val isUntranslated: Boolean = false,
     val bgUniform: Boolean = true,
+    val nativeLineHeightF: Float = 0f,
 )

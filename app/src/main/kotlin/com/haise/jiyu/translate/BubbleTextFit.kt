@@ -125,6 +125,13 @@ private const val FINE_STEP_SP = 0.25f
  *
  * Hledání je dvoufázové (hrubý krok [COARSE_STEP_SP], pak jemné doladění [FINE_STEP_SP]) -
  * lineární krok od velkého stropu dolů by u každé bubliny znamenal desítky měření navíc.
+ *
+ * @param preferredFontSp velikost, jakou mělo písmo v ORIGINÁLU (odvozená z výšky OCR řádku,
+ *   viz [TranslatedBlock.nativeLineHeightF]) - když je zadaná, hledání ji použije jako strop
+ *   místo [maxFontSp]: zkusí ji jako první volbu (překlad pak vizuálně sedí na originální
+ *   lettering, ne na uměle nafouknuté maximum, co se do bubliny vejde) a teprve když se
+ *   nevejde, zmenšuje - ale NIKDY nezvětší nad tuhle hodnotu, i kdyby v bublině zbylo místo.
+ *   Null = dřívější chování (hledej rovnou největší velikost, co se vejde).
  */
 fun fitFontSizeToBox(
     minFontSp: Float,
@@ -132,6 +139,7 @@ fun fitFontSizeToBox(
     boxWidthPx: Float,
     maxHeightPx: Float,
     measure: (fontSp: Float, maxWidthPx: Float) -> TextMeasurement,
+    preferredFontSp: Float? = null,
 ): ShapeFitResult {
     fun fits(fontSp: Float): Boolean {
         val measured = measure(fontSp, boxWidthPx)
@@ -141,14 +149,16 @@ fun fitFontSizeToBox(
         return true
     }
 
-    var coarse = maxFontSp
+    val searchCeiling = preferredFontSp?.coerceIn(minFontSp, maxFontSp) ?: maxFontSp
+
+    var coarse = searchCeiling
     while (coarse > minFontSp && !fits(coarse)) {
         coarse -= COARSE_STEP_SP
     }
     if (!fits(coarse)) return ShapeFitResult(minFontSp, boxWidthPx)
 
     var fine = coarse
-    while (fine + FINE_STEP_SP <= maxFontSp && fits(fine + FINE_STEP_SP)) {
+    while (fine + FINE_STEP_SP <= searchCeiling && fits(fine + FINE_STEP_SP)) {
         fine += FINE_STEP_SP
     }
     return ShapeFitResult(fine.coerceIn(minFontSp, maxFontSp), boxWidthPx)
