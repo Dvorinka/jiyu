@@ -127,7 +127,11 @@ fun ReaderScreen(viewModel: ReaderViewModel = hiltViewModel()) {
                             showSleepTimerDialog = false
                         }, modifier = Modifier.fillMaxWidth()) { Text(label, color = Color.White) }
                     }
-                    if (viewModel.sleepTimerRemaining.value != null) {
+                    // Sbíraná hodnota z ř. 82, ne syrové StateFlow.value - to se přečte jen
+                    // jednou při složení a Compose se pak nedozví, že se časovač změnil,
+                    // takže tlačítko "zrušit" v otevřeném dialogu nereagovalo na spuštění
+                    // ani doběhnutí časovače.
+                    if (sleepTimerRemaining != null) {
                         TextButton(onClick = { viewModel.cancelSleepTimer(); showSleepTimerDialog = false }, modifier = Modifier.fillMaxWidth()) {
                             Text(stringResource(R.string.reader_sleep_timer_cancel), color = Color(0xFFEF9A9A))
                         }
