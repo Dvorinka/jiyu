@@ -791,4 +791,65 @@
     <!-- Widget -->
     <string name="widget_library_label">Library</string>
     <string name="widget_empty_library">No manga in library</string>
+
+    <!-- Doplněno 2026-07-31: řetězce, které vznikly česky a chyběly v překladech -->
+    <string name="common_send">Send</string>
+
+    <string name="settings_sources_adult_section_title">18+ sources</string>
+    <string name="settings_sources_adult_toggle_title">Show adult sources</string>
+    <string name="settings_sources_adult_toggle_desc">Turning this off hides sources with 18+ content from Browse and search (manga already added from them stays readable)</string>
+
+    <string name="settings_reader_preload_novel_title">Preload next chapter translation (light novel)</string>
+    <string name="settings_reader_preload_novel_desc">Once the current chapter is translated, the next one is translated in the background so it is ready right away</string>
+    <string name="settings_reader_preload_manga_title">Preload next chapter translation (manga/manhwa/manhua)</string>
+    <string name="settings_reader_preload_manga_desc">Once the current chapter is translated, the next one is downloaded and translated in the background — this costs more data and battery than with light novels</string>
+    <string name="settings_reader_preload_manga_wifi_title">Wi-Fi only</string>
+    <string name="settings_reader_preload_manga_wifi_desc">Turn this off if you want preloading on mobile data too</string>
+
+    <string name="settings_about_downloading">Downloading update…</string>
+    <string name="settings_about_download_failed">Download failed</string>
+    <string name="settings_about_ready_to_install">Downloaded — confirm the install in the system dialog</string>
+
+    <string name="detail_add_favorite">Add to favorites</string>
+    <string name="detail_remove_favorite">Remove from favorites</string>
+
+    <string name="library_stats_books">Books in library</string>
+    <string name="library_stats_favorites">Favorites</string>
+    <string name="library_stats_read_today">Read today</string>
+    <string name="library_minutes_short">min</string>
+    <string name="library_percent_read">%1$d %% read</string>
+    <string name="library_filter">Filter</string>
+    <string name="library_new_badge">NEW</string>
+
+    <string name="mylist_content_novel">Novel</string>
+    <string name="mylist_content_comic">Comic</string>
+    <string name="mylist_filter_on_hold">On hold</string>
+    <string name="mylist_filter_plan_to_read">Plan to read</string>
+    <string name="mylist_filter_and_sort">Filter and sort</string>
+    <string name="mylist_status_unset">In library</string>
+    <string name="mylist_search">Search</string>
+    <string name="mylist_sort_by">Sort by</string>
+    <string name="mylist_category_section">Category</string>
+    <string name="mylist_content_type_section">Content type</string>
+
+    <string name="browse_source_menu_desc">Source options</string>
+    <string name="browse_favorites_section">Favorites</string>
+    <string name="browse_source_favorite">Add to favorites</string>
+    <string name="browse_source_unfavorite">Remove from favorites</string>
+    <string name="browse_source_report">Report a problem</string>
+    <string name="browse_report_title">Report a problem: %1$s</string>
+    <string name="browse_report_problem_titles">Source does not load titles</string>
+    <string name="browse_report_problem_chapters">Chapters do not load</string>
+    <string name="browse_report_problem_error">Error</string>
+    <string name="browse_report_problem_other">Other problem</string>
+    <string name="browse_report_details_placeholder">Describe the problem…</string>
+    <string name="browse_report_chooser_title">Send report via…</string>
+
+    <string name="settings_report_section_title">Support</string>
+    <string name="settings_report_button">Report a problem</string>
+    <string name="settings_report_title">Report a problem</string>
+    <string name="settings_report_problem_crash">App crashes / freezes</string>
+    <string name="settings_report_problem_translation">Translation does not work</string>
+    <string name="settings_report_problem_download">Downloading does not work</string>
+    <string name="settings_report_problem_other">Other problem</string>
 </resources>

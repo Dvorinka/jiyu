@@ -788,4 +788,65 @@
     <!-- Widget -->
     <string name="widget_library_label">Biblioteca</string>
     <string name="widget_empty_library">Sin manga en la biblioteca</string>
+
+    <!-- Doplněno 2026-07-31: řetězce, které vznikly česky a chyběly v překladech -->
+    <string name="common_send">Enviar</string>
+
+    <string name="settings_sources_adult_section_title">Fuentes +18</string>
+    <string name="settings_sources_adult_toggle_title">Mostrar fuentes para adultos</string>
+    <string name="settings_sources_adult_toggle_desc">Al desactivarlo, las fuentes con contenido +18 desaparecen de Explorar y de la búsqueda (los mangas ya añadidos desde ellas seguirán siendo legibles)</string>
+
+    <string name="settings_reader_preload_novel_title">Precargar la traducción del siguiente capítulo (novela ligera)</string>
+    <string name="settings_reader_preload_novel_desc">Cuando se traduce el capítulo actual, el siguiente se traduce en segundo plano para que esté listo de inmediato</string>
+    <string name="settings_reader_preload_manga_title">Precargar la traducción del siguiente capítulo (manga/manhwa/manhua)</string>
+    <string name="settings_reader_preload_manga_desc">Cuando se traduce el capítulo actual, el siguiente se descarga y se traduce en segundo plano: consume más datos y batería que con las novelas ligeras</string>
+    <string name="settings_reader_preload_manga_wifi_title">Solo con Wi-Fi</string>
+    <string name="settings_reader_preload_manga_wifi_desc">Desactívalo si quieres la precarga también con datos móviles</string>
+
+    <string name="settings_about_downloading">Descargando la actualización…</string>
+    <string name="settings_about_download_failed">La descarga ha fallado</string>
+    <string name="settings_about_ready_to_install">Descargado: confirma la instalación en el diálogo del sistema</string>
+
+    <string name="detail_add_favorite">Añadir a favoritos</string>
+    <string name="detail_remove_favorite">Quitar de favoritos</string>
+
+    <string name="library_stats_books">Libros en la biblioteca</string>
+    <string name="library_stats_favorites">Favoritos</string>
+    <string name="library_stats_read_today">Leído hoy</string>
+    <string name="library_minutes_short">min</string>
+    <string name="library_percent_read">%1$d %% leído</string>
+    <string name="library_filter">Filtrar</string>
+    <string name="library_new_badge">NUEVO</string>
+
+    <string name="mylist_content_novel">Novela</string>
+    <string name="mylist_content_comic">Cómic</string>
+    <string name="mylist_filter_on_hold">En pausa</string>
+    <string name="mylist_filter_plan_to_read">Pendiente de leer</string>
+    <string name="mylist_filter_and_sort">Filtrar y ordenar</string>
+    <string name="mylist_status_unset">En la biblioteca</string>
+    <string name="mylist_search">Buscar</string>
+    <string name="mylist_sort_by">Ordenar por</string>
+    <string name="mylist_category_section">Categoría</string>
+    <string name="mylist_content_type_section">Tipo de contenido</string>
+
+    <string name="browse_source_menu_desc">Opciones de la fuente</string>
+    <string name="browse_favorites_section">Favoritos</string>
+    <string name="browse_source_favorite">Añadir a favoritos</string>
+    <string name="browse_source_unfavorite">Quitar de favoritos</string>
+    <string name="browse_source_report">Informar de un problema</string>
+    <string name="browse_report_title">Informar de un problema: %1$s</string>
+    <string name="browse_report_problem_titles">La fuente no carga los títulos</string>
+    <string name="browse_report_problem_chapters">Los capítulos no cargan</string>
+    <string name="browse_report_problem_error">Error</string>
+    <string name="browse_report_problem_other">Otro problema</string>
+    <string name="browse_report_details_placeholder">Describe el problema…</string>
+    <string name="browse_report_chooser_title">Enviar el informe por…</string>
+
+    <string name="settings_report_section_title">Soporte</string>
+    <string name="settings_report_button">Informar de un problema</string>
+    <string name="settings_report_title">Informar de un problema</string>
+    <string name="settings_report_problem_crash">La aplicación se cierra o se bloquea</string>
+    <string name="settings_report_problem_translation">La traducción no funciona</string>
+    <string name="settings_report_problem_download">La descarga no funciona</string>
+    <string name="settings_report_problem_other">Otro problema</string>
 </resources>
