@@ -1,0 +1,216 @@
+package com.haise.jiyu.ui.browse
+
+import android.content.Context
+import androidx.lifecycle.SavedStateHandle
+import com.haise.jiyu.data.repository.MangaRepository
+import com.haise.jiyu.source.MangaFilter
+import com.haise.jiyu.source.SManga
+import com.haise.jiyu.source.SourceManager
+import com.haise.jiyu.util.NetworkMonitor
+import io.mockk.coEvery
+import io.mockk.coVerify
+import io.mockk.every
+import io.mockk.mockk
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
+import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
+import org.junit.Before
+import org.junit.Test
+
+/**
+ * Testy stránkování a chybových stavů [SourceBrowseViewModel].
+ *
+ * Proč zrovna tenhle ViewModel: drží čítač stránek napříč asynchronními voláními a při
+ * selhání ho vrací zpátky - přesně ten typ stavové logiky, kde se chyba neprojeví pádem,
+ * ale tím, že uživateli tiše zmizí nebo se zdvojí výsledky.
+ *
+ * Závislosti jsou konkrétní final třídy bez rozhraní, proto mockk (viz build.gradle.kts).
+ */
+@OptIn(ExperimentalCoroutinesApi::class)
+class SourceBrowseViewModelTest {
+
+    private val dispatcher = StandardTestDispatcher()
+
+    private lateinit var repository: MangaRepository
+    private lateinit var sourceManager: SourceManager
+    private lateinit var networkMonitor: NetworkMonitor
+    private lateinit var context: Context
+
+    @Before
+    fun setUp() {
+        Dispatchers.setMain(dispatcher)
+        repository = mockk(relaxed = true)
+        sourceManager = mockk(relaxed = true)
+        networkMonitor = mockk(relaxed = true)
+        context = mockk(relaxed = true)
+        every { networkMonitor.isOnline } returns true
+        every { networkMonitor.networkState } returns MutableStateFlow(true)
+        coEvery { sourceManager.getById(any()) } returns null
+        every { context.getString(any()) } returns "chyba"
+    }
+
+    @After
+    fun tearDown() {
+        Dispatchers.resetMain()
+    }
+
+    private fun manga(i: Int) = SManga(sourceId = "src", url = "/m$i", title = "Manga $i", coverUrl = null)
+
+    private fun fullPage() = (1..20).map { manga(it) }
+
+    private fun viewModel() = SourceBrowseViewModel(
+        savedStateHandle = SavedStateHandle(mapOf("sourceId" to "src")),
+        repository = repository,
+        sourceManager = sourceManager,
+        networkMonitor = networkMonitor,
+        appContext = context,
+    )
+
+    @Test
+    fun `a full first page means there may be more to load`() = runTest(dispatcher) {
+        coEvery { repository.getPopular("src", 1, any()) } returns fullPage()
+
+        val vm = viewModel()
+        advanceUntilIdle()
+
+        assertEquals(20, vm.results.value.size)
+        assertTrue("plna stranka -> ocekavame dalsi", vm.hasMore.value)
+    }
+
+    @Test
+    fun `a partial first page means the end of the list`() = runTest(dispatcher) {
+        coEvery { repository.getPopular("src", 1, any()) } returns listOf(manga(1), manga(2))
+
+        val vm = viewModel()
+        advanceUntilIdle()
+
+        assertFalse("neuplna stranka -> uz nic dalsiho nenacitat", vm.hasMore.value)
+    }
+
+    @Test
+    fun `loadMore appends the next page instead of replacing the results`() = runTest(dispatcher) {
+        coEvery { repository.getPopular("src", 1, any()) } returns fullPage()
+        coEvery { repository.getPopular("src", 2, any()) } returns listOf(manga(21))
+
+        val vm = viewModel()
+        advanceUntilIdle()
+        vm.loadMore()
+        advanceUntilIdle()
+
+        assertEquals("prvni stranka musi zustat, druha se pripojit", 21, vm.results.value.size)
+        assertEquals("Manga 21", vm.results.value.last().title)
+    }
+
+    @Test
+    fun `a failed loadMore rewinds the page counter so retry asks for the SAME page`() = runTest(dispatcher) {
+        // Jadro veci: kdyby se citac nevratil, dalsi pokus by stranku 2 preskocil a
+        // uzivateli by 20 titulu tise zmizelo, aniz by se cokoli tvarilo jako chyba.
+        coEvery { repository.getPopular("src", 1, any()) } returns fullPage()
+        coEvery { repository.getPopular("src", 2, any()) } throws RuntimeException("503")
+
+        val vm = viewModel()
+        advanceUntilIdle()
+        vm.loadMore()
+        advanceUntilIdle()
+
+        coEvery { repository.getPopular("src", 2, any()) } returns listOf(manga(21))
+        vm.loadMore()
+        advanceUntilIdle()
+
+        coVerify(exactly = 2) { repository.getPopular("src", 2, any()) }
+        assertEquals(21, vm.results.value.size)
+    }
+
+    @Test
+    fun `loadMore does nothing once the end of the list is known`() = runTest(dispatcher) {
+        coEvery { repository.getPopular("src", 1, any()) } returns listOf(manga(1))
+
+        val vm = viewModel()
+        advanceUntilIdle()
+        vm.loadMore()
+        advanceUntilIdle()
+
+        coVerify(exactly = 0) { repository.getPopular("src", 2, any()) }
+    }
+
+    @Test
+    fun `being offline reports an error instead of silently showing an empty grid`() = runTest(dispatcher) {
+        every { networkMonitor.isOnline } returns false
+
+        val vm = viewModel()
+        advanceUntilIdle()
+
+        assertEquals("chyba", vm.error.value)
+        assertFalse(vm.hasMore.value)
+        coVerify(exactly = 0) { repository.getPopular(any(), any(), any()) }
+    }
+
+    @Test
+    fun `search results replace popular results rather than piling onto them`() = runTest(dispatcher) {
+        coEvery { repository.getPopular("src", 1, any()) } returns fullPage()
+        coEvery { repository.search("src", "naruto", 1, any()) } returns listOf(manga(99))
+
+        val vm = viewModel()
+        advanceUntilIdle()
+        vm.search("naruto", MangaFilter())
+        advanceUntilIdle()
+
+        assertEquals(1, vm.results.value.size)
+        assertEquals("Manga 99", vm.results.value.first().title)
+    }
+
+    @Test
+    fun `loadMore after a search keeps searching, it does not fall back to popular`() = runTest(dispatcher) {
+        coEvery { repository.getPopular("src", 1, any()) } returns fullPage()
+        coEvery { repository.search("src", "naruto", 1, any()) } returns fullPage()
+        coEvery { repository.search("src", "naruto", 2, any()) } returns listOf(manga(99))
+
+        val vm = viewModel()
+        advanceUntilIdle()
+        vm.search("naruto", MangaFilter())
+        advanceUntilIdle()
+        vm.loadMore()
+        advanceUntilIdle()
+
+        coVerify(exactly = 1) { repository.search("src", "naruto", 2, any()) }
+        coVerify(exactly = 0) { repository.getPopular("src", 2, any()) }
+    }
+
+    @Test
+    fun `opening the same manga twice in a row does not fire two requests`() = runTest(dispatcher) {
+        coEvery { repository.getPopular("src", 1, any()) } returns fullPage()
+        coEvery { repository.openPreview(any()) } returns "manga-1"
+
+        val vm = viewModel()
+        advanceUntilIdle()
+        vm.openManga(manga(1)) {}
+        vm.openManga(manga(1)) {}
+        advanceUntilIdle()
+
+        coVerify(exactly = 1) { repository.openPreview(any()) }
+    }
+
+    @Test
+    fun `a failed open surfaces its own error without wiping the loaded grid`() = runTest(dispatcher) {
+        coEvery { repository.getPopular("src", 1, any()) } returns fullPage()
+        coEvery { repository.openPreview(any()) } throws RuntimeException("nope")
+
+        val vm = viewModel()
+        advanceUntilIdle()
+        vm.openManga(manga(1)) {}
+        advanceUntilIdle()
+
+        assertEquals("mrizka vysledku musi zustat", 20, vm.results.value.size)
+        assertTrue("chyba otevreni ma vlastni stav", vm.openError.value != null)
+        assertEquals("a nesmi se prelit do celoobrazovkove chyby", null, vm.error.value)
+    }
+}

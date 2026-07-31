@@ -197,6 +197,10 @@ dependencies {
     testImplementation("org.robolectric:robolectric:4.13")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1")
     testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
+    // ViewModely zavisi na konkretnich (final) tridach repozitaru bez rozhrani, takze
+    // rucne psane fake implementace nejdou - mockk umi finalni Kotlin tridy zastoupit.
+    // Jen pro testy, do APK se nedostane.
+    testImplementation("io.mockk:mockk:1.13.11")
     androidTestImplementation(platform("androidx.compose:compose-bom:2024.06.00"))
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
