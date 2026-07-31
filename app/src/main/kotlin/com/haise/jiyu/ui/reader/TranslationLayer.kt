@@ -318,6 +318,9 @@ fun TranslationOverlay(
                     bgColorArgb = averageArgb(snappedBgTop, snappedBgBottom),
                     boxWidth = textAreaWidth,
                     maxHeight = textAreaHeight,
+                    // Šířka VNĚJŠÍHO boxu - text se do ní musí vejít bez ohledu na to, jak
+                    // široký je obrys bubliny (viz [fitTextToShape] parametr maxLineWidthPx).
+                    renderWidth = w,
                     textScale = textScale,
                     bubbleType = pos.block.bubbleType,
                     offsetX = textOffsetX,
@@ -374,6 +377,8 @@ private fun AutoFitTranslatedText(
     maxHeight: androidx.compose.ui.unit.Dp,
     textScale: Float,
     bubbleType: BubbleType,
+    /** Šířka vnějšího Boxu bubliny - viz [renderableWidthPx]. */
+    renderWidth: androidx.compose.ui.unit.Dp = boxWidth,
     offsetX: androidx.compose.ui.unit.Dp = 0.dp,
     offsetY: androidx.compose.ui.unit.Dp = 0.dp,
     shape: List<BubbleShapePoint>? = null,
@@ -397,6 +402,16 @@ private fun AutoFitTranslatedText(
     val textColor = if (luminance < 0.5f) Color.White else Color.Black
     val strokeColor = if (luminance < 0.5f) Color.Black else Color.White
 
+    // Kolik místa dostane SKUTEČNÝ Text composable: šířka vnějšího Boxu minus jeho vodorovný
+    // padding. Obě sazební cesty (tvarová i obdélníková) musí počítat s tímhle číslem, ne s
+    // geometrií obrysu - obrys bubliny bývá širší než box (hranatý popiskový rámeček pokrývá
+    // celý šedý obdélník, box kopíruje jen užší OCR rozsah textu), a sazba podle obrysu pak
+    // prošla kontrolou "slovo se vejde", jenže Compose měl při vykreslení míň místa a slovo
+    // rozsekal po písmenech ("SPOLEČNOS" + "T", viz uživatelský screenshot).
+    val renderableWidthPx = with(density) {
+        (renderWidth - TRANSLATION_TEXT_HORIZONTAL_PADDING * 2).toPx()
+    }.coerceAtLeast(1f)
+
     // ── Sazba do skutečného tvaru bubliny (vyvážené řádky, viz [fitTextToShape]) ──
     // Tohle je hlavní cesta pro bubliny se známým obrysem: každý řádek dostane šířku podle
     // tvaru ve svém pásu, takže v oválné bublině vyjde blok textu kosočtvercový (delší řádky
@@ -406,7 +421,7 @@ private fun AutoFitTranslatedText(
     // způsobovalo překrývající se řádky).
     val shapedLayout = if (shape != null && shapeCenterF != null && imageHeightDp > 0f) {
         val words = remember(text) { text.split(' ', '\n').filter { it.isNotBlank() } }
-        remember(text, shape, shapeCenterF, shapeTopF, shapeBottomF, imageWidthDp, imageHeightDp, maxFontSp, fontFamily) {
+        remember(text, shape, shapeCenterF, shapeTopF, shapeBottomF, imageWidthDp, imageHeightDp, maxFontSp, fontFamily, renderableWidthPx) {
             fitTextToShape(
                 words = words,
                 minFontSp = minFontSp,
@@ -431,6 +446,7 @@ private fun AutoFitTranslatedText(
                     (withSpace - without).toFloat().coerceAtLeast(1f)
                 },
                 lineHeightPx = { fontSp -> with(density) { (fontSp * 1.25f).sp.toPx() } },
+                maxLineWidthPx = renderableWidthPx,
             )
         }
     } else {
@@ -459,7 +475,12 @@ private fun AutoFitTranslatedText(
     // velikost písma, která se vejde do PLNÉ šířky boxu, ale skutečný Text dostal od Compose
     // užší constraint - řádek, co se těsně vešel do měření, se pak u reálného vykreslení
     // zalomil jinam a poslední slovo bylo uříznuté o okraj bubliny.
-    val widthPx = (with(density) { boxWidth.roundToPx() } - with(density) { (TRANSLATION_TEXT_HORIZONTAL_PADDING * 2).roundToPx() }).coerceAtLeast(1)
+    // Strop [renderableWidthPx] je tu potřeba i navíc: u bubliny s tvarem, kde tvarová sazba
+    // neuspěla a spadlo se sem, je boxWidth odvozené z vepsaného obdélníku OBRYSU, který může
+    // být širší než skutečný box bubliny.
+    val widthPx = (with(density) { boxWidth.roundToPx() } - with(density) { (TRANSLATION_TEXT_HORIZONTAL_PADDING * 2).roundToPx() })
+        .coerceAtMost(renderableWidthPx.toInt())
+        .coerceAtLeast(1)
     val maxHeightPx = with(density) { maxHeight.roundToPx() }.coerceAtLeast(1)
 
     val fitResult = remember(text, widthPx, maxHeightPx, maxFontSp, fontFamily) {

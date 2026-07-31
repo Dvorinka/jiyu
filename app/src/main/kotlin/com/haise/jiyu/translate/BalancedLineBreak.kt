@@ -109,6 +109,13 @@ private const val SHAPED_FINE_STEP_SP = 0.25f
  * tudy projít rozvržení, ve kterém by se slovo muselo rozseknout uprostřed - to byla hlavní
  * příčina dřívějších "KDYB/YCH" chyb.
  *
+ * @param maxLineWidthPx tvrdý strop šířky řádku daný tím, kolik místa dostane SKUTEČNÝ `Text`
+ *   composable při vykreslení (šířka boxu bubliny minus jeho padding). Bez něj se sázelo jen
+ *   podle geometrie obrysu, jenže obrys bubliny bývá širší než box, do kterého se text nakonec
+ *   vykreslí - typicky u hranatého popiskového rámečku, kde tvar pokrývá celý šedý obdélník,
+ *   ale box kopíruje jen užší OCR rozsah textu. Sazba pak prošla kontrolou ("slovo se do řádku
+ *   vejde"), ale Compose měl při vykreslení k dispozici míň místa a slovo rozsekal uprostřed
+ *   po písmenech - viz uživatelský screenshot "SPOLEČNOS" + "T" na dalším řádku.
  * @return null, když se text nevejde ani při [minFontSp] - volající pak spadne na jednodušší
  *   sazbu do vepsaného obdélníku.
  */
@@ -126,6 +133,7 @@ fun fitTextToShape(
     spaceWidth: (fontSp: Float) -> Float,
     lineHeightPx: (fontSp: Float) -> Float,
     maxLines: Int = 12,
+    maxLineWidthPx: Float = Float.MAX_VALUE,
 ): ShapedTextLayout? {
     if (words.isEmpty() || shape.size < 2 || pageHeightPx <= 0f) return null
     val shapeHeightF = shapeBottomF - shapeTopF
@@ -150,7 +158,7 @@ fun fitTextToShape(
                 blockBottomF = blockTopF + blockHeightF,
                 lineCount = lineCount,
                 pageWidthPx = pageWidthPx,
-            )
+            ).map { it.coerceAtMost(maxLineWidthPx) } // viz [maxLineWidthPx]
             val ends = breakIntoLines(wordWidths, space, allowed) ?: continue
             return assembleLines(words, ends)
         }

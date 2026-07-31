@@ -260,7 +260,23 @@ class TranslateRepository @Inject constructor(
     ): List<TranslatedBlock>? {
         if (!geminiClient.isConfigured) return null
         val response = geminiClient.translateBubbles(classified, glossary, provider, mangaContext) ?: return null
-        val byId = response.bubbles.associateBy { it.id }
+
+        // Model občas bublinu v odpovědi vynechá nebo pro ni vrátí prázdný řetězec. Doptáme se
+        // JEN na ty chybějící (ne na celou dávku znovu) - je jich pár, takže je to jedno krátké
+        // volání navíc, a bez něj by se místo překladu vykreslil anglický originál nebo prázdná
+        // bublina (viz [TranslationMerge] a uživatelské screenshoty s "THE FIRST PLACE.").
+        val missing = missingTranslationIndices(classified, response.bubbles.associateBy { it.id })
+        val byId = if (missing.isEmpty()) {
+            response.bubbles.associateBy { it.id }
+        } else {
+            val retryResponse = geminiClient.translateBubbles(
+                bubbles = missing.map { classified[it] },
+                glossary = glossary,
+                provider = provider,
+                mangaContext = mangaContext,
+            )
+            mergeRetry(response.bubbles.associateBy { it.id }, missing, retryResponse)
+        }
 
         // Auto-učení glosáře (viz GeminiUltraPrompt sekce "NOVÉ POJMY") - model sám
         // identifikuje vlastní jména v téhle dávce, appka je uloží, aby byla konzistentní
@@ -280,12 +296,15 @@ class TranslateRepository @Inject constructor(
         val result = classified.mapIndexed { i, c ->
             if (c.isSfx) return@mapIndexed sfxBlock(c)
             val t = byId[i]
-            // Model vrací UNTRANSLATED_MARKER, když OCR text nedává smysl (viz prompt) -
-            // zobrazit ho doslova by čtenáři ukázalo anglický placeholder mísro překladu
-            // (viz uživatelská zpětná vazba), proto se bublina rovnou označí isUntranslated
-            // a BubbleOverlayLayer ji vůbec nevykreslí (originál zůstane čitelný).
-            val isUntranslated = t?.translated?.trim() == GeminiUltraPrompt.UNTRANSLATED_MARKER
-            val translatedText = if (isUntranslated) c.raw.text else (t?.translated ?: c.raw.text)
+            // Bublina je "nepřeložená" ve třech případech: model vrátil UNTRANSLATED_MARKER
+            // (OCR nedává smysl, viz prompt), vrátil prázdný řetězec, nebo ji v odpovědi
+            // vynechal úplně - a to i po opravném dotazu výš. Ve VŠECH třech se musí označit
+            // isUntranslated, aby ji TranslationLayer vůbec nekreslil a originál zůstal
+            // čitelný. Dřív to platilo jen pro ten první případ, takže u zbylých dvou se do
+            // bubliny vysázel anglický originál jako plnohodnotný překlad (viz uživatelské
+            // screenshoty - "THE FIRST PLACE." v české bublině) nebo prázdná bílá plocha.
+            val isUntranslated = !isUsableTranslation(t)
+            val translatedText = if (isUntranslated) c.raw.text else t!!.translated
             // Model syllable_breaks se použije JEN, když opravdu odpovídá translatedText po
             // odstranění rozdělovníků (viz isValidSyllableBreaks) - jinak by poškozený/
             // neshodující se výstup modelu potichu nahradil správný překlad viditelně
@@ -348,13 +367,15 @@ class TranslateRepository @Inject constructor(
             if (c.isSfx) {
                 sfxBlock(c)
             } else {
-                val raw = translations.getOrElse(ti) { c.raw.text }
+                val raw = translations.getOrNull(ti)?.trim()
                 ti++
-                // Groq/OpenRouter cesta nepoužívá GeminiUltraPrompt, takže by tenhle sentinel
-                // normálně vracet neměla - kontrola je jen levná pojistka pro případ, že by ho
-                // model přesto někdy vyplivl (viz translateWithGemini pro hlavní cestu).
-                val isUntranslated = raw.trim() == GeminiUltraPrompt.UNTRANSLATED_MARKER
-                val translated = if (isUntranslated) c.raw.text else raw
+                // Stejné pravidlo jako u translateWithGemini: chybějící (kratší odpověď než
+                // vstup), prázdný i UNTRANSLATED_MARKER výsledek znamená NEPŘELOŽENO. Dřív se
+                // v prvních dvou případech potichu propadl originál a vykreslil se jako
+                // překlad - viz [TranslationMerge].
+                val usable = raw?.takeIf { it.isNotEmpty() && it != GeminiUltraPrompt.UNTRANSLATED_MARKER }
+                val isUntranslated = usable == null
+                val translated = usable ?: c.raw.text
                 TranslatedBlock(
                     originalText = c.raw.text,
                     translatedText = translated,
@@ -440,8 +461,11 @@ class TranslateRepository @Inject constructor(
          * mění jen vykreslování (to se počítá při zobrazení a na cache nezávisí).
          *
          * v2 (2026-07-27): detekce vodoznaku scanlation skupiny + krátká slova už nejsou SFX.
+         * v3 (2026-07-31): chybějící/prázdná odpověď modelu se ukládá jako isUntranslated
+         *   místo tichého propadnutí originálu (viz [TranslationMerge]) - staré záznamy nesou
+         *   isUntranslated=false u bublin, kde má nově být true, takže se musí přepočítat.
          */
-        private const val PIPELINE_VERSION = 2
+        private const val PIPELINE_VERSION = 3
 
         /** Maximální počet znaků originálu na jedno API volání - drží výstup pod limitem max_tokens. */
         private const val NOVEL_CHUNK_CHAR_LIMIT = 2500

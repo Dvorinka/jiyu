@@ -241,4 +241,66 @@ class BalancedLineBreakTest {
         assertNotNull(layout)
         assertTrue("expected a large font for short text in a big oval, got ${layout!!.fontSp}", layout.fontSp > 20f)
     }
+
+    // ── maxLineWidthPx (strop podle skutečného boxu, do kterého se text kreslí) ──
+
+    /** Široký hranatý tvar (popiskový rámeček) - obrys 900 px na 1000px stránce. */
+    private fun wideBoxShape() = (0..8).map { BubbleShapePoint(it / 8f, 0.05f, 0.95f) }
+
+    private fun fitWideBox(words: List<String>, maxLineWidthPx: Float = Float.MAX_VALUE) =
+        fitTextToShape(
+            words = words,
+            minFontSp = 6f,
+            maxFontSp = 36f,
+            shape = wideBoxShape(),
+            centerF = 0.5f,
+            shapeTopF = 0f,
+            shapeBottomF = 1f,
+            pageWidthPx = 1000f,
+            pageHeightPx = 1000f,
+            measureWord = { word, fontSp -> word.length * fontSp * 0.6f },
+            spaceWidth = { fontSp -> fontSp * 0.6f },
+            lineHeightPx = { fontSp -> fontSp * 1.25f },
+            maxLineWidthPx = maxLineWidthPx,
+        )
+
+    @Test
+    fun `never lays out wider than the box the text is actually rendered into`() {
+        // Presne pripad z uzivatelskeho screenshotu: hranaty popiskovy ramecek, jehoz OBRYS je
+        // siroky pres skoro celou stranku, ale Text composable dostane jen uzky box podle OCR
+        // rozsahu. Bez maxLineWidthPx sazba prosla ("slovo se do obrysu vejde") a Compose pak
+        // "SPOLECNOST" rozsekl po pismenech na "SPOLECNOS" + "T".
+        val renderWidth = 200f
+        val layout = fitWideBox(listOf("OBCHODNI", "SPOLECNOST"), maxLineWidthPx = renderWidth)
+
+        assertNotNull(layout)
+        layout!!.lines.forEach { line ->
+            val width = line.length * layout.fontSp * 0.6f
+            assertTrue("line '$line' is ${width}px, over the ${renderWidth}px render box", width <= renderWidth + 0.5f)
+        }
+        // A slova musi zustat cela - zadne "SPOLECNOS" + "T".
+        assertEquals("OBCHODNI SPOLECNOST", layout.lines.joinToString(" "))
+    }
+
+    @Test
+    fun `without the render cap the shape alone would allow a much wider line`() {
+        // Kontrolni protipol predchoziho testu - dokazuje, ze strop opravdu neco meni.
+        val layout = fitWideBox(listOf("OBCHODNI", "SPOLECNOST"))
+
+        assertNotNull(layout)
+        val widest = layout!!.lines.maxOf { it.length * layout.fontSp * 0.6f }
+        assertTrue("without a cap the layout should use the full shape width, got $widest", widest > 200f)
+    }
+
+    @Test
+    fun `a render cap narrower than the longest word makes the fit shrink, not chop`() {
+        val layout = fitWideBox(listOf("NEJNEPRAVDEPODOBNEJSIMI"), maxLineWidthPx = 120f)
+
+        assertNotNull(layout)
+        assertEquals(listOf("NEJNEPRAVDEPODOBNEJSIMI"), layout!!.lines)
+        assertTrue(
+            "word must fit the render box at the chosen size, got ${23 * layout.fontSp * 0.6f}",
+            23 * layout.fontSp * 0.6f <= 120.5f,
+        )
+    }
 }
