@@ -106,8 +106,8 @@ fun JiyuNavGraph(
             LibraryScreen(
                 onOpenManga = { mangaId -> navController.navigate(Routes.detail(mangaId)) },
                 onOpenBrowse = { navController.navigate(Routes.BROWSE) },
-                onOpenSettings = { navController.navigate(Routes.SETTINGS) },
                 onOpenChapter = { chapterId -> navController.navigate(Routes.reader(chapterId)) },
+                onOpenSettings = { navController.navigate(Routes.SETTINGS) },
                 onOpenStats = { navController.navigate(Routes.STATS) },
             )
         }
@@ -116,7 +116,6 @@ fun JiyuNavGraph(
             MyListScreen(
                 onOpenManga = { mangaId -> navController.navigate(Routes.detail(mangaId)) },
                 onOpenBrowse = { navController.navigate(Routes.BROWSE) },
-                onOpenSettings = { navController.navigate(Routes.SETTINGS) },
                 onOpenChapter = { chapterId -> navController.navigate(Routes.reader(chapterId)) },
                 onOpenStats = { navController.navigate(Routes.STATS) },
             )

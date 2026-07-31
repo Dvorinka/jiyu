@@ -75,7 +75,7 @@ class TMOSource @Inject constructor(private val client: OkHttpClient) : MangaSou
             val doc = Jsoup.parse(get(manga.url))
             doc.select("ul.chapters-list li, .chapters-list .chapter-title a").mapIndexed { i, el ->
                 val a    = el.selectFirst("a") ?: el.takeIf { it.tagName() == "a" } ?: return@mapIndexed null
-                val href = a!!.attr("href")
+                val href = a.attr("href")
                 val name = (el.selectFirst(".chapter-title, .num-chapter")?.text() ?: a.text()).trim()
                     .ifBlank { "Capítulo ${i + 1}" }
                 SChapter(sourceId = id, mangaUrl = manga.url, url = href, name = name,

@@ -55,7 +55,7 @@ class GlobalSearchViewModel @Inject constructor(
         viewModelScope.launch {
             val sources = sourceManager.getAll()
             _results.value = sources.map { SourceResult(it) }
-            sources.mapIndexed { i, source ->
+            sources.mapIndexed { _, source ->
                 async {
                     val result = try {
                         val list = repository.search(source.id, q, 1, MangaFilter())

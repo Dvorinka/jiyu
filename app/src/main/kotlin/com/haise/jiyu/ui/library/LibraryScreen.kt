@@ -240,6 +240,7 @@ fun LibraryScreen(
                     libraryCount = libraryCount,
                     favoriteCount = favoriteCount,
                     todayReadingMinutes = todayReadingMinutes,
+                    onClick = onOpenStats,
                     modifier = Modifier.padding(top = 14.dp),
                 )
 
@@ -433,9 +434,24 @@ private fun HeroContinueReadingCard(
     }
 }
 
+/**
+ * Kliknutím se otevře [ExtendedStatsScreen]. Bez [onClick] byla ta obrazovka (575 řádků
+ * i s vlastním ViewModelem) úplně NEDOSAŽITELNÁ - navigační trasa `Routes.STATS` i
+ * callback `onOpenStats` existovaly a byly v NavGraphu správně propojené, jen je nikdo
+ * nikdy nezavolal, takže se do statistik nedalo dostat odnikud.
+ */
 @Composable
-private fun LibraryStatsRow(libraryCount: Int, favoriteCount: Int, todayReadingMinutes: Int, modifier: Modifier = Modifier) {
-    Row(modifier = modifier.fillMaxWidth().padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+private fun LibraryStatsRow(
+    libraryCount: Int,
+    favoriteCount: Int,
+    todayReadingMinutes: Int,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier.fillMaxWidth().padding(horizontal = 16.dp).clickable(onClick = onClick),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
         StatBox(
             icon = TablerIcons.Book,
             tint = Violet,

@@ -97,7 +97,7 @@ class RanobesSource @Inject constructor(private val client: OkHttpClient) : Mang
                 ?: return@withContext emptyList()
             val chapters = mutableListOf<SChapter>()
             var page = 1
-            var totalPages = 1
+            var totalPages: Int
             do {
                 val url = if (page == 1) "$base/chapters/$bookId/" else "$base/chapters/$bookId/page/$page/"
                 val html = get(url)

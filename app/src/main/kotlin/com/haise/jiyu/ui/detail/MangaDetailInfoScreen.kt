@@ -1075,7 +1075,7 @@ fun MangaDetailInfoScreen(
                                 )
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(mu.title, color = TextPrimary, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                                    if (mu.year != null) Text(stringResource(R.string.detail_info_search_result_year, mu.year!!), color = TextSecondary, fontSize = 12.sp)
+                                    if (mu.year != null) Text(stringResource(R.string.detail_info_search_result_year, mu.year), color = TextSecondary, fontSize = 12.sp)
                                 }
                             }
                         }

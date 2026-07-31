@@ -47,7 +47,6 @@ class JapscanSource @Inject constructor(private val client: OkHttpClient) : Mang
 
     override suspend fun search(query: String, page: Int, filter: MangaFilter): List<SManga> = withContext(Dispatchers.IO) {
         try {
-            val q   = URLEncoder.encode(query, "UTF-8")
             val doc = Jsoup.parse(get("$base/search/"))
             // Japscan search is JS-driven; fallback to popular
             doc.select(".card .card-body a").mapNotNull { a ->

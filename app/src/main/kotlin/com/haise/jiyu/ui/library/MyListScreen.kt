@@ -130,7 +130,6 @@ import com.haise.jiyu.ui.theme.violetGlow
 fun MyListScreen(
     onOpenManga: (String) -> Unit,
     onOpenBrowse: () -> Unit,
-    onOpenSettings: () -> Unit,
     onOpenChapter: (String) -> Unit = {},
     onOpenStats: () -> Unit = {},
     viewModel: LibraryViewModel = hiltViewModel(),
@@ -539,7 +538,6 @@ fun MyListScreen(
             exit = fadeOut() + slideOutVertically { it },
         ) {
             BulkActionBar(
-                count = selectedIds.size,
                 hasCategories = categories.isNotEmpty(),
                 onDownload = { viewModel.bulkDownload() },
                 onMarkRead = { viewModel.bulkMarkRead() },
@@ -713,7 +711,6 @@ private fun LibraryEmptyState(hasSearch: Boolean, onOpenBrowse: () -> Unit) {
 
 @Composable
 private fun BulkActionBar(
-    count: Int,
     hasCategories: Boolean,
     onDownload: () -> Unit,
     onMarkRead: () -> Unit,

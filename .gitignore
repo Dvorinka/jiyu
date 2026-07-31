@@ -1,13 +1,16 @@
 *.iml
 .gradle
-/local.properties
 /.idea
 .DS_Store
 **/build
 /captures
 .externalNativeBuild
 .cxx
-local.properties
+
+# local.properties nese API klice (SUPABASE_*, MAL_*, ANILIST_*) - nesmi do repa.
+# Vzor pokryva i zalozni varianty (local.properties.bak, .orig, ...): jedna takova
+# se uz jednou omylem zacommitovala - nastesti prazdna, takze nic neuniklo.
+local.properties*
 
 # Firebase — obsahuje ID projektu, není potřeba (a nechceme) verzovat
 app/google-services.json

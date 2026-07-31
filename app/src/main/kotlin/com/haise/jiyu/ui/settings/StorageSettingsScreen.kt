@@ -37,6 +37,10 @@ import com.haise.jiyu.ui.theme.screenGradient
 import compose.icons.TablerIcons
 import compose.icons.tablericons.Trash
 
+// Coil `diskCache` je pořád označený jako experimentální API - používáme ho vědomě
+// (jinak nejde zjistit ani vyprázdnit velikost obrázkové cache), opt-in je tu proto,
+// aby to byl vědomý záměr, ne přehlédnutý warning.
+@OptIn(coil.annotation.ExperimentalCoilApi::class)
 @Composable
 fun StorageSettingsScreen(
     onBack: () -> Unit,
