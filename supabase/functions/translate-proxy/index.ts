@@ -103,6 +103,37 @@ function json(body: unknown, status: number): Response {
   });
 }
 
+/**
+ * Kód důvodu selhání upstreamu, který appka dostane v poli "error" (viz [upstreamErrorCode]).
+ *
+ * Do verze 13 se KAŽDÉ selhání upstreamu (včetně 429 od Googlu) vracelo jako HTTP 200 s
+ * prázdným textem. Appka to nemohla odlišit od "síť škytla", takže na natvrdo vyčerpanou
+ * denní kvótu pálila tři pokusy s exponenciálním čekáním - a to na každém z pěti providerů
+ * v řetězci, u KAŽDÉ dávky kapitoly. Odtud pocházelo hlášené zpomalení (54stránková kapitola
+ * z ~2 minut na 15+ minut, viz uživatelská zpětná vazba "22/54 po 15 minutách").
+ *
+ * Status zůstává 200 schválně - HTTP 429 je vyhrazené VÝHRADNĚ pro vlastní denní kvótu proxy
+ * (ta znamená "skonči úplně", ne "zkus jiného providera") a starší verze appky, které pole
+ * "error" neznají, se tak chovají přesně jako dřív.
+ *
+ * - "upstream_rate_limited": upstream vyčerpal kvótu (429/402) - providera má smysl na chvíli
+ *   úplně vynechat, další dávka na něj nemá ztrácet čas.
+ * - "upstream_error": jiná chyba upstreamu (5xx, deprekovaný model, neplatný klíč) - taky
+ *   důvod providera dočasně vynechat, ale příčina může být krátkodobá.
+ * - "upstream_empty": upstream odpověděl v pořádku, ale bez použitelného textu (safety filtr,
+ *   dojely output tokeny). Tohle je vlastnost KONKRÉTNÍ dávky, ne providera - opakovat stejný
+ *   požadavek nemá smysl, ale providera samotného vyřazovat nechceme.
+ */
+type UpstreamErrorCode = "upstream_rate_limited" | "upstream_error";
+
+function upstreamErrorCode(status: number): UpstreamErrorCode {
+  // 429 = rate limit, 402 = došel kredit (OpenRouter u free modelů vrací obojí),
+  // 403 u Gemini běžně znamená "API klíč nemá na tenhle model nárok / kvóta projektu".
+  return status === 429 || status === 402 || status === 403
+    ? "upstream_rate_limited"
+    : "upstream_error";
+}
+
 async function checkQuota(charCount: number): Promise<{ allowed: boolean; errored: boolean }> {
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
   const { data: allowed, error: quotaError } = await supabase.rpc(
@@ -148,7 +179,7 @@ async function handleGeminiApi(system: string, user: string, model: string): Pro
 
   if (!geminiResp.ok) {
     console.error("gemini call failed", geminiResp.status, await geminiResp.text());
-    return json({ text: "" }, 200);
+    return json({ text: "", error: upstreamErrorCode(geminiResp.status) }, 200);
   }
 
   const data = await geminiResp.json();
@@ -156,6 +187,13 @@ async function handleGeminiApi(system: string, user: string, model: string): Pro
   const text: string = Array.isArray(parts)
     ? parts.map((p: { text?: string }) => p.text ?? "").join("")
     : "";
+  if (!text) {
+    // Prázdný text při HTTP 200 znamená safety filtr nebo vyčerpané output tokeny -
+    // viz finishReason. Není to důvod providera vyřazovat, ale opakovat stejnou dávku
+    // taky nemá smysl (viz UpstreamErrorCode).
+    console.error("gemini returned no text", data?.candidates?.[0]?.finishReason);
+    return json({ text: "", error: "upstream_empty" }, 200);
+  }
   return json({ text }, 200);
 }
 
@@ -184,11 +222,12 @@ async function handleGroqApi(system: string, user: string): Promise<Response> {
 
   if (!groqResp.ok) {
     console.error("groq chat call failed", groqResp.status, await groqResp.text());
-    return json({ text: "" }, 200);
+    return json({ text: "", error: upstreamErrorCode(groqResp.status) }, 200);
   }
 
   const data = await groqResp.json();
   const text: string = data?.choices?.[0]?.message?.content ?? "";
+  if (!text) return json({ text: "", error: "upstream_empty" }, 200);
   return json({ text }, 200);
 }
 
@@ -250,11 +289,12 @@ async function handleOpenRouterApi(system: string, user: string): Promise<Respon
 
   if (!orResp.ok) {
     console.error("openrouter call failed", orResp.status, await orResp.text());
-    return json({ text: "" }, 200);
+    return json({ text: "", error: upstreamErrorCode(orResp.status) }, 200);
   }
 
   const data = await orResp.json();
   const text: string = data?.choices?.[0]?.message?.content ?? "";
+  if (!text) return json({ text: "", error: "upstream_empty" }, 200);
   return json({ text }, 200);
 }
 
@@ -281,11 +321,19 @@ async function handleGemini(payload: Record<string, unknown>): Promise<Response>
   return await handleGeminiApi(system, user, model);
 }
 
-async function callChatCompletion(provider: "groq" | "openrouter", system: string, userContent: string): Promise<string | null> {
+/**
+ * @returns content = odpověď modelu, nebo null při selhání. [error] nese důvod selhání ve
+ *   stejném slovníku jako [UpstreamErrorCode] - viz tam, proč to appka potřebuje vědět.
+ */
+async function callChatCompletion(
+  provider: "groq" | "openrouter",
+  system: string,
+  userContent: string,
+): Promise<{ content: string | null; error?: string }> {
   if (provider === "openrouter") {
     if (!OPENROUTER_API_KEY) {
       console.error("OPENROUTER_API_KEY secret není nastavený na tomto projektu");
-      return null;
+      return { content: null, error: "upstream_error" };
     }
     const resp = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
@@ -307,15 +355,15 @@ async function callChatCompletion(provider: "groq" | "openrouter", system: strin
     });
     if (!resp.ok) {
       console.error("openrouter call failed", resp.status, await resp.text());
-      return null;
+      return { content: null, error: upstreamErrorCode(resp.status) };
     }
     const data = await resp.json();
-    return data?.choices?.[0]?.message?.content ?? "";
+    return { content: data?.choices?.[0]?.message?.content ?? "" };
   }
 
   if (!GROQ_API_KEY) {
     console.error("GROQ_API_KEY secret není nastavený na tomto projektu");
-    return null;
+    return { content: null, error: "upstream_error" };
   }
   const resp = await fetch("https://api.groq.com/openai/v1/chat/completions", {
     method: "POST",
@@ -335,10 +383,10 @@ async function callChatCompletion(provider: "groq" | "openrouter", system: strin
   });
   if (!resp.ok) {
     console.error("groq call failed", resp.status, await resp.text());
-    return null;
+    return { content: null, error: upstreamErrorCode(resp.status) };
   }
   const data = await resp.json();
-  return data?.choices?.[0]?.message?.content ?? "";
+  return { content: data?.choices?.[0]?.message?.content ?? "" };
 }
 
 async function handleGroq(payload: Record<string, unknown>, mode: "manga" | "novel"): Promise<Response> {
@@ -371,8 +419,12 @@ async function handleGroq(payload: Record<string, unknown>, mode: "manga" | "nov
 
   const systemPrompt = systemPromptFor(mode, fromClause, targetLanguage) + glossaryClause;
 
-  const content = await callChatCompletion(provider, systemPrompt, JSON.stringify(texts));
-  if (content === null) return json({ translations: [] }, provider === "groq" ? 500 : 200);
+  // Status 200 i při selhání upstreamu (dřív se u Groqu vracelo 500) - jinak by appka
+  // odpověď zahodila jako "server chyba, zkus znovu" a k poli "error", ve kterém stojí
+  // "tenhle provider má vyčerpanou kvótu", by se vůbec nedostala. Viz [UpstreamErrorCode].
+  const { content, error } = await callChatCompletion(provider, systemPrompt, JSON.stringify(texts));
+  if (content === null) return json({ translations: [], error }, 200);
+  if (!content.trim()) return json({ translations: [], error: "upstream_empty" }, 200);
 
   const cleaned = content.trim()
     .replace(/^```json/, "")
@@ -386,7 +438,8 @@ async function handleGroq(payload: Record<string, unknown>, mode: "manga" | "nov
     if (!Array.isArray(translations)) throw new Error("not an array");
   } catch {
     console.error(`failed to parse ${provider} response as JSON array`, cleaned);
-    return json({ translations: [] }, 200);
+    // Vlastnost konkrétní odpovědi, ne providera - opakovat nemá smysl, vyřazovat taky ne.
+    return json({ translations: [], error: "upstream_empty" }, 200);
   }
 
   return json({ translations }, 200);

@@ -10,6 +10,7 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -29,6 +30,7 @@ class RateLimitedException : Exception("Translation rate limit exceeded")
 @Singleton
 class GroqTranslateClient @Inject constructor(
     private val httpClient: OkHttpClient,
+    private val providerHealth: ProviderHealth,
 ) {
     /** false = SUPABASE_URL není nakonfigurované v local.properties, překlad nemá šanci fungovat. */
     val isConfigured: Boolean get() = BuildConfig.SUPABASE_URL.isNotBlank() &&
@@ -90,6 +92,8 @@ class GroqTranslateClient @Inject constructor(
         provider: String = "groq",
     ): List<String> = withContext(Dispatchers.IO) {
         if (!isConfigured || texts.isEmpty()) return@withContext emptyList()
+        // Provider odstavený z předchozí dávky se přeskočí bez requestu - viz [ProviderHealth].
+        if (!providerHealth.isAvailable(provider)) return@withContext emptyList()
 
         val body = JSONObject().apply {
             put("mode", mode)
@@ -110,25 +114,63 @@ class GroqTranslateClient @Inject constructor(
 
         // Jednotlivé stránky/dávky občas selžou na přechodné síťové chybě nebo timeoutu
         // proxy/Groq - bez retry to dřív znamenalo natrvalo nepřeloženou bublinu, i když
-        // druhý pokus o pár set ms později běžně projde. Rate limit (429) naopak retry
-        // nezachrání, tam se propaguje okamžitě jako RateLimitedException.
-        repeat(3) { attempt ->
+        // druhý pokus o pár set ms později běžně projde. Opakuje se ale JEN takové selhání:
+        // odmítnutí ze strany upstreamu (vyčerpaná kvóta, výpadek modelu) pozná proxy a
+        // vrátí ho v poli "error" (viz UpstreamErrorCode v translate-proxy/index.ts), takže
+        // se na jistě marný požadavek už nepálí další pokusy ani čekání. Rate limit samotné
+        // proxy (429) se propaguje okamžitě jako RateLimitedException.
+        repeat(MAX_ATTEMPTS) { attempt ->
+            var retryable = false
             try {
                 val result = httpClient.newCall(request).execute().use { resp ->
-                    if (resp.code == 429) throw RateLimitedException()
-                    if (!resp.isSuccessful) return@use null
-                    val responseText = resp.body?.string() ?: return@use null
-                    val arr = JSONObject(responseText).getJSONArray("translations")
-                    List(arr.length()) { arr.getString(it) }
+                    if (resp.code == 429) {
+                        // Limit hlásí proxy, ne upstream - přes ni vedou všichni provideři stejně.
+                        providerHealth.markAllUnavailable()
+                        throw RateLimitedException()
+                    }
+                    if (!resp.isSuccessful) {
+                        retryable = true
+                        return@use null
+                    }
+                    val responseText = resp.body?.string()
+                    if (responseText == null) {
+                        retryable = true
+                        return@use null
+                    }
+                    val json = JSONObject(responseText)
+                    val error = json.optString("error").takeIf { it.isNotBlank() }
+                    if (error != null && error != UPSTREAM_EMPTY) {
+                        providerHealth.markUnavailable(provider)
+                        return@use null
+                    }
+                    val arr = json.optJSONArray("translations") ?: return@use null
+                    List(arr.length()) { arr.getString(it) }.also {
+                        if (it.isNotEmpty()) providerHealth.markHealthy(provider)
+                    }
                 }
                 if (result != null) return@withContext result
             } catch (e: RateLimitedException) {
                 throw e
+            } catch (_: IOException) {
+                retryable = true // síť/timeout - druhý pokus o chvíli později běžně projde
             } catch (_: Exception) {
-                // zkusime to znovu, viz delay nize; po vycerpani pokusu spadneme na emptyList()
+                // neparsovatelné tělo odpovědi - opakování to nespraví
             }
-            if (attempt < 2) delay(800L * (attempt + 1))
+            if (!retryable) return@withContext emptyList()
+            if (attempt < MAX_ATTEMPTS - 1) delay(RETRY_DELAY_MILLIS)
         }
         emptyList()
+    }
+
+    private companion object {
+        /**
+         * Nižší než dřívější 3, protože OkHttp klient má navíc vlastní RetryInterceptor
+         * (viz AppModule) - ten na IOException opakuje okamžitě, tenhle s prodlevou.
+         */
+        const val MAX_ATTEMPTS = 2
+        const val RETRY_DELAY_MILLIS = 800L
+
+        /** Viz UpstreamErrorCode v translate-proxy/index.ts - vlastnost dávky, ne providera. */
+        const val UPSTREAM_EMPTY = "upstream_empty"
     }
 }

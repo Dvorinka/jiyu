@@ -24,6 +24,7 @@ class TranslateRepository @Inject constructor(
     private val groqClient: GroqTranslateClient,
     private val geminiClient: GeminiTranslateClient,
     private val glossaryRepository: GlossaryRepository,
+    private val providerHealth: ProviderHealth,
     private val mangaDao: MangaDao,
     private val dao: TranslatedPageDao,
     private val novelDao: TranslatedNovelDao,
@@ -62,6 +63,9 @@ class TranslateRepository @Inject constructor(
         sourceLanguage: String = "Auto",
     ): List<TranslatedBlock> {
         getCachedPage(chapterId, pageIndex, targetLanguage, sourceLanguage, pageUrl)?.let { return it }
+        // Když jsou odstavení všichni provideři, nemá smysl stahovat bitmapu ani pouštět OCR -
+        // překlad z toho stejně nevznikne. Viz [ProviderHealth.allUnavailable].
+        if (providerHealth.allUnavailable()) throw RateLimitedException()
 
         val bitmap = pageBitmapLoader.load(pageUrl) ?: return emptyList()
         val rawBlocks = ocrEngine.recognize(bitmap, sourceLanguage)
@@ -174,6 +178,9 @@ class TranslateRepository @Inject constructor(
 
         chunkPages(translatable, bubblesByPage).forEachIndexed { chunkIndex, chunk ->
             if (chunkIndex > 0) delay(800L)
+            // Zbytek kapitoly by jen rychle "doběhl" s prázdnými výsledky - radši srozumitelná
+            // hláška o limitu. Viz [ProviderHealth.allUnavailable].
+            if (providerHealth.allUnavailable()) throw RateLimitedException()
             val flatBubbles = chunk.flatMap { bubblesByPage.getValue(it) }
 
             // Stejný fallback řetězec jako translatePage - viz komentář tam. Volá se přes

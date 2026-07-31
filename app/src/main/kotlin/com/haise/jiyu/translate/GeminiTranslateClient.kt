@@ -9,6 +9,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
+import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -35,6 +36,7 @@ import javax.inject.Singleton
 @Singleton
 class GeminiTranslateClient @Inject constructor(
     private val httpClient: OkHttpClient,
+    private val providerHealth: ProviderHealth,
 ) {
     val isConfigured: Boolean get() = BuildConfig.SUPABASE_URL.isNotBlank() &&
         !BuildConfig.SUPABASE_URL.contains("placeholder")
@@ -47,9 +49,12 @@ class GeminiTranslateClient @Inject constructor(
      *   OpenRouter model se nastavují server-side (Groq: "llama-3.3-70b-versatile" jako
      *   [GroqTranslateClient]; OpenRouter: free-tier model, viz OPENROUTER_MODEL v translate-proxy),
      *   appka je nemusí posílat.
-     * @return null při selhání (síť, rate limit mimo [RateLimitedException], neparsovatelná odpověď)
-     * @throws RateLimitedException viz [GroqTranslateClient] - stejná sémantika, proxy je sdílená
-     *   (kvóta je jedna společná pro gemini, groq i openrouter provider).
+     * @return null při selhání (síť, vyčerpaná kvóta upstreamu, neparsovatelná odpověď) i tehdy,
+     *   když je provider zrovna odstavený v [ProviderHealth] - v tom případě se neposílá vůbec
+     *   žádný požadavek a volající rovnou pokračuje dalším krokem řetězce.
+     * @throws RateLimitedException když je vyčerpaná sdílená denní kvóta SAMOTNÉ proxy - viz
+     *   [GroqTranslateClient]. Na rozdíl od kvóty upstreamu tohle znamená, že přes proxy
+     *   neprojde ani jeden další provider, proto se odstaví všichni najednou.
      */
     suspend fun translateBubbles(
         bubbles: List<ClassifiedBubble>,
@@ -59,6 +64,9 @@ class GeminiTranslateClient @Inject constructor(
     ): GeminiTranslationResponse? = withContext(Dispatchers.IO) {
         val toTranslate = bubbles.filterIndexed { _, b -> !b.isSfx }
         if (!isConfigured || toTranslate.isEmpty()) return@withContext null
+        // Provider, o kterém z předchozí dávky víme, že odmítá obsluhu, se přeskočí bez
+        // jediného requestu - tohle je hlavní úspora u dlouhé kapitoly, viz ProviderHealth.
+        if (!providerHealth.isAvailable(provider)) return@withContext null
 
         val requestBody = JSONObject().apply {
             put("mode", "gemini")
@@ -76,30 +84,87 @@ class GeminiTranslateClient @Inject constructor(
             .post(requestBody.toString().toRequestBody("application/json".toMediaType()))
             .build()
 
-        // Stejný retry vzor jako GroqTranslateClient - přechodné chyby zkusíme znovu,
-        // rate limit (429) propagujeme okamžitě jako RateLimitedException.
-        repeat(3) { attempt ->
-            try {
-                val responseText = httpClient.newCall(request).execute().use { resp ->
-                    if (resp.code == 429) throw RateLimitedException()
-                    if (!resp.isSuccessful) return@use null
-                    resp.body?.string()
+        // Opakuje se JEN přechodné selhání (viz ProxyOutcome.Retryable). Dřív se opakovala
+        // i odpověď proxy s prázdným textem - jenže tak vypadalo i natvrdo vyčerpané Gemini,
+        // takže se na jistě marný požadavek pálily tři pokusy a přes dvě vteřiny čekání,
+        // a to na každém providerovi každé dávky kapitoly.
+        repeat(MAX_ATTEMPTS) { attempt ->
+            when (val outcome = executeOnce(request, provider)) {
+                is ProxyOutcome.Text -> return@withContext try {
+                    GeminiUltraPrompt.parseResponse(outcome.value)
+                } catch (_: Exception) {
+                    null // neparsovatelná odpověď - nemá smysl retryovat, model to znovu nespraví
                 }
-                val text = responseText?.let { JSONObject(it).optString("text") }?.takeIf { it.isNotBlank() }
-                if (text != null) {
-                    return@withContext try {
-                        GeminiUltraPrompt.parseResponse(text)
-                    } catch (_: Exception) {
-                        null // neparsovatelná odpověď - nemá smysl retryovat, model to znovu nespraví
-                    }
-                }
-            } catch (e: RateLimitedException) {
-                throw e
-            } catch (_: Exception) {
-                // zkusíme to znovu, viz delay níže; po vyčerpání pokusů spadneme na null
+                ProxyOutcome.ProviderDown, ProxyOutcome.BatchFailed -> return@withContext null
+                ProxyOutcome.Retryable -> if (attempt < MAX_ATTEMPTS - 1) delay(RETRY_DELAY_MILLIS)
             }
-            if (attempt < 2) delay(800L * (attempt + 1))
         }
         null
+    }
+
+    /**
+     * Jeden pokus o zavolání proxy. Vyhodnocuje jak HTTP status, tak pole "error" v těle
+     * odpovědi - proxy totiž selhání upstreamu vrací se statusem 200 (viz UpstreamErrorCode
+     * v translate-proxy/index.ts), aby starší verze appky, které to pole neznají, dál
+     * fungovaly beze změny.
+     */
+    private fun executeOnce(request: Request, provider: String): ProxyOutcome = try {
+        httpClient.newCall(request).execute().use { resp ->
+            if (resp.code == 429) {
+                // Limit hlásí sama proxy, ne upstream - přes ni vedou všichni provideři stejně,
+                // takže zkoušet zbytek řetězce je jen ztráta času.
+                providerHealth.markAllUnavailable()
+                throw RateLimitedException()
+            }
+            if (!resp.isSuccessful) return@use ProxyOutcome.Retryable
+            val body = resp.body?.string() ?: return@use ProxyOutcome.Retryable
+            val jsonBody = JSONObject(body)
+            when (val error = jsonBody.optString("error").takeIf { it.isNotBlank() }) {
+                null -> jsonBody.optString("text").takeIf { it.isNotBlank() }
+                    ?.let { text ->
+                        providerHealth.markHealthy(provider)
+                        ProxyOutcome.Text(text)
+                    }
+                    ?: ProxyOutcome.BatchFailed
+                UPSTREAM_EMPTY -> ProxyOutcome.BatchFailed
+                else -> {
+                    // upstream_rate_limited / upstream_error - provider odmítá obsluhu.
+                    providerHealth.markUnavailable(provider)
+                    ProxyOutcome.ProviderDown
+                }
+            }
+        }
+    } catch (e: RateLimitedException) {
+        throw e
+    } catch (_: IOException) {
+        ProxyOutcome.Retryable // síť/timeout - druhý pokus o chvíli později běžně projde
+    } catch (_: Exception) {
+        ProxyOutcome.BatchFailed // neparsovatelné tělo odpovědi - opakování to nespraví
+    }
+
+    /** Jak dopadlo jedno volání proxy - viz [executeOnce]. */
+    private sealed interface ProxyOutcome {
+        data class Text(val value: String) : ProxyOutcome
+
+        /** Upstream odmítá obsluhu (kvóta, výpadek) - provider je odstavený, neopakovat. */
+        data object ProviderDown : ProxyOutcome
+
+        /** Nepovedla se tahle konkrétní dávka, provider je v pořádku - neopakovat, neodstavovat. */
+        data object BatchFailed : ProxyOutcome
+
+        /** Přechodné selhání (síť, timeout, 5xx) - má smysl zkusit znovu. */
+        data object Retryable : ProxyOutcome
+    }
+
+    private companion object {
+        /**
+         * Nižší než dřívější 3, protože OkHttp klient má navíc vlastní RetryInterceptor
+         * (viz AppModule) - ten na IOException opakuje okamžitě, tenhle s prodlevou.
+         */
+        const val MAX_ATTEMPTS = 2
+        const val RETRY_DELAY_MILLIS = 800L
+
+        /** Viz UpstreamErrorCode v translate-proxy/index.ts. */
+        const val UPSTREAM_EMPTY = "upstream_empty"
     }
 }
