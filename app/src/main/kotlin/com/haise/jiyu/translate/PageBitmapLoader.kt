@@ -44,6 +44,13 @@ class PageBitmapLoader @Inject constructor(
                 val request = ImageRequest.Builder(context)
                     .data(url.substringBeforeLast("#")) // strip #mplus_key= fragment
                     .apply { if (transforms.isNotEmpty()) transformations(transforms) }
+                    // Coil na API 26+ defaultně dekóduje do Config.HARDWARE (bitmapa žije v GPU
+                    // paměti) - výsledek je pro zobrazení skvělý, ale bitmap.getPixel() na ní
+                    // tvrdě spadne s IllegalStateException. Tahle bitmapa jde rovnou do OCR
+                    // (BubbleShapeDetector, hasWallBetween/ringColor), které čtou pixely jeden
+                    // po druhém - proto to appka spolehlivě shazovalo hned po startu hromadného
+                    // překladu (viz uživatelská zpětná vazba "u překladu appka spadne").
+                    .allowHardware(false)
                     .build()
                 val result = Coil.imageLoader(context).execute(request)
                 (result as? SuccessResult)?.drawable?.let { (it as? BitmapDrawable)?.bitmap }
