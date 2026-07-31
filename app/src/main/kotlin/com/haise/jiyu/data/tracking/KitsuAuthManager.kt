@@ -1,6 +1,7 @@
 package com.haise.jiyu.data.tracking
 
 import com.haise.jiyu.security.SecureCredentialStore
+import com.haise.jiyu.util.report
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -49,18 +50,27 @@ class KitsuAuthManager @Inject constructor(
                 .add("client_secret", CLIENT_SECRET)
                 .build()
             val req = Request.Builder().url(TOKEN_URL).post(body).build()
-            val resp = client.newCall(req).execute()
-            if (!resp.isSuccessful) return@withContext false
-            val json = JSONObject(resp.body?.string() ?: return@withContext false)
-            val token = json.optString("access_token").takeIf { it.isNotBlank() } ?: return@withContext false
-            val refresh = json.optString("refresh_token")
+            // .use{} je tu POVINNÉ - uvnitř jsou tři brzké returny (neúspěšný status,
+            // prázdné tělo, chybějící token) a bez něj každý z nich nechal viset otevřené
+            // spojení; nezdařené přihlášení tak pokaždé uniklo jeden socket z poolu.
+            val token = client.newCall(req).execute().use { resp ->
+                if (!resp.isSuccessful) return@withContext false
+                val json = JSONObject(resp.body?.string() ?: return@withContext false)
+                val access = json.optString("access_token").takeIf { it.isNotBlank() }
+                    ?: return@withContext false
+                json.optString("refresh_token").takeIf { it.isNotBlank() }
+                    ?.let { secureStore.set(KEY_REFRESH, it) }
+                access
+            }
             secureStore.set(KEY_TOKEN, token)
             secureStore.set(KEY_USERNAME, email)
-            if (refresh.isNotBlank()) secureStore.set(KEY_REFRESH, refresh)
             _token.value = token
             _username.value = email
             true
-        } catch (_: Exception) { false }
+        } catch (e: Exception) {
+            e.report("tracking:kitsu:login")
+            false
+        }
     }
 
     suspend fun saveUserId(id: String) = withContext(Dispatchers.IO) { secureStore.set(KEY_USER_ID, id) }

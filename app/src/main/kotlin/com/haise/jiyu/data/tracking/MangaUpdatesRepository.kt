@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import com.haise.jiyu.security.SecureCredentialStore
+import com.haise.jiyu.util.report
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -54,17 +55,23 @@ class MangaUpdatesRepository @Inject constructor(
                 .url("$BASE/account/login")
                 .post(json.toRequestBody("application/json".toMediaType()))
                 .build()
-            val resp = httpClient.newCall(req).execute()
-            if (!resp.isSuccessful) return@withContext false
-            val body = JSONObject(resp.body?.string() ?: return@withContext false)
-            val ctx = body.optJSONObject("context")
-            val token = ctx?.optString("session_token")?.takeIf { it.isNotBlank() } ?: return@withContext false
+            // .use{} je tu POVINNÉ - uvnitř jsou tři brzké returny a bez něj každý z nich
+            // nechal viset otevřené spojení (viz stejná oprava v KitsuAuthManager).
+            val token = httpClient.newCall(req).execute().use { resp ->
+                if (!resp.isSuccessful) return@withContext false
+                val body = JSONObject(resp.body?.string() ?: return@withContext false)
+                body.optJSONObject("context")?.optString("session_token")?.takeIf { it.isNotBlank() }
+                    ?: return@withContext false
+            }
             secureStore.set(KEY_SESSION, token)
             secureStore.set(KEY_USER, user)
             _session.value = token
             _username.value = user
             true
-        } catch (_: Exception) { false }
+        } catch (e: Exception) {
+            e.report("tracking:mangaupdates:login")
+            false
+        }
     }
 
     suspend fun logout() = withContext(Dispatchers.IO) {
