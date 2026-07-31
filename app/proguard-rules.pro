@@ -82,3 +82,8 @@
 # ZXing (QR code generation)
 -dontwarn com.google.zxing.**
 -keep class com.google.zxing.** { *; }
+
+# slf4j - volitelná vazba na logovací backend, kterou si tahá tranzitivní závislost
+# (Jsoup/Ktor). Za běhu se nepoužívá, slf4j si absenci backendu ošetří sám, ale R8 na ni
+# jinak spadne jako na chybějící třídu.
+-dontwarn org.slf4j.impl.StaticLoggerBinder

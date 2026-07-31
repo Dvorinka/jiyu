@@ -54,6 +54,13 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
+            // Appka se nedistribuuje přes Play Store, jen jako APK z GitHub Releases, a
+            // dosavadní instalace na telefonu jsou podepsané DEBUG klíčem (dřív se kvůli
+            // rozbitému R8 releasovalo debug APK - viz settings.gradle.kts). Android odmítne
+            // aktualizaci podepsanou jiným klíčem, takže přechod na vlastní release keystore
+            // by si vynutil odinstalaci a smazal knihovnu, historii i cache překladů.
+            // Podepisujeme proto stejným debug klíčem, aby aktualizace proběhla v místě.
+            signingConfig = signingConfigs.getByName("debug")
         }
         debug {
             isMinifyEnabled = false
