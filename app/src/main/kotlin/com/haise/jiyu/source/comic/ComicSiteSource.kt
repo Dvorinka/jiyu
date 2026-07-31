@@ -1,5 +1,7 @@
 package com.haise.jiyu.source.comic
 
+import com.haise.jiyu.source.bodyOrThrow
+
 import com.haise.jiyu.source.MangaFilter
 import com.haise.jiyu.source.MangaSource
 import com.haise.jiyu.source.Page
@@ -45,7 +47,7 @@ abstract class ComicSiteSource(
             .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8")
             .header("Accept-Language", "en-US,en;q=0.9")
             .build()
-        client.newCall(req).execute().use { it.body!!.string() }
+        client.newCall(req).execute().use { it.bodyOrThrow(url) }
     }
 
     protected fun String.absoluteUrl(): String =

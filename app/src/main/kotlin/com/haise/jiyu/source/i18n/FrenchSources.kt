@@ -1,5 +1,7 @@
 package com.haise.jiyu.source.i18n
 
+import com.haise.jiyu.source.bodyOrThrow
+
 import com.haise.jiyu.source.MangaFilter
 import com.haise.jiyu.source.MangaSource
 import com.haise.jiyu.source.Page
@@ -30,7 +32,7 @@ class JapscanSource @Inject constructor(private val client: OkHttpClient) : Mang
         Request.Builder().url(url)
             .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
             .header("Referer", base).build()
-    ).execute().use { it.body?.string() ?: "" }
+    ).execute().use { it.bodyOrThrow(url) }
 
     override suspend fun getPopular(page: Int, filter: MangaFilter): List<SManga> = withContext(Dispatchers.IO) {
         try {
@@ -115,7 +117,7 @@ class AnimeSamaSource @Inject constructor(private val client: OkHttpClient) : Ma
         Request.Builder().url(url)
             .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
             .header("Referer", base).build()
-    ).execute().use { it.body?.string() ?: "" }
+    ).execute().use { it.bodyOrThrow(url) }
 
     private fun parseList(html: String): List<SManga> =
         Jsoup.parse(html).select(".catalog-card").mapNotNull { el ->
@@ -207,7 +209,7 @@ class ScanVFSource @Inject constructor(private val client: OkHttpClient) : Manga
         Request.Builder().url(url)
             .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
             .header("Referer", base).build()
-    ).execute().use { it.body?.string() ?: "" }
+    ).execute().use { it.bodyOrThrow(url) }
 
     // Web prošel redesignem na Bootstrap "media" karty (audit 2026-07-27) - stare
     // selektory (.manga-poster/.bsx/.novel-item) uz nikde v HTML neexistuji, proto

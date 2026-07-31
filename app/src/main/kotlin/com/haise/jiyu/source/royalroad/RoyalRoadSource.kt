@@ -1,5 +1,7 @@
 package com.haise.jiyu.source.royalroad
 
+import com.haise.jiyu.source.bodyOrThrow
+
 import com.haise.jiyu.source.MangaFilter
 import com.haise.jiyu.source.MangaSource
 import com.haise.jiyu.source.Page
@@ -30,7 +32,7 @@ class RoyalRoadSource @Inject constructor(private val client: OkHttpClient) : Ma
             .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
             .header("Referer", base)
             .build()
-        return client.newCall(req).execute().use { it.body?.string() ?: "" }
+        return client.newCall(req).execute().use { it.bodyOrThrow(url) }
     }
 
     private fun parseList(html: String): List<SManga> {

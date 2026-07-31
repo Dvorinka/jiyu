@@ -1,5 +1,7 @@
 package com.haise.jiyu.source.voidscans
 
+import com.haise.jiyu.source.bodyOrThrow
+
 import com.haise.jiyu.source.MangaFilter
 import com.haise.jiyu.source.MangaSource
 import com.haise.jiyu.source.Page
@@ -33,7 +35,7 @@ class VoidScansSource @Inject constructor(private val client: OkHttpClient) : Ma
         val req = Request.Builder().url(url)
             .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
             .build()
-        val html = client.newCall(req).execute().use { it.body?.string() ?: "" }
+        val html = client.newCall(req).execute().use { it.bodyOrThrow(url) }
         return Jsoup.parse(html)
     }
 

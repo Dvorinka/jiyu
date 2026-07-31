@@ -1,5 +1,7 @@
 package com.haise.jiyu.source.mangacloud
 
+import com.haise.jiyu.source.bodyOrThrow
+
 import android.annotation.SuppressLint
 import android.content.Context
 import android.os.Handler
@@ -121,7 +123,7 @@ class MangaCloudSource @Inject constructor(
         val cookie = session.getCookie()
         val builder = Request.Builder().url("$apiBase$path")
         if (cookie != null) builder.header("Cookie", cookie)
-        return client.newCall(builder.build()).execute().use { it.body?.string() ?: "" }
+        return client.newCall(builder.build()).execute().use { it.bodyOrThrow("$apiBase$path") }
     }
 
     private fun apiPost(path: String, jsonBody: JSONObject): String {
@@ -129,7 +131,7 @@ class MangaCloudSource @Inject constructor(
         val body = jsonBody.toString().toRequestBody("application/json".toMediaType())
         val builder = Request.Builder().url("$apiBase$path").post(body)
         if (cookie != null) builder.header("Cookie", cookie)
-        return client.newCall(builder.build()).execute().use { it.body?.string() ?: "" }
+        return client.newCall(builder.build()).execute().use { it.bodyOrThrow("$apiBase$path") }
     }
 
     private fun coverUrl(comicId: String, cover: JSONObject?): String? {

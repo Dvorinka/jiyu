@@ -1,5 +1,7 @@
 package com.haise.jiyu.source.demonicscans
 
+import com.haise.jiyu.source.bodyOrThrow
+
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -51,7 +53,7 @@ class DemonicScansSource @Inject constructor(
         val req = Request.Builder().url(url)
             .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
             .build()
-        return client.newCall(req).execute().use { it.body?.string() ?: "" }
+        return client.newCall(req).execute().use { it.bodyOrThrow(url) }
     }
 
     /** Karty v seznamech (translationlist.php/lastupdates.php) mají shodnou strukturu. */

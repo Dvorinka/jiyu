@@ -1,5 +1,7 @@
 package com.haise.jiyu.source.mangak
 
+import com.haise.jiyu.source.bodyOrThrow
+
 import com.haise.jiyu.source.MangaFilter
 import com.haise.jiyu.source.MangaSource
 import com.haise.jiyu.source.Page
@@ -37,7 +39,7 @@ class MangaKSource @Inject constructor(private val client: OkHttpClient) : Manga
             .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
             .header("Referer", base)
             .build()
-        return client.newCall(req).execute().use { it.body?.string() ?: "" }
+        return client.newCall(req).execute().use { it.bodyOrThrow(url) }
     }
 
     private fun pageProps(html: String): JSONObject {

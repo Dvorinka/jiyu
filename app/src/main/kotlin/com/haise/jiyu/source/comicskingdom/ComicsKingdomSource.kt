@@ -1,5 +1,7 @@
 package com.haise.jiyu.source.comicskingdom
 
+import com.haise.jiyu.source.bodyOrThrow
+
 import com.haise.jiyu.source.MangaFilter
 import com.haise.jiyu.source.MangaSource
 import com.haise.jiyu.source.Page
@@ -42,7 +44,7 @@ class ComicsKingdomSource @Inject constructor(private val client: OkHttpClient) 
         val req = Request.Builder().url(url)
             .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
             .build()
-        return client.newCall(req).execute().use { it.body?.string() ?: "" }
+        return client.newCall(req).execute().use { it.bodyOrThrow(url) }
     }
 
     private fun parseFeatures(raw: String): List<SManga> {

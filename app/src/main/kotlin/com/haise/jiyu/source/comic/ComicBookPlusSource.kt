@@ -1,5 +1,7 @@
 package com.haise.jiyu.source.comic
 
+import com.haise.jiyu.source.bodyOrThrow
+
 import com.haise.jiyu.source.MangaFilter
 import com.haise.jiyu.source.MangaSource
 import com.haise.jiyu.source.Page
@@ -36,7 +38,7 @@ class ComicBookPlusSource @Inject constructor(private val client: OkHttpClient) 
             .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8")
             .header("Accept-Language", "en-US,en;q=0.9")
             .build()
-        return client.newCall(req).execute().use { it.body?.string() ?: "" }
+        return client.newCall(req).execute().use { it.bodyOrThrow(url) }
     }
 
     private fun parseListing(doc: Document): List<SManga> =

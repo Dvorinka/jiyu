@@ -1,5 +1,7 @@
 package com.haise.jiyu.source.mangago
 
+import com.haise.jiyu.source.bodyOrThrow
+
 import com.haise.jiyu.source.MangaFilter
 import com.haise.jiyu.source.MangaSource
 import com.haise.jiyu.source.Page
@@ -34,7 +36,7 @@ class MangagoSource @Inject constructor(
             .header("User-Agent", CloudflareInterceptor.CHROME_UA)
             .header("Referer", base)
             .build()
-        return client.newCall(req).execute().use { it.body?.string() ?: "" }
+        return client.newCall(req).execute().use { it.bodyOrThrow(url) }
     }
 
     override suspend fun getPopular(page: Int, filter: MangaFilter): List<SManga> = withContext(Dispatchers.IO) {

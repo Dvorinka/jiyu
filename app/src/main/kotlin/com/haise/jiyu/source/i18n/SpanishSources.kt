@@ -1,5 +1,7 @@
 package com.haise.jiyu.source.i18n
 
+import com.haise.jiyu.source.bodyOrThrow
+
 import com.haise.jiyu.source.MangaFilter
 import com.haise.jiyu.source.MangaSource
 import com.haise.jiyu.source.Page
@@ -27,7 +29,7 @@ class TMOSource @Inject constructor(private val client: OkHttpClient) : MangaSou
         Request.Builder().url(url)
             .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
             .header("Referer", base).build()
-    ).execute().use { it.body?.string() ?: "" }
+    ).execute().use { it.bodyOrThrow(url) }
 
     override suspend fun getPopular(page: Int, filter: MangaFilter): List<SManga> = withContext(Dispatchers.IO) {
         try {
@@ -117,7 +119,7 @@ class InMangaSource @Inject constructor(private val client: OkHttpClient) : Mang
         Request.Builder().url(url)
             .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
             .header("Referer", base).build()
-    ).execute().use { it.body?.string() ?: "" }
+    ).execute().use { it.bodyOrThrow(url) }
 
     override suspend fun getPopular(page: Int, filter: MangaFilter): List<SManga> = withContext(Dispatchers.IO) {
         try {
@@ -195,7 +197,7 @@ class MangaLeerSource @Inject constructor(private val client: OkHttpClient) : Ma
         Request.Builder().url(url)
             .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
             .header("Referer", base).build()
-    ).execute().use { it.body?.string() ?: "" }
+    ).execute().use { it.bodyOrThrow(url) }
 
     override suspend fun getPopular(page: Int, filter: MangaFilter): List<SManga> = withContext(Dispatchers.IO) {
         try {
@@ -272,7 +274,7 @@ class UnionMangasSource @Inject constructor(private val client: OkHttpClient) : 
         Request.Builder().url(url)
             .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
             .header("Referer", base).build()
-    ).execute().use { it.body?.string() ?: "" }
+    ).execute().use { it.bodyOrThrow(url) }
 
     override suspend fun getPopular(page: Int, filter: MangaFilter): List<SManga> = withContext(Dispatchers.IO) {
         try {

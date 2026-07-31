@@ -1,5 +1,7 @@
 package com.haise.jiyu.source.reaperscans
 
+import com.haise.jiyu.source.bodyOrThrow
+
 import com.haise.jiyu.source.MangaFilter
 import com.haise.jiyu.source.MangaSource
 import com.haise.jiyu.source.Page
@@ -29,7 +31,7 @@ class ReaperScansSource @Inject constructor(private val client: OkHttpClient) : 
             .header("Referer", base)
             .header("Accept", "application/json")
             .build()
-        return client.newCall(req).execute().use { it.body?.string() ?: "" }
+        return client.newCall(req).execute().use { it.bodyOrThrow(url) }
     }
 
     private fun parseComicArray(json: String): List<SManga> {

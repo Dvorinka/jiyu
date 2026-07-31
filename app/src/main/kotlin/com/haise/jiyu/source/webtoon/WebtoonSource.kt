@@ -1,5 +1,7 @@
 package com.haise.jiyu.source.webtoon
 
+import com.haise.jiyu.source.bodyOrThrow
+
 import com.haise.jiyu.source.MangaFilter
 import com.haise.jiyu.source.MangaSource
 import com.haise.jiyu.source.Page
@@ -32,7 +34,7 @@ class WebtoonSource @Inject constructor(
             .header("Referer", base)
             .header("Cookie", "pagGDPR=true; needCCPA=false; needCOPPA=false; locale=en")
             .build()
-        return client.newCall(req).execute().use { it.body?.string() ?: "" }
+        return client.newCall(req).execute().use { it.bodyOrThrow(url) }
     }
 
     private fun parseCardList(html: String): List<SManga> {

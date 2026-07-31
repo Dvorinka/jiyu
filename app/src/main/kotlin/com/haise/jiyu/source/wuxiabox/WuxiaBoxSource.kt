@@ -1,5 +1,7 @@
 package com.haise.jiyu.source.wuxiabox
 
+import com.haise.jiyu.source.bodyOrThrow
+
 import com.haise.jiyu.source.MangaFilter
 import com.haise.jiyu.source.MangaSource
 import com.haise.jiyu.source.Page
@@ -33,7 +35,7 @@ class WuxiaBoxSource @Inject constructor(private val client: OkHttpClient) : Man
         val req = Request.Builder().url(url)
             .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
             .build()
-        return client.newCall(req).execute().use { it.body?.string() ?: "" }
+        return client.newCall(req).execute().use { it.bodyOrThrow(url) }
     }
 
     private fun parseList(html: String): List<SManga> {
@@ -70,7 +72,7 @@ class WuxiaBoxSource @Inject constructor(private val client: OkHttpClient) : Man
                 .add("keyboard", query)
                 .build()
             val request = Request.Builder().url("$base/e/search/index.php").post(body).build()
-            val html = client.newCall(request).execute().use { it.body?.string() ?: "" }
+            val html = client.newCall(request).execute().use { it.bodyOrThrow("$base/e/search/index.php") }
             parseList(html)
         } catch (_: Exception) { emptyList() }
     }

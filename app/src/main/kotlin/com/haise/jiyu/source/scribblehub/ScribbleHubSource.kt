@@ -1,5 +1,7 @@
 package com.haise.jiyu.source.scribblehub
 
+import com.haise.jiyu.source.bodyOrThrow
+
 import com.haise.jiyu.source.MangaFilter
 import com.haise.jiyu.source.MangaSource
 import com.haise.jiyu.source.Page
@@ -29,7 +31,7 @@ class ScribbleHubSource @Inject constructor(private val client: OkHttpClient) : 
             .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
             .header("Referer", base)
             .build()
-        return client.newCall(req).execute().use { it.body?.string() ?: "" }
+        return client.newCall(req).execute().use { it.bodyOrThrow(url) }
     }
 
     private fun parseList(html: String): List<SManga> {
@@ -101,7 +103,7 @@ class ScribbleHubSource @Inject constructor(private val client: OkHttpClient) : 
                 .header("Referer", "$base${manga.url}")
                 .header("X-Requested-With", "XMLHttpRequest")
                 .build()
-            val html = client.newCall(req).execute().use { it.body?.string() ?: "" }
+            val html = client.newCall(req).execute().use { it.bodyOrThrow("$base/wp-admin/admin-ajax.php") }
 
             Jsoup.parse(html, base).select("li.toc_w a").mapIndexed { i, a ->
                 val href = a.attr("href").let { if (it.startsWith("http")) it.removePrefix(base) else it }
