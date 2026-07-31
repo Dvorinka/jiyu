@@ -291,7 +291,7 @@ class TranslateRepository @Inject constructor(
                 provider = provider,
                 mangaContext = mangaContext,
             )
-            mergeRetry(response.bubbles.associateBy { it.id }, missing, retryResponse)
+            mergeRetry(response.bubbles.associateBy { it.id }, missing, retryResponse, classified)
         }
 
         // Auto-učení glosáře (viz GeminiUltraPrompt sekce "NOVÉ POJMY") - model sám
@@ -312,14 +312,16 @@ class TranslateRepository @Inject constructor(
         val result = classified.mapIndexed { i, c ->
             if (c.isSfx) return@mapIndexed sfxBlock(c)
             val t = byId[i]
-            // Bublina je "nepřeložená" ve třech případech: model vrátil UNTRANSLATED_MARKER
-            // (OCR nedává smysl, viz prompt), vrátil prázdný řetězec, nebo ji v odpovědi
-            // vynechal úplně - a to i po opravném dotazu výš. Ve VŠECH třech se musí označit
-            // isUntranslated, aby ji TranslationLayer vůbec nekreslil a originál zůstal
-            // čitelný. Dřív to platilo jen pro ten první případ, takže u zbylých dvou se do
-            // bubliny vysázel anglický originál jako plnohodnotný překlad (viz uživatelské
-            // screenshoty - "THE FIRST PLACE." v české bublině) nebo prázdná bílá plocha.
-            val isUntranslated = !isUsableTranslation(t)
+            // Bublina je "nepřeložená" ve čtyřech případech: model vrátil UNTRANSLATED_MARKER
+            // (OCR nedává smysl, viz prompt), vrátil prázdný řetězec, vynechal ji v odpovědi
+            // úplně (a to i po opravném dotazu výš), nebo jeho echované "original" neodpovídá
+            // tomu, co bublina doopravdy obsahovala (viz [originalMatches] - model si spletl
+            // číslování "id" pod velkou dávkou a odpověděl na JINOU bublinu). Ve VŠECH čtyřech
+            // se musí označit isUntranslated, aby ji TranslationLayer vůbec nekreslil a originál
+            // zůstal čitelný. Bez posledního případu appka slepě věřila poli "id" a bublina
+            // dostala cizí text patřící jiné bublině o pár pozic dál - viz uživatelská zpětná
+            // vazba ("NOT LIKE THAT." zobrazila překlad patřící jiné bublině na jiné stránce).
+            val isUntranslated = !isUsableTranslation(t, c.raw.text)
             val translatedText = if (isUntranslated) c.raw.text else t!!.translated
             // Model syllable_breaks se použije JEN, když opravdu odpovídá translatedText po
             // odstranění rozdělovníků (viz isValidSyllableBreaks) - jinak by poškozený/
@@ -349,6 +351,7 @@ class TranslateRepository @Inject constructor(
                 bubbleType = c.bubbleType,
                 isUntranslated = isUntranslated,
                 bgUniform = c.raw.bgUniform,
+                nativeLineHeightF = c.raw.nativeLineHeightF,
             )
         }
         return result.ifEmpty { null }
@@ -411,6 +414,7 @@ class TranslateRepository @Inject constructor(
                     bubbleType = c.bubbleType,
                     isUntranslated = isUntranslated,
                     bgUniform = c.raw.bgUniform,
+                    nativeLineHeightF = c.raw.nativeLineHeightF,
                 )
             }
         }
@@ -432,6 +436,7 @@ class TranslateRepository @Inject constructor(
         shape = c.raw.shape,
         bubbleType = c.bubbleType,
         bgUniform = c.raw.bgUniform,
+        nativeLineHeightF = c.raw.nativeLineHeightF,
     )
 
     /**
@@ -485,8 +490,18 @@ class TranslateRepository @Inject constructor(
          * v3 (2026-07-31): chybějící/prázdná odpověď modelu se ukládá jako isUntranslated
          *   místo tichého propadnutí originálu (viz [TranslationMerge]) - staré záznamy nesou
          *   isUntranslated=false u bublin, kde má nově být true, takže se musí přepočítat.
+         * v4 (2026-07-31): dvě změny mění, co se z OCR/modelu doopravdy uloží -
+         *   (1) hasWallBetween veden středem PŘEKRYVU, ne středy celých bloků (viz
+         *   BubbleMerge.kt) - kaskádová/"dvouhrbá" bublina s vodorovně posunutým druhým
+         *   řádkem se dřív omylem rozdělila na dvě bubliny a půlka textu zmizela (viz
+         *   uživatelská zpětná vazba "GOOD HEAVENS," chybějící z "TO GET LOST..."); (2)
+         *   ověření modelem echovaného "original" proti tomu, co bublina doopravdy
+         *   obsahovala (viz [originalMatches]) - dřív appka slepě věřila poli "id" a
+         *   posunuté číslování u velké dávky (víc stránek najednou) přeneslo překlad na
+         *   jinou bublinu, než pro kterou byl určen. Staré cache záznamy mají obojí
+         *   spočítané podle starší, chybové logiky, proto se musí přepočítat.
          */
-        private const val PIPELINE_VERSION = 3
+        private const val PIPELINE_VERSION = 4
 
         /** Maximální počet znaků originálu na jedno API volání - drží výstup pod limitem max_tokens. */
         private const val NOVEL_CHUNK_CHAR_LIMIT = 2500
@@ -662,6 +677,7 @@ class TranslateRepository @Inject constructor(
                 put("type", b.bubbleType.name)
                 put("untrans", b.isUntranslated)
                 put("bgUniform", b.bgUniform)
+                put("nlh", b.nativeLineHeightF.toDouble())
                 b.shape?.let { shape ->
                     put("shape", JSONArray().apply {
                         shape.forEach { p ->
@@ -715,6 +731,10 @@ class TranslateRepository @Inject constructor(
                 // štědře pro všechny bloky bez tvaru), takže staré záznamy vypadají stejně,
                 // dokud se stránka znovu nepřeloží.
                 bgUniform = o.optBoolean("bgUniform", true),
+                // Starší cache záznamy nemají "nlh" - default 0f (neznámá nativní velikost)
+                // znamená, že fitter spadne na dřívější chování (hledej rovnou největší
+                // velikost, co se vejde), dokud se stránka znovu nepřeloží.
+                nativeLineHeightF = o.optDouble("nlh", 0.0).toFloat(),
             )
         }
     } catch (e: Exception) { emptyList() }

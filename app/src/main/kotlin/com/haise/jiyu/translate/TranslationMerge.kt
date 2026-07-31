@@ -11,27 +11,62 @@ package com.haise.jiyu.translate
  * zakrytý originál. Tomu se říká tiché selhání a je horší než žádný překlad: kdyby se
  * bublina označila jako nepřeložená, overlay by ji vůbec nekreslil a originál by zůstal
  * čitelný (viz `TranslationLayer` a `TranslatedBlock.isUntranslated`).
+ *
+ * Druhá, závažnější třída chyby: model v odpovědi posune číslování "id" (halucinace/chyba
+ * při počítání pod velkou dávkou - [TranslateRepository.translateChapter] flattenuje bubliny
+ * z VÍC stránek do jednoho požadavku, takže jde o desítky bublin v jednom kontextu). Appka
+ * `byId[i]` slepě věřila poli "id" a bez kontroly aplikovala překlad NA JINOU bublinu, než
+ * pro kterou byl doopravdy určen - viz uživatelská zpětná vazba (bublina "NOT LIKE THAT."
+ * zobrazila text, který patřil jiné bublině o pár pozic dál na jiné stránce). Model přitom
+ * dostal instrukci vrátit i pole "original" (echo toho, co si myslí, že bublina s tímhle id
+ * obsahovala) - to pole se dřív parsovalo, ale nikde se nekontrolovalo. [originalMatches]
+ * ho použije jako pojistku: než se překlad použije, ověří se, že model odpovídal na
+ * SPRÁVNOU bublinu.
  */
 
 /**
- * true = tenhle záznam z odpovědi modelu se dá použít jako překlad.
+ * true, když text, který model vrátil jako "original" pro tuhle bublinu, dost odpovídá
+ * tomu, co jsme mu pod tímhle id doopravdy poslali.
+ *
+ * Schválně shovívavé porovnání (průnik delších slov, ne přesná shoda) - model může při
+ * echu normalizovat mezery/uvozovky nebo opravit drobnou OCR literovku, to není chyba
+ * číslování a nechceme kvůli tomu zahazovat jinak správný překlad. Zajímá nás jen případ,
+ * kdy je to zjevně JINÝ text (jiná bublina) - tam je překryv slov blízko nule.
+ */
+internal fun originalMatches(returnedOriginal: String, expectedText: String): Boolean {
+    fun words(s: String) = s.lowercase()
+        .filter { it.isLetterOrDigit() || it.isWhitespace() }
+        .split(Regex("\\s+"))
+        .filter { it.length >= 3 } // kratka slova (spojky, zajmena) jsou skoro vzdy spolecna
+        .toSet()
+
+    val expectedWords = words(expectedText)
+    if (expectedWords.isEmpty()) return true // prilis kratky text na smysluplne porovnani, neveto
+    val returnedWords = words(returnedOriginal)
+    val overlap = expectedWords.intersect(returnedWords).size
+    return overlap.toFloat() / expectedWords.size >= 0.4f
+}
+
+/**
+ * true = tenhle záznam z odpovědi modelu se dá použít jako překlad TÉHLE KONKRÉTNÍ bubliny.
  *
  * Nepoužitelný je záznam, který chybí úplně (model bublinu vynechal), má prázdný překlad,
- * nebo nese [GeminiUltraPrompt.UNTRANSLATED_MARKER] (model sám říká "tohle OCR nedává smysl").
- * Ve všech třech případech patří bublina mezi nepřeložené, ne mezi přeložené originálem.
+ * nese [GeminiUltraPrompt.UNTRANSLATED_MARKER] (model sám říká "tohle OCR nedává smysl"),
+ * nebo jehož echované "original" neodpovídá tomu, co bublina doopravdy obsahovala (viz
+ * [originalMatches] - model odpověděl na jinou bublinu). Ve všech případech patří bublina
+ * mezi nepřeložené, ne mezi přeložené originálem nebo cizím textem.
  */
-internal fun isUsableTranslation(translation: GeminiBubbleTranslation?): Boolean {
+internal fun isUsableTranslation(translation: GeminiBubbleTranslation?, expectedOriginal: String): Boolean {
     val text = translation?.translated?.trim() ?: return false
-    return text.isNotEmpty() && text != GeminiUltraPrompt.UNTRANSLATED_MARKER
+    if (text.isEmpty() || text == GeminiUltraPrompt.UNTRANSLATED_MARKER) return false
+    return originalMatches(translation.original, expectedOriginal)
 }
 
 /**
  * Indexy bublin, na které model neodpověděl použitelně a má smysl se na ně doptat znovu.
  *
  * SFX se vynechávají - ty se schválně nepřekládají vůbec (viz [BubbleClassifier]), takže
- * chybějící odpověď u nich není chyba. Bubliny s [GeminiUltraPrompt.UNTRANSLATED_MARKER] se
- * taky vynechávají: model už jednou vědomě řekl "tohle nepřeložím", opakovaný dotaz na to
- * samé nedává smysl a jen by stál další požadavek.
+ * chybějící odpověď u nich není chyba.
  *
  * @param byId odpověď modelu naindexovaná podle "id" (= pozice v seznamu, který se posílal)
  */
@@ -41,9 +76,10 @@ internal fun missingTranslationIndices(
 ): List<Int> = classified.indices.filter { i ->
     if (classified[i].isSfx) return@filter false
     val t = byId[i]
-    if (t == null) return@filter true
-    // Vědomé "nepřeložím" se neopakuje, prázdná/chybějící odpověď ano.
-    t.translated.trim().isEmpty()
+    // Vědomé "nepřeložím" (UNTRANSLATED_MARKER) se neopakuje - model už jednou vědomě řekl
+    // "tohle nepřeložím", opakovaný dotaz na to samé by jen stál další požadavek.
+    if (t?.translated?.trim() == GeminiUltraPrompt.UNTRANSLATED_MARKER) return@filter false
+    !isUsableTranslation(t, classified[i].raw.text)
 }
 
 /**
@@ -51,19 +87,24 @@ internal fun missingTranslationIndices(
  *
  * Opravný dotaz posílá jen podmnožinu bublin, takže "id" v jeho odpovědi jsou pozice v TÉ
  * podmnožině (0..n-1), ne v původním seznamu - [retriedIndices] je převodní tabulka zpět.
- * Použitelný záznam z opravy má přednost; nepoužitelný se zahodí, aby nepřepsal případný
- * dřívější dobrý výsledek.
+ * Použitelný záznam z opravy má přednost; nepoužitelný (včetně znovu špatně očíslovaného -
+ * viz [originalMatches]) se zahodí, aby nepřepsal případný dřívější dobrý výsledek.
+ *
+ * @param classified PŮVODNÍ seznam bublin (stejný, co se poslal napoprvé) - potřeba, aby
+ *   šlo ověřit echo "original" i pro záznamy z opravného dotazu.
  */
 internal fun mergeRetry(
     byId: Map<Int, GeminiBubbleTranslation>,
     retriedIndices: List<Int>,
     retryResponse: GeminiTranslationResponse?,
+    classified: List<ClassifiedBubble>,
 ): Map<Int, GeminiBubbleTranslation> {
     if (retryResponse == null) return byId
     val merged = byId.toMutableMap()
     for (bubble in retryResponse.bubbles) {
         val originalIndex = retriedIndices.getOrNull(bubble.id) ?: continue
-        if (isUsableTranslation(bubble)) merged[originalIndex] = bubble
+        val expected = classified.getOrNull(originalIndex)?.raw?.text ?: continue
+        if (isUsableTranslation(bubble, expected)) merged[originalIndex] = bubble
     }
     return merged
 }
