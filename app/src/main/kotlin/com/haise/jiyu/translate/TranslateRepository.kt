@@ -79,7 +79,7 @@ class TranslateRepository @Inject constructor(
 
         val glossary = glossaryFor(mangaId, targetLanguage)
         val mangaContext = mangaContextFor(mangaId)
-        val classified = rawBlocks.map { raw -> BubbleClassifier.classify(raw, raw.lineCount) }
+        val classified = BubbleClassifier.classifyPage(rawBlocks)
 
         // GeminiUltraPrompt je napsaný natvrdo pro češtinu (znakové limity a kompresní
         // pravidla mají české příklady) - pro jiný cílový jazyk zůstáváme na obecném
@@ -181,7 +181,7 @@ class TranslateRepository @Inject constructor(
                         val bitmap = bitmapLoadSemaphore.withPermit { pageBitmapLoader.load(pages[pageIndex]) }
                         bitmap?.let { bmp -> ocrSemaphore.withPermit { ocrEngine.recognize(bmp, sourceLanguage) } } ?: emptyList()
                     } ?: emptyList()
-                    pageIndex to raw.map { r -> BubbleClassifier.classify(r, r.lineCount) }
+                    pageIndex to BubbleClassifier.classifyPage(raw)
                 }
             }.awaitAll()
         }.toMap()
@@ -500,8 +500,18 @@ class TranslateRepository @Inject constructor(
          *   posunuté číslování u velké dávky (víc stránek najednou) přeneslo překlad na
          *   jinou bublinu, než pro kterou byl určen. Staré cache záznamy mají obojí
          *   spočítané podle starší, chybové logiky, proto se musí přepočítat.
+         * v5 (2026-07-31): další dvě změny mění, co se z OCR doopravdy uloží -
+         *   (1) hasWallBetween teď vyžaduje VĚTŠINU vzorků na úsečce, ne jediný, aby
+         *   prohlásil "zeď" (viz BubbleMerge.kt) - tenký/diagonální vodoznak nastříknutý
+         *   přes bublinu (např. "VORTEXSCANS.COM" ležící mezi dvěma půlkami repliky)
+         *   protínal přímou úsečku jen v 1 z 5 bodů, což dřív stačilo na rozdělení jedné
+         *   bubliny na dvě a půlka textu zmizela z překladu; (2) BubbleClassifier.classifyPage
+         *   navíc detekuje rozházený/dlaždicovaný vodoznak NAPŘÍČ CELOU stránkou (víc
+         *   samostatných OCR bloků se stejným, různě zkomoleným jménem skenlační skupiny),
+         *   ne jen jeden blok samotný - staré záznamy mají obojí spočítané podle starší
+         *   logiky, proto se musí přepočítat.
          */
-        private const val PIPELINE_VERSION = 4
+        private const val PIPELINE_VERSION = 5
 
         /** Maximální počet znaků originálu na jedno API volání - drží výstup pod limitem max_tokens. */
         private const val NOVEL_CHUNK_CHAR_LIMIT = 2500

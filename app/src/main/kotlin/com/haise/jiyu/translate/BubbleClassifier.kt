@@ -38,6 +38,26 @@ object BubbleClassifier {
         "NEVER", "ALWAYS", "PLEASE", "SORRY", "THANKS", "WOW", "DAMMIT", "SHIT", "HELL",
     )
 
+    /**
+     * Klasifikuje VŠECHNY bloky jedné stránky najednou - na rozdíl od [classify] (jeden blok
+     * bez kontextu okolních) umí navíc odhalit opakovaný dlaždicovaný vodoznak napříč
+     * stránkou (viz [detectTiledWatermarkIndices]) a takové bloky označit jako SFX, i když
+     * žádný z nich sám o sobě nesplňuje [looksLikeWatermark] - to je jediné místo, odkud má
+     * smysl volat [detectTiledWatermarkIndices], protože potřebuje vidět VŠECHNY bloky
+     * stránky najednou, ne jeden po druhém.
+     */
+    fun classifyPage(rawBlocks: List<RawTextBlock>): List<ClassifiedBubble> {
+        val watermarkIndices = detectTiledWatermarkIndices(rawBlocks)
+        return rawBlocks.mapIndexed { i, raw ->
+            val classified = classify(raw, raw.lineCount)
+            if (i in watermarkIndices && !classified.isSfx) {
+                classified.copy(isSfx = true, sizeTag = SizeTag.SFX, bubbleType = BubbleType.SFX)
+            } else {
+                classified
+            }
+        }
+    }
+
     fun classify(raw: RawTextBlock, lineCount: Int): ClassifiedBubble {
         val trimmed = raw.text.trim()
         val letters = trimmed.filter { it.isLetter() }
@@ -144,5 +164,95 @@ object BubbleClassifier {
             if (text.chunked(unitLen).all { it == unit }) return true
         }
         return false
+    }
+
+    private const val WATERMARK_MIN_OVERLAP_CHARS = 4
+    private const val WATERMARK_MAX_NORMALIZED_LENGTH = 24
+    private const val WATERMARK_CLUSTER_MIN_SIZE = 3
+
+    /**
+     * Indexy bloků, které jsou součástí OPAKOVANÉHO DLAŽDICOVANÉHO VODOZNAKU - stejný krátký
+     * text (typicky název/adresa skenlační skupiny) nastampovaný vícekrát po stránce, každý
+     * výskyt jinak zkomolený OCR. Žádný JEDNOTLIVÝ výskyt sám o sobě nemusí vypadat podezřele
+     * (na to je [looksLikeWatermark]), ale napříč stránkou tvoří jasný vzorec - viz uživatelská
+     * zpětná vazba: "MADRASCANS MADRASCANS"/"MAD ANS"/"4ANS"/"MADRASCANS"/"MADRASCANS" jako pět
+     * samostatných bloků na jedné stránce, žádný z nich sám o sobě nesplňoval existující
+     * pravidla (moc dlouhý na krátké-ALL-CAPS pravidlo, nebo obsahuje mezeru).
+     *
+     * Union-find nad krátkými bloky (stejný vzor jako [mergeNearbyLines] v BubbleMerge.kt):
+     * dva krátké bloky patří do stejného shluku, když kratší z jejich normalizovaných textů
+     * (jen písmena/číslice, velká písmena, časté OCR záměny číslice->písmeno srovnané na
+     * společný tvar) je PŘIBLIŽNÁ PODPOSLOUPNOST toho delšího - to zachytí i vypadlá/zaměněná
+     * písmena, ne jen přesné podřetězce.
+     *
+     * Shluk se považuje za vodoznak, jen když má aspoň [WATERMARK_CLUSTER_MIN_SIZE] členů A
+     * ZÁROVEŇ mezi nimi existuje aspoň jedna SKUTEČNÁ odchylka (ne všichni členové jsou
+     * byte-po-bytu stejní) - jinak by stejné krátké slovo řečené vícekrát v dialogu (např.
+     * jméno postavy) mohlo dopadnout stejně jako vodoznak. Vodoznak se pozná právě podle toho,
+     * že se OPAKOVANĚ ČTE JINAK (různé zkomoleniny téhož), ne podle toho, že se opakuje.
+     */
+    internal fun detectTiledWatermarkIndices(blocks: List<RawTextBlock>): Set<Int> {
+        val normalized = blocks.map { normalizeForWatermarkMatch(it.text) }
+
+        val eligible = normalized.indices.filter {
+            normalized[it].length in WATERMARK_MIN_OVERLAP_CHARS..WATERMARK_MAX_NORMALIZED_LENGTH
+        }
+        if (eligible.size < WATERMARK_CLUSTER_MIN_SIZE) return emptySet()
+
+        val parent = IntArray(blocks.size) { it }
+        fun find(x: Int): Int {
+            var r = x
+            while (parent[r] != r) r = parent[r]
+            var c = x
+            while (parent[c] != r) { val next = parent[c]; parent[c] = r; c = next }
+            return r
+        }
+        fun union(a: Int, b: Int) {
+            val ra = find(a); val rb = find(b)
+            if (ra != rb) parent[ra] = rb
+        }
+
+        for (i in eligible.indices) {
+            for (j in i + 1 until eligible.size) {
+                val a = eligible[i]
+                val b = eligible[j]
+                val (shorter, longer) = if (normalized[a].length <= normalized[b].length) {
+                    normalized[a] to normalized[b]
+                } else {
+                    normalized[b] to normalized[a]
+                }
+                if (isApproxSubsequence(shorter, longer)) union(a, b)
+            }
+        }
+
+        val result = mutableSetOf<Int>()
+        for (members in eligible.groupBy { find(it) }.values) {
+            if (members.size < WATERMARK_CLUSTER_MIN_SIZE) continue
+            val distinctTexts = members.map { normalized[it] }.toSet()
+            if (distinctTexts.size < 2) continue // vsichni bajt-po-bajtu stejni - moznadopakovana replika, ne vodoznak
+            result += members
+        }
+        return result
+    }
+
+    /** Písmena+číslice, velká písmena, běžné OCR záměny číslice->písmeno srovnané na společný tvar. */
+    private fun normalizeForWatermarkMatch(text: String): String {
+        val ocrConfusions = mapOf('0' to 'O', '1' to 'I', '4' to 'A', '5' to 'S', '8' to 'B', '3' to 'E')
+        return text.uppercase()
+            .filter { it.isLetterOrDigit() }
+            .map { ocrConfusions[it] ?: it }
+            .joinToString("")
+    }
+
+    /** True, když se [needle] dá najít jako podposloupnost (ne nutně souvislá) v [haystack]. */
+    private fun isApproxSubsequence(needle: String, haystack: String): Boolean {
+        if (needle.isEmpty()) return false
+        var hIdx = 0
+        for (c in needle) {
+            while (hIdx < haystack.length && haystack[hIdx] != c) hIdx++
+            if (hIdx == haystack.length) return false
+            hIdx++
+        }
+        return true
     }
 }

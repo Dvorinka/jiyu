@@ -146,4 +146,93 @@ class BubbleClassifierTest {
         val result = BubbleClassifier.classify(rawBlock("Let me scan the area first."), lineCount = 1)
         assertFalse(result.isSfx)
     }
+
+    // ── opakovaný dlaždicovaný vodoznak napříč stránkou (viz [BubbleClassifier.classifyPage]) ──
+
+    @Test
+    fun `reproduces the reported case - garbled tiled group name scattered across a page`() {
+        // Presny scenar z uzivatelske zpetne vazby: pet samostatnych bloku, zadny sam o sobe
+        // nesplnuje existujici pravidla (MADRASCANS je moc dlouhe na kratke-ALL-CAPS pravidlo
+        // [>6 pismen], "MAD ANS" a merged blok obsahuji mezeru), ale napric strankou tvori
+        // jasny vzorec opakovaneho jmena skenlacni skupiny.
+        val blocks = listOf(
+            rawBlock("MADRASCANS MADRASCANS", leftF = 0.1f, topF = 0.05f, rightF = 0.4f, bottomF = 0.10f, lineCount = 2),
+            rawBlock("MAD ANS", leftF = 0.5f, topF = 0.20f, rightF = 0.7f, bottomF = 0.23f),
+            rawBlock("4ANS", leftF = 0.6f, topF = 0.40f, rightF = 0.75f, bottomF = 0.43f),
+            rawBlock("MADRASCANS", leftF = 0.2f, topF = 0.60f, rightF = 0.4f, bottomF = 0.63f),
+            rawBlock("MADRASCANS", leftF = 0.3f, topF = 0.80f, rightF = 0.5f, bottomF = 0.83f),
+            // Skutecna replika na te same strance - nesmi se chytit do shluku.
+            rawBlock("Wait, is someone there?", leftF = 0.1f, topF = 0.5f, rightF = 0.6f, bottomF = 0.55f),
+        )
+
+        val classified = BubbleClassifier.classifyPage(blocks)
+
+        assertTrue("MADRASCANS MADRASCANS should be flagged as watermark", classified[0].isSfx)
+        assertTrue("MAD ANS should be flagged as watermark", classified[1].isSfx)
+        assertTrue("MADRASCANS (index 3) should be flagged as watermark", classified[3].isSfx)
+        assertTrue("MADRASCANS (index 4) should be flagged as watermark", classified[4].isSfx)
+        assertFalse("real dialogue must not be swept into the watermark cluster", classified[5].isSfx)
+    }
+
+    @Test
+    fun `a short repeated word alone does not form a false-positive cluster`() {
+        // "MAS" je jen 3 znaky (pod WATERMARK_MIN_OVERLAP_CHARS) - klasifikuje se (nebo ne)
+        // podle existujicich pravidel, ne podle noveho shlukovani.
+        val blocks = List(3) { rawBlock("MAS", leftF = 0.1f * it, topF = 0.1f * it, rightF = 0.2f + 0.1f * it, bottomF = 0.15f + 0.1f * it) }
+        val indices = BubbleClassifier.detectTiledWatermarkIndices(blocks)
+        assertTrue("too short to be confidently clustered", indices.isEmpty())
+    }
+
+    @Test
+    fun `a name repeated identically several times is not treated as a watermark`() {
+        // Postava rekne "BAXTER" trikrat - VSECHNY vyskyty jsou bajt-po-bajtu stejne, zadna
+        // odchylka. Vodoznak se pozna prave podle toho, ze se cte KAZDYKRAT JINAK (ruzne
+        // zkomoleniny), ne podle toho, ze se holt opakuje stejne slovo.
+        val blocks = List(3) { i ->
+            rawBlock("BAXTER", leftF = 0.1f, topF = 0.1f + 0.2f * i, rightF = 0.4f, bottomF = 0.15f + 0.2f * i)
+        }
+        val indices = BubbleClassifier.detectTiledWatermarkIndices(blocks)
+        assertTrue("identical repeats alone must not be flagged - could be a real repeated name", indices.isEmpty())
+    }
+
+    @Test
+    fun `two occurrences alone are below the cluster threshold`() {
+        val blocks = listOf(
+            rawBlock("MADRASCANS", leftF = 0.1f, topF = 0.1f, rightF = 0.4f, bottomF = 0.15f),
+            rawBlock("MAD ANS", leftF = 0.1f, topF = 0.5f, rightF = 0.4f, bottomF = 0.55f),
+        )
+        assertTrue(BubbleClassifier.detectTiledWatermarkIndices(blocks).isEmpty())
+    }
+
+    @Test
+    fun `a long genuine narration block is never eligible for clustering regardless of coincidental overlap`() {
+        val blocks = listOf(
+            rawBlock("MADRASCANS", leftF = 0.1f, topF = 0.05f, rightF = 0.4f, bottomF = 0.10f),
+            rawBlock("MAD ANS", leftF = 0.1f, topF = 0.20f, rightF = 0.4f, bottomF = 0.23f),
+            rawBlock("4ANS", leftF = 0.1f, topF = 0.40f, rightF = 0.4f, bottomF = 0.43f),
+            // Dlouha veta, ktera by nahodou mohla obsahovat MADRASCANS jako podposloupnost,
+            // kdyby normalizace nemela strop delky - musi zustat mimo shluk.
+            rawBlock(
+                "My animal draconic sensory abilities notice a scan of narrative sequences approaching us.",
+                leftF = 0.05f, topF = 0.6f, rightF = 0.95f, bottomF = 0.7f, lineCount = 3,
+            ),
+        )
+        val indices = BubbleClassifier.detectTiledWatermarkIndices(blocks)
+        assertTrue("the long narration block must never be swept into the cluster", 3 !in indices)
+    }
+
+    @Test
+    fun `classifyPage leaves non-watermark blocks with their normal classification untouched`() {
+        val blocks = listOf(
+            rawBlock("MADRASCANS", leftF = 0.1f, topF = 0.05f, rightF = 0.4f, bottomF = 0.10f),
+            rawBlock("MAD ANS", leftF = 0.1f, topF = 0.20f, rightF = 0.4f, bottomF = 0.23f),
+            rawBlock("4ANS", leftF = 0.1f, topF = 0.40f, rightF = 0.4f, bottomF = 0.43f),
+            rawBlock("BOOM!!!", leftF = 0.1f, topF = 0.6f, rightF = 0.3f, bottomF = 0.65f),
+        )
+        val classified = BubbleClassifier.classifyPage(blocks)
+        // BOOM!!! je uz beztak SFX z existujiciho pravidla, ne z noveho shlukovani - jen sanity,
+        // ze classifyPage normalni klasifikaci vubec nerozbije.
+        assertTrue(classified[3].isSfx)
+        assertEquals(BubbleType.SFX, classified[3].bubbleType)
+    }
 }
