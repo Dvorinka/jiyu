@@ -1,7 +1,5 @@
 package com.haise.jiyu.translate
 
-import java.util.ArrayDeque
-
 /**
  * Abstrakce nad zdrojem pixelů - viz spec docs/superpowers/specs/2026-07-24-bubble-shape-and-font-design.md.
  * Odděluje algoritmus od android.graphics.Bitmap, aby šel testovat čistým JVM testem.
@@ -22,10 +20,33 @@ data class BubbleShapePoint(val yF: Float, val leftF: Float, val rightF: Float)
 object BubbleShapeDetector {
 
     private const val SAMPLE_COUNT = 24
-    private val NEIGHBOR_OFFSETS = arrayOf(-1 to 0, 1 to 0, 0 to -1, 0 to 1)
+
+    /**
+     * Strop velikosti stránky, na které se detekce vůbec pokusí běžet (v pixelech).
+     * Nad ním se rovnou vrátí null a použije se heuristický obdélník - u takhle obřích
+     * obrázků (nekonečné webtoon pásy) nemá smysl alokovat ani bitovou mapu.
+     */
+    private const val MAX_PAGE_PIXELS = 64L * 1024 * 1024
+
+    /** Počáteční kapacita fronty - roste zdvojnásobením, drží jen aktuální "čelo" vlny. */
+    private const val INITIAL_QUEUE_CAPACITY = 4096
 
     /**
      * BFS flood-fill (fronta, ne rekurze - kvůli velkým bublinám a JVM stack limitu).
+     *
+     * Navštívené pixely drží BITOVÁ MAPA (jeden bit na pixel) a fronta je primitivní IntArray
+     * se zabalenou souřadnicí `y * width + x`. Původní `HashSet<Long>` + `ArrayDeque<Pair<Int, Int>>`
+     * znamenaly na každý navštívený pixel zabalený `Long` a k němu uzel hashovací tabulky -
+     * tedy zhruba padesát bajtů na pixel místo jednoho bitu.
+     *
+     * Změřeno na syntetické stránce bez uzavřeného obrysu (flood-fill běží až do plošného
+     * limitu): 1440x3120 spotřebovalo 169 MB, 1440x9000 dokonce 245 MB - a to na JEDINOU
+     * bublinu, přičemž stránky se zpracovávají po třech souběžně (viz OCR_PARALLELISM) a na
+     * stránce je bublin víc. Na telefonu to appku spolehlivě položilo, a tiše: OutOfMemoryError
+     * v tomhle režimu končí zabitím procesu systémem, ne hláškou (viz uživatelská zpětná vazba
+     * "u překladu se appka normálně vypne"). Plošný limit [maxAreaFraction] přitom fungoval
+     * správně - jen se kontroloval AŽ potom, co se všechna ta paměť naalokovala.
+     *
      * @return null když detekce selhala/vypadá nedůvěryhodně (žádný platný seed, nebo
      *   navštívená plocha přesáhla [maxAreaFraction] celé stránky - typicky text přímo
      *   na kresbě/SFX bez uzavřeného pozadí) - volající pak použije starý heuristický obdélník.
@@ -40,10 +61,9 @@ object BubbleShapeDetector {
         maxAreaFraction: Float = 0.25f,
     ): List<BubbleShapePoint>? {
         if (width <= 0 || height <= 0) return null
-        val maxArea = (width.toLong() * height.toLong() * maxAreaFraction).toLong()
-
-        val visited = HashSet<Long>()
-        fun key(x: Int, y: Int) = x.toLong() * height.toLong() + y.toLong()
+        val totalPixels = width.toLong() * height.toLong()
+        if (totalPixels > MAX_PAGE_PIXELS) return null
+        val maxArea = (totalPixels * maxAreaFraction).toLong()
 
         val validSeeds = seeds.filter { (x, y) ->
             x in 0 until width && y in 0 until height &&
@@ -51,51 +71,119 @@ object BubbleShapeDetector {
         }
         if (validSeeds.isEmpty()) return null
 
-        val queue = ArrayDeque<Pair<Int, Int>>()
-        val rowMinMax = HashMap<Int, IntArray>() // y -> [minX, maxX]
+        // Jeden bit na pixel: u 1440x3120 je to 549 kB místo 169 MB.
+        val visited = LongArray(((totalPixels + 63) / 64).toInt())
+        var queue = IntArray(INITIAL_QUEUE_CAPACITY)
+        var head = 0
+        var tail = 0
+
+        // Min/max x pro každý řádek v IntArray místo HashMap<Int, IntArray> - žádné boxování klíčů.
+        val rowMin = IntArray(height) { Int.MAX_VALUE }
+        val rowMax = IntArray(height) { Int.MIN_VALUE }
 
         for ((sx, sy) in validSeeds) {
-            if (visited.add(key(sx, sy))) queue.add(sx to sy)
-        }
-
-        var area = 0L
-        while (queue.isNotEmpty()) {
-            val (x, y) = queue.poll()
-            area++
-            if (area > maxArea) return null
-
-            val minMax = rowMinMax.getOrPut(y) { intArrayOf(x, x) }
-            if (x < minMax[0]) minMax[0] = x
-            if (x > minMax[1]) minMax[1] = x
-
-            for ((dx, dy) in NEIGHBOR_OFFSETS) {
-                val nx = x + dx
-                val ny = y + dy
-                if (nx !in 0 until width || ny !in 0 until height) continue
-                if (!visited.add(key(nx, ny))) continue
-                if (colorDistance(source.colorAt(nx, ny), bgColorArgb) >= colorDistanceThreshold) continue
-                queue.add(nx to ny)
+            val index = sy * width + sx
+            val word = index ushr 6
+            val bit = 1L shl (index and 63)
+            if (visited[word] and bit == 0L) {
+                visited[word] = visited[word] or bit
+                if (tail == queue.size) queue = queue.copyOf(queue.size * 2)
+                queue[tail++] = index
             }
         }
 
-        if (rowMinMax.isEmpty()) return null
+        var area = 0L
+        var topY = Int.MAX_VALUE
+        var bottomY = Int.MIN_VALUE
 
-        val sortedRows = rowMinMax.keys.sorted()
-        val topY = sortedRows.first()
-        val bottomY = sortedRows.last()
-        if (bottomY <= topY) return null
+        while (head < tail) {
+            val index = queue[head++]
+            val y = index / width
+            val x = index - y * width
+            area++
+            if (area > maxArea) return null
+
+            if (x < rowMin[y]) rowMin[y] = x
+            if (x > rowMax[y]) rowMax[y] = x
+            if (y < topY) topY = y
+            if (y > bottomY) bottomY = y
+
+            // Sousedé rozepsaní natvrdo - pole dvojic offsetů by na každý pixel alokovalo
+            // destrukturované Pair objekty, což je přesně ta zbytečná zátěž, kvůli které
+            // se tenhle algoritmus přepisoval.
+            if (x > 0) {
+                val n = index - 1
+                if (visit(source, visited, x - 1, y, n, bgColorArgb, colorDistanceThreshold)) {
+                    if (tail == queue.size) queue = queue.copyOf(queue.size * 2)
+                    queue[tail++] = n
+                }
+            }
+            if (x < width - 1) {
+                val n = index + 1
+                if (visit(source, visited, x + 1, y, n, bgColorArgb, colorDistanceThreshold)) {
+                    if (tail == queue.size) queue = queue.copyOf(queue.size * 2)
+                    queue[tail++] = n
+                }
+            }
+            if (y > 0) {
+                val n = index - width
+                if (visit(source, visited, x, y - 1, n, bgColorArgb, colorDistanceThreshold)) {
+                    if (tail == queue.size) queue = queue.copyOf(queue.size * 2)
+                    queue[tail++] = n
+                }
+            }
+            if (y < height - 1) {
+                val n = index + width
+                if (visit(source, visited, x, y + 1, n, bgColorArgb, colorDistanceThreshold)) {
+                    if (tail == queue.size) queue = queue.copyOf(queue.size * 2)
+                    queue[tail++] = n
+                }
+            }
+
+            // Už zpracovaný začátek fronty se zahodí, jakmile je ho víc než polovina - bez
+            // toho by pole rostlo podle CELKOVÉHO počtu vložených pixelů, ne podle čela vlny.
+            if (head > INITIAL_QUEUE_CAPACITY && head * 2 > tail) {
+                queue.copyInto(queue, 0, head, tail)
+                tail -= head
+                head = 0
+            }
+        }
+
+        if (topY == Int.MAX_VALUE || bottomY <= topY) return null
+
+        val sortedRows = ArrayList<Int>()
+        for (y in topY..bottomY) if (rowMin[y] != Int.MAX_VALUE) sortedRows.add(y)
+        if (sortedRows.isEmpty()) return null
 
         return (0 until SAMPLE_COUNT).map { i ->
             val frac = i / (SAMPLE_COUNT - 1).toFloat()
             val targetY = (topY + frac * (bottomY - topY)).toInt().coerceIn(topY, bottomY)
             val nearestY = nearestRowWithData(sortedRows, targetY)
-            val minMax = rowMinMax.getValue(nearestY)
             BubbleShapePoint(
                 yF = nearestY / height.toFloat(),
-                leftF = minMax[0] / width.toFloat(),
-                rightF = minMax[1] / width.toFloat(),
+                leftF = rowMin[nearestY] / width.toFloat(),
+                rightF = rowMax[nearestY] / width.toFloat(),
             )
         }
+    }
+
+    /** true = pixel je nový (dosud nenavštívený) A barevně patří k pozadí bubliny, takže se má zařadit do fronty. */
+    private fun visit(
+        source: PixelSource,
+        visited: LongArray,
+        x: Int,
+        y: Int,
+        index: Int,
+        bgColorArgb: Int,
+        colorDistanceThreshold: Int,
+    ): Boolean {
+        val word = index ushr 6
+        val bit = 1L shl (index and 63)
+        if (visited[word] and bit != 0L) return false
+        // Označí se i pixel, který barvou neprojde - je to hranice bubliny a bez značky
+        // by se na ni sahalo znovu z každého souseda.
+        visited[word] = visited[word] or bit
+        return colorDistance(source.colorAt(x, y), bgColorArgb) < colorDistanceThreshold
     }
 
     /** Binární hledání nejbližšího řádku s daty - flood-fill nemusí vyplnit úplně každý řádek u šikmých okrajů bubliny. */
