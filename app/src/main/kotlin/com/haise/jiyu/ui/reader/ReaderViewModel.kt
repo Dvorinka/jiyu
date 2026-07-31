@@ -859,6 +859,9 @@ class ReaderViewModel @Inject constructor(
         }
         _batchTranslating.value = true
         _showOriginal.value = false
+        // Vycistit predchozi hlasku - jinak by ji nize v `finally` mohla omylem "prezit" i
+        // stara/nesouvisejici chyba a potlacit spravnou hlasku pro TENHLE pokus.
+        _translationError.value = null
         batchJob = viewModelScope.launch {
             val pages = _pages.value
             val lang = _targetLanguage.value
@@ -891,7 +894,26 @@ class ReaderViewModel @Inject constructor(
             } finally {
                 _batchProgress.value = null
                 _batchTranslating.value = false
-                _translateMode.value = true
+                // translateMode=true prepina UI z tlacitka "Prelozit vse" na prepinac
+                // Original/Preklad (viz ReaderControls - tlacitko se renderuje jen
+                // "else if (!translateMode)") - jakmile jednou zustane true bez skutecneho
+                // prekladu, uzivatel nema ZADNOU cestu zpet ke spusteni prekladu znovu.
+                //
+                // Drivejsi kod ho tady nastavoval BEZPODMINECNE, i po RateLimitedException
+                // nebo po davce, kde vsechny stranky skoncily s prazdnym vysledkem (napr.
+                // vypadek/omezeni site na pozadi, kdyz appka byla minimalizovana - viz
+                // uzivatelska zpetna vazba "vybehnu na Instagram, dole to ukaze uz
+                // prelozene, ale nikde nic neni prelozeno a nemuzu dat prelozit znovu").
+                // Kontrola podle skutecneho obsahu _translatedPages misto slepe duvery
+                // v to, ze smycka dobehla - true jen kdyz aspon JEDNA stranka opravdu ma
+                // neprazdny (ne-SFX) preklad, jinak zustane tlacitko k dispozici a uzivatel
+                // dostane konkretni hlasku misto tiseho "hotovo" bez obsahu.
+                val hasAnyTranslation = _translatedPages.value.values.any { blocks -> blocks.any { !it.isSfx } }
+                if (hasAnyTranslation) {
+                    _translateMode.value = true
+                } else if (_translationError.value == null) {
+                    _translationError.value = context.getString(R.string.reader_error_translation_failed)
+                }
             }
         }
     }
