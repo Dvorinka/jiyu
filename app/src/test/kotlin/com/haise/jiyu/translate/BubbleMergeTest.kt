@@ -49,6 +49,40 @@ class BubbleMergeTest {
     }
 
     @Test
+    fun `merged block carries the average height of the ORIGINAL individual lines, not the whole bubble`() {
+        // Kazda vstupni radka je jeste jeden samostatny radek z ML Kit (pred slouceni) - oba
+        // maji vysku 0.04 (topF..bottomF). Sloucena bublina je vysoka 0.085 (0.10 az 0.185),
+        // ale nativni velikost pisma se ma odvodit od JEDNOHO radku (0.04), ne od cele bubliny.
+        val a = block("Ahoj", 0.30f, 0.10f, 0.50f, 0.14f)
+        val b = block("light", 0.30f, 0.145f, 0.50f, 0.185f)
+
+        val merged = mergeNearbyLines(listOf(a, b))
+
+        assertEquals(1, merged.size)
+        assertEquals(0.04f, merged[0].nativeLineHeightF, 0.001f)
+    }
+
+    @Test
+    fun `a single unmerged line keeps its own height as the native line height`() {
+        val a = block("Ahoj", 0.30f, 0.10f, 0.50f, 0.16f)
+
+        val merged = mergeNearbyLines(listOf(a))
+
+        assertEquals(0.06f, merged[0].nativeLineHeightF, 0.001f)
+    }
+
+    @Test
+    fun `native line height is averaged across lines of differing height`() {
+        val a = block("Ahoj", 0.30f, 0.10f, 0.50f, 0.13f) // vyska 0.03
+        val b = block("light", 0.30f, 0.135f, 0.50f, 0.185f) // vyska 0.05
+
+        val merged = mergeNearbyLines(listOf(a, b))
+
+        assertEquals(1, merged.size)
+        assertEquals(0.04f, merged[0].nativeLineHeightF, 0.001f) // prumer (0.03+0.05)/2
+    }
+
+    @Test
     fun `wall veto blocks a merge that geometry alone would allow`() {
         val a = block("Ahoj", 0.30f, 0.10f, 0.50f, 0.14f)
         val b = block("Nazdar", 0.30f, 0.145f, 0.50f, 0.185f)
@@ -108,5 +142,28 @@ class BubbleMergeTest {
         val b = block("A MESSAGE FROM THE STUDIO", 0.10f, 0.32f, 0.90f, 0.50f)
 
         assertFalse(hasWallBetween(canvas, 300, 300, a, b))
+    }
+
+    @Test
+    fun `no wall reported inside a pinched two-hump speech bubble whose lines are horizontally staggered`() {
+        // Reprodukuje uzivatelskou zpetnou vazbu: bublina "IF I'D KNOWN THE ROAD WOULD BE
+        // LIKE THIS, I WOULDN'T HAVE MADE THE CONTRACT IN THE FIRST PLACE." se v prekladu
+        // objevila jen jako "THE FIRST PLACE." - druhy radek/odstavec byl vykreslen posunuty
+        // (kaskadova/"dvouhrba" bublina, bezna u rucne sazenych komiksovych bublin), takze
+        // stred-stred usecka mezi oběma OCR radky prochazi SIKMO a u uzkeho hrdla mezi
+        // vydutěmi minula bilou vypln - narazila na cerne pozadi vedle ni, coz stary kod
+        // vyhodnotil jako "zed" a radky rozdelil na dve samostatne bubliny.
+        // Kreslena bublina sahá dal nez OCR box (viz komentar u "wall detected between two
+        // separate bubbles" vys - stejny duvod: ringSeeds margin 4px musi sahnout na bilou
+        // vypln, ne mimo ni), proto maji vyduti 6px odsazeni oproti bloku a/b.
+        val canvas = FakeCanvas(240, 240, 0xFF000000.toInt())
+        canvas.fillRect(14, 14, 146, 96, 0xFFFFFFFF.toInt())    // horni vyduť (1. radek)
+        canvas.fillRect(115, 90, 125, 130, 0xFFFFFFFF.toInt())  // uzke hrdlo (jen 10 px sirokce)
+        canvas.fillRect(94, 124, 226, 206, 0xFFFFFFFF.toInt())  // dolni vyduť (2. radek), posunuta doprava
+
+        val a = block("IF I'D KNOWN THE ROAD WOULD BE LIKE THIS,", 20f / 240, 20f / 240, 140f / 240, 90f / 240)
+        val b = block("I WOULDN'T HAVE MADE THE CONTRACT IN THE FIRST PLACE.", 100f / 240, 130f / 240, 220f / 240, 200f / 240)
+
+        assertFalse(hasWallBetween(canvas, 240, 240, a, b))
     }
 }

@@ -69,6 +69,11 @@ internal fun mergeNearbyLines(
             rightF = group.maxOf { it.rightF },
             bottomF = group.maxOf { it.bottomF },
             lineCount = group.size,
+            // Prumer vysky JEDNOTLIVYCH puvodnich radku (kazdy prvek "lines" je jeste jeden
+            // radek z ML Kit, pred timhle slouceni) - NE vyska cele sloucene bubliny. Zaklad
+            // pro "nativni" velikost pisma, kterou se render pokusi napodobit - viz
+            // [TranslatedBlock.nativeLineHeightF].
+            nativeLineHeightF = group.map { it.bottomF - it.topF }.average().toFloat(),
         )
     }
 }
@@ -93,11 +98,20 @@ private fun ringColor(source: PixelSource, width: Int, height: Int, block: RawTe
 }
 
 /**
- * True, když cesta mezi [a] a [b] (vzorkovaná uprostřed úsečky spojující jejich středy, mimo
- * dosah samotného textu na obou koncích) protíná barvu, která neodpovídá pozadí ANI jednoho
- * z bloků - to je skutečná hranice (obrys bubliny, jiný barevný box, kus kresby mezi nimi),
- * ne pokračování téže bubliny. Volající (viz [mergeNearbyLines]) tohle bere jako veto proti
- * sloučení, i když geometrie ([shouldMerge]) sloučení jinak dovoluje.
+ * True, když cesta mezi [a] a [b] (vzorkovaná uprostřed skutečné mezery mezi nimi, mimo dosah
+ * samotného textu na obou koncích) protíná barvu, která neodpovídá pozadí ANI jednoho z bloků -
+ * to je skutečná hranice (obrys bubliny, jiný barevný box, kus kresby mezi nimi), ne pokračování
+ * téže bubliny. Volající (viz [mergeNearbyLines]) tohle bere jako veto proti sloučení, i když
+ * geometrie ([shouldMerge]) sloučení jinak dovoluje.
+ *
+ * Cesta se vede StřED PŘEKRYVU (vodorovného, nebo když ten není, svislého) mezi bloky, NE mezi
+ * jejich úplnými středy. U kaskádové/"dvouhrbé" bubliny (dva odstavce, druhý vykreslený vodorovně
+ * posunutý oproti prvnímu - běžné u ručně sázeného komiksového letteringu) úsečka mezi ÚPLNÝMI
+ * středy jde šikmo a u úzkého hrdla mezi výdutěmi snadno mine skutečnou bílou výplň a narazí na
+ * pozadí vedle ní - vyhodnoceno jako "zeď", i když jde o jednu bublinu (viz uživatelská zpětná
+ * vazba - bublina "IF I'D KNOWN...IN THE FIRST PLACE." se v překladu objevila jen jako
+ * "THE FIRST PLACE.", protože se takhle rozdělila na dvě). Střed PŘEKRYVU je tam, kde spojující
+ * výplň nejspíš leží, ať jsou bloky sesazené sebevíc stranou.
  */
 fun hasWallBetween(
     source: PixelSource,
@@ -112,17 +126,40 @@ fun hasWallBetween(
     val aColor = ringColor(source, width, height, a)
     val bColor = ringColor(source, width, height, b)
 
-    val acx = (a.leftF + a.rightF) / 2f * width
-    val acy = (a.topF + a.bottomF) / 2f * height
-    val bcx = (b.leftF + b.rightF) / 2f * width
-    val bcy = (b.topF + b.bottomF) / 2f * height
+    val hOverlapLeft = maxOf(a.leftF, b.leftF)
+    val hOverlapRight = minOf(a.rightF, b.rightF)
+    val vOverlapTop = maxOf(a.topF, b.topF)
+    val vOverlapBottom = minOf(a.bottomF, b.bottomF)
+
+    val (p1x, p1y, p2x, p2y) = if (hOverlapRight > hOverlapLeft) {
+        // Svislá mezera (typicky dva řádky pod sebou) - veď úsečku středem VODOROVNÉHO
+        // překryvu, ne středy celých bloků, aby zůstala uvnitř spojující výplně i u
+        // vodorovně posunutých odstavců.
+        val midX = (hOverlapLeft + hOverlapRight) / 2f * width
+        val (top, bottom) = if (a.topF <= b.topF) a to b else b to a
+        listOf(midX, top.bottomF * height, midX, bottom.topF * height)
+    } else if (vOverlapBottom > vOverlapTop) {
+        // Vodorovná mezera (bloky vedle sebe) - analogicky středem svislého překryvu.
+        val midY = (vOverlapTop + vOverlapBottom) / 2f * height
+        val (left, right) = if (a.leftF <= b.leftF) a to b else b to a
+        listOf(left.rightF * width, midY, right.leftF * width, midY)
+    } else {
+        // Bez jakéhokoli překryvu (diagonální sousedství) - vzácný okraj shouldMerge,
+        // kde nejde spolehlivě určit "pás" mezery; spadni na středy celých bloků jako dřív.
+        listOf(
+            (a.leftF + a.rightF) / 2f * width,
+            (a.topF + a.bottomF) / 2f * height,
+            (b.leftF + b.rightF) / 2f * width,
+            (b.topF + b.bottomF) / 2f * height,
+        )
+    }
 
     // Jen prostřední úsek úsečky (t=0.3..0.7) - blízko konců bychom snadno vzorkovali
     // ještě uvnitř samotného textu jednoho z bloků, ne skutečnou mezeru mezi nimi.
     val gapFractions = listOf(0.3f, 0.4f, 0.5f, 0.6f, 0.7f)
     for (t in gapFractions) {
-        val x = (acx + (bcx - acx) * t).toInt().coerceIn(0, width - 1)
-        val y = (acy + (bcy - acy) * t).toInt().coerceIn(0, height - 1)
+        val x = (p1x + (p2x - p1x) * t).toInt().coerceIn(0, width - 1)
+        val y = (p1y + (p2y - p1y) * t).toInt().coerceIn(0, height - 1)
         val c = source.colorAt(x, y)
         val distA = colorDistance(c, aColor)
         val distB = colorDistance(c, bColor)
