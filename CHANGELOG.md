@@ -4,6 +4,18 @@
 > vidět v historii commitů a v popisech jednotlivých vydání na GitHubu; zpětně to sem
 > nedopisuju, abych si nevymýšlel.
 
+## v0.8.5
+
+### Upozornění při aktualizaci
+- Uložené překlady se po instalaci přepočítají — obrys bublin se nově počítá jinak a staré záznamy nesou ten původní, přetékající.
+
+### Opravené chyby
+- **Bublina přemalovávala text bubliny sousední.** Kaskádová replika bývá nakreslená jako dvě *překrývající se* bublinky, které tvoří jednu spojitou bílou plochu. Hledání obrysu se přes to místo přelilo do druhého laloku, takže každá bublina si myslela, že jí patří plocha obou — a ta poslední vykreslená přemalovala text těch ostatních. Zmizel tak i text, který se vůbec nepřeložil: místo něj zůstala prázdná bílá plocha.
+
+  Změřeno na zařízení: bez opravy dostaly všechny tři textové bloky na testovací stránce **naprosto stejný obrys** (celý balón), po opravě má každý svůj vlastní úsek.
+
+  Při té příležitosti se potvrdilo, že rozpoznávání textu horní bublinu **najde** — chyba byla čistě ve vykreslování, ne v OCR ani v překladu.
+
 ## v0.8.4
 
 ### Upozornění při aktualizaci
