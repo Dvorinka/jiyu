@@ -86,8 +86,15 @@ fun breakIntoLines(
     return ends.toList()
 }
 
-/** Hotová sazba textu do bubliny - viz [fitTextToShape]. */
-data class ShapedTextLayout(val fontSp: Float, val lines: List<String>)
+/**
+ * Hotová sazba textu do bubliny - viz [fitTextToShape].
+ *
+ * [centerYF] je výška, na kterou sazba blok skutečně vycentrovala (po zarážce do obrysu).
+ * Vykreslení se musí řídit tímhle číslem, ne tím, o co se žádalo: šířky řádků jsou spočítané
+ * z tvaru přesně v tomhle pásu, takže vykreslit blok jinde by znamenalo sázet podle jiného
+ * místa, než kam text nakonec půjde - a u zúžení obrysu by přetekl přes okraj bubliny.
+ */
+data class ShapedTextLayout(val fontSp: Float, val lines: List<String>, val centerYF: Float)
 
 /** Hrubý krok hledání velikosti písma (viz [fitTextToShape]). */
 private const val SHAPED_COARSE_STEP_SP = 2f
@@ -120,6 +127,21 @@ private const val SHAPED_FINE_STEP_SP = 0.25f
  *   - když je zadaná, hledání ji použije jako strop místo [maxFontSp]: zkusí ji jako první
  *   volbu a teprve když se text nevejde, zmenšuje, ale nikdy nezvětší nad tuhle hodnotu.
  *   Null = dřívější chování (hledej rovnou největší velikost, co se vejde).
+ * @param centerYF výška, na kterou se má blok textu svisle vycentrovat. Null = střed obalového
+ *   obdélníku tvaru (dřívější chování).
+ *
+ *   Proč to nestačilo: obrys z flood-fillu obsahuje i OCÁSEK bubliny - ten úzký výběžek
+ *   ukazující na mluvčího - a u kaskádové bubliny navíc kus nad/pod vlastním lalokem. Obalový
+ *   obdélník je pak o dost vyšší než plocha, kde text doopravdy je, a jeho střed leží mimo ni.
+ *   Text se tak odtáhne od středu bubliny směrem k ocásku. Změřeno na nahlášené stránce
+ *   (1440x3120): horní lalok měl tvar y=0.488..0.645 (střed 0,567), ale vepsaný obdélník
+ *   y=0.559..0.645 (střed 0,602) a originální text y=0.572..0.627 (střed 0,600) - sazba tedy
+ *   mířila o 0,033 výšky stránky výš, než kde text v originále byl. Střed vepsaného obdélníku
+ *   sedí na originál na tři tisíciny, střed obalového obdélníku se mýlí desetkrát víc.
+ *
+ *   Posun se musí promítnout UŽ SEM, ne až do vykreslení: šířky řádků se odvozují z tvaru
+ *   v tom pásu, kde blok leží (viz [shapeLineWidths]), takže posunout hotovou sazbu dodatečně
+ *   by znamenalo sázet podle jiného místa, než kam se text nakonec vykreslí.
  * @return null, když se text nevejde ani při [minFontSp] - volající pak spadne na jednodušší
  *   sazbu do vepsaného obdélníku.
  */
@@ -139,13 +161,15 @@ fun fitTextToShape(
     maxLines: Int = 12,
     maxLineWidthPx: Float = Float.MAX_VALUE,
     preferredFontSp: Float? = null,
+    centerYF: Float? = null,
 ): ShapedTextLayout? {
     if (words.isEmpty() || shape.size < 2 || pageHeightPx <= 0f) return null
     val shapeHeightF = shapeBottomF - shapeTopF
     if (shapeHeightF <= 0f) return null
     val searchCeiling = preferredFontSp?.coerceIn(minFontSp, maxFontSp) ?: maxFontSp
 
-    fun attempt(fontSp: Float): List<String>? {
+    /** Hotové řádky + výška, na kterou se blok vycentroval (viz [ShapedTextLayout.centerYF]). */
+    fun attempt(fontSp: Float): Pair<List<String>, Float>? {
         val wordWidths = words.map { measureWord(it, fontSp) }
         val space = spaceWidth(fontSp)
         val lineHeight = lineHeightPx(fontSp)
@@ -156,7 +180,12 @@ fun fitTextToShape(
             val blockHeightF = (lineCount * lineHeight) / pageHeightPx
             if (blockHeightF > shapeHeightF) break // víc řádků se do bubliny svisle nevejde
 
-            val blockTopF = shapeTopF + (shapeHeightF - blockHeightF) / 2f
+            // Blok se centruje na [centerYF] (těžiště SKUTEČNÉ textové plochy), ne na střed
+            // obalového obdélníku tvaru - viz doc komentář parametru. Zarážka drží blok celý
+            // uvnitř obrysu i pro střed, který by ho jinak vytlačil ven.
+            val blockTopF = centerYF
+                ?.let { (it - blockHeightF / 2f).coerceIn(shapeTopF, shapeBottomF - blockHeightF) }
+                ?: (shapeTopF + (shapeHeightF - blockHeightF) / 2f)
             val allowed = shapeLineWidths(
                 shape = shape,
                 centerF = centerF,
@@ -166,7 +195,7 @@ fun fitTextToShape(
                 pageWidthPx = pageWidthPx,
             ).map { it.coerceAtMost(maxLineWidthPx) } // viz [maxLineWidthPx]
             val ends = breakIntoLines(wordWidths, space, allowed) ?: continue
-            return assembleLines(words, ends)
+            return assembleLines(words, ends) to (blockTopF + blockHeightF / 2f)
         }
         return null
     }
@@ -177,15 +206,15 @@ fun fitTextToShape(
         coarse -= SHAPED_COARSE_STEP_SP
         result = attempt(coarse)
     }
-    var fineLines = result ?: return null
+    var best = result ?: return null
 
     var fine = coarse
     while (fine + SHAPED_FINE_STEP_SP <= searchCeiling) {
         val next = attempt(fine + SHAPED_FINE_STEP_SP) ?: break
         fine += SHAPED_FINE_STEP_SP
-        fineLines = next
+        best = next
     }
-    return ShapedTextLayout(fontSp = fine, lines = fineLines)
+    return ShapedTextLayout(fontSp = fine, lines = best.first, centerYF = best.second)
 }
 
 /** Pomocník - z indexů konců řádků (viz [breakIntoLines]) složí skutečné řádky textu. */

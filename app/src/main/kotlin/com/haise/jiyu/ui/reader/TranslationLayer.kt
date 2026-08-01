@@ -374,6 +374,10 @@ fun TranslationOverlay(
                     offsetY = textOffsetY,
                     shape = pos.block.shape,
                     shapeCenterF = inscribed?.let { (it.leftF + it.rightF) / 2f },
+                    // Svislé těžiště SKUTEČNÉ textové plochy. Obalový obdélník obrysu zahrnuje
+                    // i ocásek bubliny, takže jeho střed leží mimo lalok a text se od středu
+                    // bubliny odtáhne - viz [fitTextToShape] parametr centerYF.
+                    shapeCenterYF = inscribed?.let { (it.topF + it.bottomF) / 2f },
                     shapeTopF = pos.minTopF,
                     shapeBottomF = pos.maxBottomF,
                     imageWidthDp = imageRect.width,
@@ -432,6 +436,8 @@ private fun AutoFitTranslatedText(
     offsetY: androidx.compose.ui.unit.Dp = 0.dp,
     shape: List<BubbleShapePoint>? = null,
     shapeCenterF: Float? = null,
+    /** Svislé těžiště textové plochy bubliny - viz [fitTextToShape] parametr centerYF. */
+    shapeCenterYF: Float? = null,
     shapeTopF: Float = 0f,
     shapeBottomF: Float = 0f,
     imageWidthDp: Float = 0f,
@@ -492,7 +498,7 @@ private fun AutoFitTranslatedText(
     // způsobovalo překrývající se řádky).
     val shapedLayout = if (shape != null && shapeCenterF != null && imageHeightDp > 0f) {
         val words = remember(text) { text.split(' ', '\n').filter { it.isNotBlank() } }
-        remember(text, shape, shapeCenterF, shapeTopF, shapeBottomF, imageWidthDp, imageHeightDp, maxFontSp, fontFamily, renderableWidthPx, preferredFontSp) {
+        remember(text, shape, shapeCenterF, shapeCenterYF, shapeTopF, shapeBottomF, imageWidthDp, imageHeightDp, maxFontSp, fontFamily, renderableWidthPx, preferredFontSp) {
             fitTextToShape(
                 words = words,
                 minFontSp = minFontSp,
@@ -519,6 +525,7 @@ private fun AutoFitTranslatedText(
                 lineHeightPx = { fontSp -> with(density) { (fontSp * 1.25f).sp.toPx() } },
                 maxLineWidthPx = renderableWidthPx,
                 preferredFontSp = preferredFontSp,
+                centerYF = shapeCenterYF,
             )
         }
     } else {
@@ -526,10 +533,18 @@ private fun AutoFitTranslatedText(
     }
 
     if (shapedLayout != null) {
+        // Vnější Box má u tvarových bloků přesně výšku obalového obdélníku obrysu a centruje
+        // obsah do svého středu - jenže ten obdélník zahrnuje i OCÁSEK bubliny, takže jeho
+        // střed leží mimo lalok s textem. Dřív se tenhle rozdíl neřešil vůbec (offsetY se
+        // počítal, ale u tvarové sazby se zahazoval) a text se od středu bubliny odtáhl
+        // směrem k ocásku - viz [fitTextToShape] parametr centerYF.
+        //
+        // Posouvá se o rozdíl proti středu, který si zvolila SAZBA (ne proti tomu, o co se
+        // žádalo): u zúženého obrysu si ho mohla zarazit zpátky dovnitř, a šířky řádků platí
+        // pro to místo, kde blok doopravdy leží.
+        val shapedOffsetY = ((shapedLayout.centerYF - (shapeTopF + shapeBottomF) / 2f) * imageHeightDp).dp
         Box(
-            // offsetY je 0 - blok je svisle vycentrovaný přímo v tvaru bubliny (viz
-            // fitTextToShape) a vnější Box má u tvarových bloků přesně výšku tvaru.
-            modifier = Modifier.offset(x = offsetX),
+            modifier = Modifier.offset(x = offsetX, y = shapedOffsetY),
             contentAlignment = Alignment.Center,
         ) {
             StrokedTranslatedText(

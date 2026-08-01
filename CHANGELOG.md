@@ -4,6 +4,17 @@
 > vidět v historii commitů a v popisech jednotlivých vydání na GitHubu; zpětně to sem
 > nedopisuju, abych si nevymýšlel.
 
+## v0.8.8
+
+Hotove preklady zustavaji v platnosti - tahle verze meni jen vykreslovani, ne to, co je ulozene.
+
+### Opravene chyby
+- **Text sedel v bubline moc vysoko nebo moc nizko.** Obrys bubliny se hleda vylitim barvy a to zabere i OCASEK - ten uzky vybezek, co ukazuje na mluvciho. Text se pritom centroval na obalovy obdelnik celeho obrysu, jenze ten je kvuli ocasku o dost vyssi nez plocha, kde text doopravdy je. Blok se tak vzdycky odtahl smerem k ocasku.
+
+  Zmereno na nahlasene strance: horni lalok mel obrys y=0.488..0.645 (stred 0,567), ale skutecna textova plocha y=0.559..0.645 (stred 0,602) a puvodni anglicky text stred 0,600. Sazba tedy mirila o 3,3 % vysky stranky vys, nez kde text v originale byl - pres sto obrazovych bodu. Nove se centruje na textovou plochu, ktera na originalni umisteni sedi na tri tisiciny.
+
+  Nejvic to bylo videt u kaskadovych bublin, kde ocasek visi na jednom z laloku: horni text se tlacil nahoru, spodni dolu.
+
 ## v0.8.7
 
 ### Upozorneni pri aktualizaci

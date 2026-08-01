@@ -352,4 +352,104 @@ class BalancedLineBreakTest {
             23 * layout.fontSp * 0.6f <= 120.5f,
         )
     }
+
+    // -- Ocasek bubliny: text se nesmi centrovat na obalovy obdelnik tvaru --------
+
+    /**
+     * Bublina s ocaskem: siroky lalok nahore (yF 0.10..0.40) a uzky ocasek pod nim
+     * (yF 0.42..0.70), ktery ukazuje na mluvciho.
+     *
+     * Flood-fill vrati obrys VCETNE ocasku, takze obalovy obdelnik tvaru sahá az k 0.70 a jeho
+     * stred lezi na 0.40 - tedy presne v hrdle, kde uz je bublina uzka. Text vycentrovany na
+     * tenhle stred se od skutecneho laloku odtahne a musi se navic zlomit do vic uzkych radku.
+     *
+     * Zmereno na nahlasene strance (1440x3120): horni lalok mel tvar y=0.488..0.645 (stred
+     * 0.567), ale vepsany obdelnik y=0.559..0.645 (stred 0.602) a puvodni text y=0.572..0.627
+     * (stred 0.600). Sazba tedy mirila o 0,033 vysky stranky vys, nez kde text v originale byl.
+     */
+    private fun tailedShape(): List<BubbleShapePoint> {
+        val lobe = (0..8).map { i ->
+            BubbleShapePoint(yF = 0.10f + 0.30f * i / 8f, leftF = 0.10f, rightF = 0.90f)
+        }
+        val tail = (0..6).map { i ->
+            BubbleShapePoint(yF = 0.42f + 0.28f * i / 6f, leftF = 0.47f, rightF = 0.53f)
+        }
+        return lobe + tail
+    }
+
+    private fun fitTailed(text: String, centerYF: Float? = null) =
+        fitTextToShape(
+            words = text.split(" ").filter { it.isNotBlank() },
+            minFontSp = 6f,
+            maxFontSp = 36f,
+            shape = tailedShape(),
+            centerF = 0.5f,
+            shapeTopF = 0.10f,
+            shapeBottomF = 0.70f,
+            pageWidthPx = 1000f,
+            pageHeightPx = 1000f,
+            measureWord = { word, fontSp -> word.length * fontSp * 0.6f },
+            spaceWidth = { fontSp -> fontSp * 0.6f },
+            lineHeightPx = { fontSp -> fontSp * 1.25f },
+            centerYF = centerYF,
+        )
+
+    @Test
+    fun `text centred on the lobe fits far better than text centred on the whole shape`() {
+        val text = "AAAA BBBB CCCC"
+        val onWholeShape = fitTailed(text)
+        val onLobe = fitTailed(text, centerYF = 0.25f)
+
+        assertNotNull(onWholeShape)
+        assertNotNull(onLobe)
+        assertTrue(
+            "sazba do laloku (${onLobe!!.fontSp}) musi vyjit vetsim pismem nez sazba " +
+                "vycentrovana na obalovy obdelnik vcetne ocasku (${onWholeShape!!.fontSp})",
+            onLobe.fontSp > onWholeShape.fontSp,
+        )
+    }
+
+    @Test
+    fun `centring on the lobe keeps every word intact`() {
+        val text = "AAAA BBBB CCCC"
+        val layout = fitTailed(text, centerYF = 0.25f)
+        assertNotNull(layout)
+        assertEquals(text, layout!!.lines.joinToString(" "))
+    }
+
+    @Test
+    fun `a centre outside the shape is pulled back inside so the text never leaves the bubble`() {
+        // Vepsany obdelnik muze u degenerovaneho tvaru vyjit mimo - blok se pak musi zarazit
+        // zpatky do obrysu, ne vysazet mimo bublinu.
+        val layout = fitTailed("AAAA BBBB", centerYF = 0.95f)
+        assertNotNull(layout)
+        assertEquals("AAAA BBBB", layout!!.lines.joinToString(" "))
+    }
+
+    @Test
+    fun `the layout reports the height it actually centred the block on`() {
+        // Vykresleni se ridi TIMHLE cislem, ne tim, o co se zadalo - sirky radku plati prave
+        // pro pas, kde blok lezi.
+        val layout = fitTailed("AAAA BBBB", centerYF = 0.25f)
+        assertNotNull(layout)
+        assertEquals(0.25f, layout!!.centerYF, 0.001f)
+    }
+
+    @Test
+    fun `a block pushed past the bottom edge is reported at the height it was pulled back to`() {
+        val layout = fitTailed("AAAA BBBB", centerYF = 0.95f)
+        assertNotNull(layout)
+        assertTrue(
+            "blok se musel zarazit zpatky do obrysu, hlasi ${layout!!.centerYF}",
+            layout.centerYF < 0.95f && layout.centerYF <= 0.70f,
+        )
+    }
+
+    @Test
+    fun `without an explicit centre the block stays in the middle of the shape as before`() {
+        val layout = fitTailed("AAAA BBBB")
+        assertNotNull(layout)
+        // Stred obalového obdelniku tvaru (0.10..0.70) je 0.40 - stare chovani.
+        assertEquals(0.40f, layout!!.centerYF, 0.02f)
+    }
 }
