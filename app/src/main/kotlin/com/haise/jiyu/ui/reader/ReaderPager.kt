@@ -360,6 +360,7 @@ fun MangaReader(
                                 imageRect = imageRect,
                                 textScale = textScale,
                                 pageIndex = indices[0],
+                                pageUrl = pages[indices[0]],
                                 flippedBubbles = flippedBubbles,
                                 onToggleFlip = onToggleBubbleFlip,
                             )
@@ -400,6 +401,7 @@ fun MangaReader(
                                             imageRect = imageRect,
                                             textScale = textScale,
                                             pageIndex = idx,
+                                            pageUrl = pages[idx],
                                             flippedBubbles = flippedBubbles,
                                             onToggleFlip = onToggleBubbleFlip,
                                         )

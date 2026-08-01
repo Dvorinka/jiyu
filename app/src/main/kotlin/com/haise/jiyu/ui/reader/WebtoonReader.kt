@@ -212,6 +212,7 @@ private fun WebtoonPage(
                 imageRect = imageRect,
                 textScale = textScale,
                 pageIndex = pageIndex,
+                pageUrl = pageUrl,
                 flippedBubbles = flippedBubbles,
                 onToggleFlip = onToggleBubbleFlip,
             )

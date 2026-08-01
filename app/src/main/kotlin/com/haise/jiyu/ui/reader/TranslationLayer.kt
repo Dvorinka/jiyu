@@ -20,10 +20,13 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.paint
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
@@ -32,10 +35,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
@@ -63,6 +69,7 @@ import com.haise.jiyu.translate.fitTextToShape
 import com.haise.jiyu.translate.largestInscribedRect
 import com.haise.jiyu.translate.layoutTranslationBlocks
 import com.haise.jiyu.translate.matchOriginalCase
+import dagger.hilt.android.EntryPointAccessors
 import com.haise.jiyu.translate.snapBubbleBg
 
 // ── Translation overlay - sdíleno mezi MangaReader (ReaderPager.kt) a WebtoonReader.kt ──
@@ -137,10 +144,29 @@ fun BubbleOverlayLayer(
     imageRect: Rect,
     textScale: Float = 1f,
     pageIndex: Int = -1,
+    /** URL zobrazované stránky - potřeba jen pro záplaty (viz [TextPatchProvider]). */
+    pageUrl: String? = null,
     flippedBubbles: Set<String> = emptySet(),
     onToggleFlip: (pageIndex: Int, bubbleIndex: Int) -> Unit = { _, _ -> },
 ) {
     val positioned = remember(blocks) { layoutTranslationBlocks(blocks) }
+
+    // Záplaty se počítají až tady, při zobrazení, a žijí jen v paměti - do Room nic nepřibývá,
+    // takže se kvůli nim nemusela zvedat PIPELINE_VERSION a hotové překlady zůstaly platné.
+    // Provider se bere přes Hilt EntryPoint: BubbleOverlayLayer volají dvě různé čtečky
+    // (MangaReader i WebtoonPage) a protahovat ho parametrem přes celý strom by znamenalo
+    // měnit podpisy několika composable jen kvůli tomuhle.
+    val context = LocalContext.current
+    val patchProvider = remember(context) {
+        EntryPointAccessors.fromApplication(
+            context.applicationContext,
+            TextPatchEntryPoint::class.java,
+        ).textPatchProvider()
+    }
+    val patches by produceState(initialValue = emptyMap<Int, android.graphics.Bitmap>(), pageUrl, blocks) {
+        val url = pageUrl
+        value = if (url == null) emptyMap() else patchProvider.patchesFor(url, blocks)
+    }
     positioned.forEachIndexed { bubbleIndex, pos ->
         // isUntranslated = model vrátil UNTRANSLATED_MARKER (nečitelné OCR) - stejně jako u
         // SFX bublin appka radši nic nekreslí a nechá prosvítat originál, než aby ukázala
@@ -151,6 +177,9 @@ fun BubbleOverlayLayer(
                 imageRect = imageRect,
                 textScale = textScale,
                 isFlipped = "$pageIndex:$bubbleIndex" in flippedBubbles,
+                // Klíč je index v PŮVODNÍM seznamu blocks (tak je klíčuje TextPatchProvider),
+                // ne pozice v `positioned` - to je filtrovaný a přeskládaný seznam.
+                patch = patches[blocks.indexOf(pos.block)],
                 onTap = { onToggleFlip(pageIndex, bubbleIndex) },
             )
         }
@@ -197,6 +226,8 @@ fun TranslationOverlay(
     imageRect: Rect,
     textScale: Float = 1f,
     isFlipped: Boolean = false,
+    /** Záplata pozadí pro bublinu na kresbě; null = kreslí se jednolitá výplň jako dosud. */
+    patch: android.graphics.Bitmap? = null,
     onTap: () -> Unit = {},
 ) {
     // OCR bounding box je v zásadě vždy leftF<=rightF/topF<=bottomF, ale nejde o zaručený
@@ -287,14 +318,29 @@ fun TranslationOverlay(
                 .width(w)
                 .heightIn(min = minH, max = maxH)
                 .clip(clipShape)
-                .background(
-                    Brush.verticalGradient(
-                        listOf(
-                            Color(snappedBgTop).copy(alpha = TRANSLATION_BOX_ALPHA),
-                            Color(snappedBgBottom).copy(alpha = TRANSLATION_BOX_ALPHA),
-                        ),
-                    ),
-                )
+                // Bublina ležící přímo na kresbě dostane místo jednolité výplně ZÁPLATU:
+                // zakryté jsou jen tahy původního písma, zbytek kresby prosvítá (viz
+                // TextPatchProvider). U skutečné bubliny (jednolité pozadí) žádná záplata
+                // nevzniká a kreslí se gradient jako dosud - tam je k nerozeznání od originálu.
+                .let { m ->
+                    if (patch != null) {
+                        m.paint(
+                            painter = BitmapPainter(patch.asImageBitmap()),
+                            sizeToIntrinsics = false,
+                            contentScale = ContentScale.FillBounds,
+                            alpha = TRANSLATION_BOX_ALPHA,
+                        )
+                    } else {
+                        m.background(
+                            Brush.verticalGradient(
+                                listOf(
+                                    Color(snappedBgTop).copy(alpha = TRANSLATION_BOX_ALPHA),
+                                    Color(snappedBgBottom).copy(alpha = TRANSLATION_BOX_ALPHA),
+                                ),
+                            ),
+                        )
+                    }
+                }
                 // Tap = "flip" na originál (viz ReaderViewModel.toggleBubbleFlip). Konzumuje tap
                 // dřív, než se dostane k page-level gestům (tap-zóny/double-tap zoom/long-press
                 // sdílení v MangaReaderu) - vědomý kompromis, přesně nad bublinou chceme flip,

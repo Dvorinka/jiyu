@@ -33,7 +33,15 @@ import javax.inject.Singleton
 class PageBitmapLoader @Inject constructor(
     @ApplicationContext private val context: Context,
 ) {
-    suspend fun load(url: String): Bitmap? = withContext(Dispatchers.IO) {
+    /**
+     * @param maxDimension když je zadané, Coil stránku zmenší tak, aby se vešla do čtverce téhle
+     *   velikosti. Používá to [TextPatchProvider]: dekódovat 15 000 px vysokou stránku webtoonu
+     *   v plném rozlišení kvůli záplatě několika bublin je spolehlivá cesta k OOM.
+     *
+     *   OCR cesta parametr NEPŘEDÁVÁ a pracuje s plným rozlišením jako dosud - jinak by se
+     *   změnilo, co OCR přečte, a tím i obsah cache překladů.
+     */
+    suspend fun load(url: String, maxDimension: Int? = null): Bitmap? = withContext(Dispatchers.IO) {
         try {
             if (url.startsWith("/") || url.startsWith("file://")) {
                 BitmapFactory.decodeFile(url.removePrefix("file://"))
@@ -52,6 +60,7 @@ class PageBitmapLoader @Inject constructor(
                     // po druhém - proto to appka spolehlivě shazovalo hned po startu hromadného
                     // překladu (viz uživatelská zpětná vazba "u překladu appka spadne").
                     .allowHardware(false)
+                    .apply { maxDimension?.let { size(it) } }
                     .build()
                 val result = Coil.imageLoader(context).execute(request)
                 (result as? SuccessResult)?.drawable?.let { (it as? BitmapDrawable)?.bitmap }
