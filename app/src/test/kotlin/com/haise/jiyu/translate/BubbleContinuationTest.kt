@@ -124,4 +124,41 @@ class BubbleContinuationTest {
     fun `the very first bubble is never a continuation`() {
         assertTrue(detectContinuations(listOf(bubble("ANYTHING,"))).isEmpty())
     }
+
+    // -- Kaskadova ("snehulakova") bublina - laloky posunute do stran ----------------
+
+    /**
+     * Souradnice zmerene na SKUTECNE nahlasene strance (1440x3120), ne odhadnute: horni lalok
+     * x=0.321..0.540 y=0.572..0.627, spodni x=0.501..0.815 y=0.664..0.780. Vodorovny prekryv
+     * vyjde 0,178 uzsiho z nich - puvodni prah 0,35 tedy neprosel a model se o navaznosti
+     * nedozvedel, takze obe pulky jedne vety prelozil oddelene.
+     */
+    @Test
+    fun `offset lobes of a cascading balloon still count as one utterance`() {
+        val bubbles = listOf(
+            bubble("IF THOSE MERCHANTS ARE NOT LYING,", leftF = 0.321f, rightF = 0.540f, topF = 0.572f, bottomF = 0.627f),
+            bubble("DOES THAT NOT MEAN THE TERRAIN CHANGED?", leftF = 0.501f, rightF = 0.815f, topF = 0.664f, bottomF = 0.780f),
+        )
+        assertEquals(setOf(1), detectContinuations(bubbles))
+    }
+
+    @Test
+    fun `a bubble with no horizontal overlap at all is still rejected`() {
+        // Uvolneni prahu nesmi spojit repliky ze dvou ruznych sloupcu dialogu.
+        val bubbles = listOf(
+            bubble("WAIT,", leftF = 0.05f, rightF = 0.35f, topF = 0.10f, bottomF = 0.18f),
+            bubble("WHO SAID THAT", leftF = 0.60f, rightF = 0.95f, topF = 0.20f, bottomF = 0.28f),
+        )
+        assertTrue(detectContinuations(bubbles).isEmpty())
+    }
+
+    @Test
+    fun `a barely touching pair below the threshold is still rejected`() {
+        // Prekryv 0,02 z uzsi bubliny sirky 0,30 = 0,067 - pod prahem, porad se nespojuje.
+        val bubbles = listOf(
+            bubble("HMM,", leftF = 0.10f, rightF = 0.40f, topF = 0.10f, bottomF = 0.18f),
+            bubble("NEVER MIND", leftF = 0.38f, rightF = 0.90f, topF = 0.20f, bottomF = 0.28f),
+        )
+        assertTrue(detectContinuations(bubbles).isEmpty())
+    }
 }

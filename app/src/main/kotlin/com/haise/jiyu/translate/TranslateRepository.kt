@@ -536,8 +536,13 @@ class TranslateRepository @Inject constructor(
          *   oba bloky dostaly totožný tvar celého balónu (0.102..0.637), přesně jako bez opravy.
          *   Nově rozhoduje, jestli tvar POKRÝVÁ cizí text (viz [clampShapeToOwnLobe]); po opravě
          *   tytéž bloky dostaly 0.102..0.311 a 0.335..0.637. Obrys se ukládá, proto přepočet.
+         * v10 (2026-08-01): [detectContinuations] u kaskádové bubliny nikdy nesepnulo. Vyžadovalo
+         *   vodorovný překryv aspoň 0,35 užší bubliny, jenže laloky jsou posunuté do stran -
+         *   změřeno na nahlášené stránce: 0,178. Model se tedy nedozvěděl, že obě půlky tvoří
+         *   JEDNU větu, a přeložil je odděleně. Práh je nově 0,15. Ovlivňuje prompt, tedy
+         *   ULOŽENÝ překlad, proto se staré záznamy musí přepočítat.
          */
-        private const val PIPELINE_VERSION = 9
+        private const val PIPELINE_VERSION = 10
 
         /** Maximální počet znaků originálu na jedno API volání - drží výstup pod limitem max_tokens. */
         private const val NOVEL_CHUNK_CHAR_LIMIT = 2500

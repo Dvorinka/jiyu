@@ -80,5 +80,20 @@ private const val VERTICAL_TOLERANCE_F = 0.02f
  */
 private const val MAX_VERTICAL_GAP_F = 0.10f
 
-/** Kolik z užší bubliny se musí vodorovně překrývat, aby šlo o stejný sloupec dialogu. */
-private const val MIN_HORIZONTAL_OVERLAP_RATIO = 0.35f
+/**
+ * Kolik z užší bubliny se musí vodorovně překrývat, aby šlo o stejný sloupec dialogu.
+ *
+ * Dřív tu byla 0,35 - odhad, který mlčky předpokládal, že dvě bubliny téže repliky leží zhruba
+ * pod sebou. U kaskádové ("sněhulákové") bubliny to neplatí: laloky jsou ZÁMĚRNĚ posunuté do
+ * stran, právě to jim dává ten schodovitý tvar. Změřeno na nahlášené stránce (1440x3120):
+ * horní lalok x=0.321..0.540, spodní x=0.501..0.815, tedy překryv 0,039 = **0,178** užšího
+ * z nich. Podmínka neprošla, model se o návaznosti nedozvěděl a obě půlky jedné věty přeložil
+ * odděleně - přesně to, kvůli čemu [detectContinuations] vzniklo.
+ *
+ * Snížení je bezpečné, protože rozlišování nestojí na tomhle čísle: většinu práce odvede
+ * [endsSentence] (replika jiného mluvčího skoro vždy končí tečkou/otazníkem) a strop
+ * [MAX_VERTICAL_GAP_F]. Chybné spojení navíc nic nerozbije - text zůstává ve své bublině
+ * (viz „železná pravidla" v [GeminiUltraPrompt]), model jen dostane kontext navíc. Chybějící
+ * spojení naopak větu roztrhne vejpůl, což uživatel nahlásil.
+ */
+private const val MIN_HORIZONTAL_OVERLAP_RATIO = 0.15f

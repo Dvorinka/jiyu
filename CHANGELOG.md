@@ -4,6 +4,19 @@
 > vidět v historii commitů a v popisech jednotlivých vydání na GitHubu; zpětně to sem
 > nedopisuju, abych si nevymýšlel.
 
+## v0.8.7
+
+### Upozorneni pri aktualizaci
+- Ulozene preklady se po instalaci prepocitaji — model nove dostava informaci o vetach pres vic bublin, coz meni vysledny preklad.
+
+### Opravene chyby
+- **Veta rozdelena do dvou laloku se prekladala po pulkach.** Appka si umi spocitat, ze dve bubliny tvori jednu vetu, a modelu to predava jako fakt — jenze u kaskadove („snehulakove“) bubliny se to nikdy nespustilo. Vyzadovalo se, aby se bubliny vodorovne prekryvaly aspon z 35 %, coz mlcky predpoklada, ze lezi pod sebou. Laloky kaskadove bubliny jsou ale posunute do stran, prave to jim dava ten schodovity tvar.
+
+  Zmereno na nahlasene strance: skutecny prekryv byl **17,8 %**. Model se tedy o souvislosti nedozvedel a kazdou pulku prelozil jako samostatnou vetu. Prah je nove 15 %.
+
+### Jak se to naslo
+Dve kreslene rekonstrukce te stranky se od skutecnosti rozesly zrovna v tom, co rozhodovalo. Pipeline proto bezela primo na nahlasenem snimku a namerila, co se doopravdy deje — vcetne dukazu, ze premalovavani bublin, ktere trapilo predchozi verze, je na tehle strance opravdu vyresene.
+
 ## v0.8.6
 
 ### Upozornění při aktualizaci
