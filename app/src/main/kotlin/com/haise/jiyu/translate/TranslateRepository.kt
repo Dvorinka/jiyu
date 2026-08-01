@@ -80,7 +80,7 @@ class TranslateRepository @Inject constructor(
 
         val glossary = glossaryFor(mangaId, targetLanguage)
         val mangaContext = mangaContextFor(mangaId)
-        val classified = BubbleClassifier.classifyPage(rawBlocks)
+        val classified = BubbleClassifier.classifyPage(rawBlocks, sourceLanguage)
 
         // GeminiUltraPrompt je napsaný natvrdo pro češtinu (znakové limity a kompresní
         // pravidla mají české příklady) - pro jiný cílový jazyk zůstáváme na obecném
@@ -182,7 +182,7 @@ class TranslateRepository @Inject constructor(
                         val bitmap = bitmapLoadSemaphore.withPermit { pageBitmapLoader.load(pages[pageIndex]) }
                         bitmap?.let { bmp -> ocrSemaphore.withPermit { ocrEngine.recognize(bmp, sourceLanguage) } } ?: emptyList()
                     } ?: emptyList()
-                    pageIndex to BubbleClassifier.classifyPage(raw)
+                    pageIndex to BubbleClassifier.classifyPage(raw, sourceLanguage)
                 }
             }.awaitAll()
         }.toMap()
@@ -220,11 +220,8 @@ class TranslateRepository @Inject constructor(
                 )
             }
 
-            var offset = 0
-            for (pageIndex in chunk) {
-                val count = bubblesByPage.getValue(pageIndex).size
-                val pageBlocks = if (blocks.isEmpty()) emptyList() else blocks.subList(offset, (offset + count).coerceAtMost(blocks.size))
-                offset += count
+            val perPage = splitBlocksByPage(chunk, chunk.map { bubblesByPage.getValue(it).size }, blocks)
+            for ((pageIndex, pageBlocks) in perPage) {
                 if (pageBlocks.isNotEmpty()) {
                     dao.upsert(TranslatedPageEntity(id = cacheId(chapterId, pageIndex, targetLanguage, sourceLanguage), blocksJson = pageBlocks.serialize()))
                 }
@@ -238,7 +235,7 @@ class TranslateRepository @Inject constructor(
      * nepřekročí [CHAPTER_CHUNK_CHAR_LIMIT] - jedna stránka je vždy atomická (nikdy se
      * nerozdělí mezi dvě dávky), stejný princip jako [chunkParagraphs] u novel překladu.
      */
-    private fun chunkPages(pageIndices: List<Int>, bubblesByPage: Map<Int, List<ClassifiedBubble>>): List<List<Int>> {
+    internal fun chunkPages(pageIndices: List<Int>, bubblesByPage: Map<Int, List<ClassifiedBubble>>): List<List<Int>> {
         val chunks = mutableListOf<List<Int>>()
         var current = mutableListOf<Int>()
         var currentLen = 0
@@ -787,6 +784,35 @@ class TranslateRepository @Inject constructor(
  * Top-level (ne metoda [TranslateRepository]) - jde tak otestovat čistě na dvojici
  * fake suspend lambd, bez nutnosti mockovat celý repository se všemi závislostmi.
  */
+/**
+ * Rozdělí JEDNU dávkovou odpověď zpátky po stránkách podle toho, kolik bublin která stránka
+ * poslala. [pageIndices] a [bubbleCounts] jsou dvě strany téhož - i-tá stránka poslala
+ * i-tý počet bublin.
+ *
+ * Vytaženo z [TranslateRepository.translateChapter] kvůli testům: tohle je přesně to místo,
+ * kde se text může tiše ztratit nebo (hůř) přesunout k cizí bublině, a přitom to bylo
+ * schované uvnitř 90řádkové suspend funkce se sítí, OCR i databází, takže se to nedalo
+ * otestovat jinak než celou kapitolou.
+ *
+ * Když je [blocks] kratší, než součet počtů (model odpověděl méně, než dostal), dostanou
+ * chybějící stránky prázdný seznam místo výjimky - nepřeložená stránka je pořád lepší než
+ * spadlý překlad celé kapitoly.
+ */
+internal fun splitBlocksByPage(
+    pageIndices: List<Int>,
+    bubbleCounts: List<Int>,
+    blocks: List<TranslatedBlock>,
+): List<Pair<Int, List<TranslatedBlock>>> {
+    var offset = 0
+    return pageIndices.mapIndexed { i, pageIndex ->
+        val count = bubbleCounts[i]
+        val from = offset.coerceAtMost(blocks.size)
+        val to = (offset + count).coerceAtMost(blocks.size)
+        offset += count
+        pageIndex to blocks.subList(from, to)
+    }
+}
+
 internal suspend fun translateChain(vararg steps: suspend () -> List<TranslatedBlock>?): List<TranslatedBlock> {
     var anyRateLimited = false
     for (step in steps) {

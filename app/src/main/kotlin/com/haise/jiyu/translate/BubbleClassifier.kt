@@ -46,10 +46,10 @@ object BubbleClassifier {
      * smysl volat [detectTiledWatermarkIndices], protože potřebuje vidět VŠECHNY bloky
      * stránky najednou, ne jeden po druhém.
      */
-    fun classifyPage(rawBlocks: List<RawTextBlock>): List<ClassifiedBubble> {
+    fun classifyPage(rawBlocks: List<RawTextBlock>, sourceLanguage: String = AUTO_LANGUAGE): List<ClassifiedBubble> {
         val watermarkIndices = detectTiledWatermarkIndices(rawBlocks)
         return rawBlocks.mapIndexed { i, raw ->
-            val classified = classify(raw, raw.lineCount)
+            val classified = classify(raw, raw.lineCount, sourceLanguage)
             if (i in watermarkIndices && !classified.isSfx) {
                 classified.copy(isSfx = true, sizeTag = SizeTag.SFX, bubbleType = BubbleType.SFX)
             } else {
@@ -58,10 +58,10 @@ object BubbleClassifier {
         }
     }
 
-    fun classify(raw: RawTextBlock, lineCount: Int): ClassifiedBubble {
+    fun classify(raw: RawTextBlock, lineCount: Int, sourceLanguage: String = AUTO_LANGUAGE): ClassifiedBubble {
         val trimmed = raw.text.trim()
         val letters = trimmed.filter { it.isLetter() }
-        val isSfx = detectSfx(raw, trimmed, letters)
+        val isSfx = detectSfx(raw, trimmed, letters, sourceLanguage)
 
         val sizeTag = when {
             isSfx -> SizeTag.SFX
@@ -102,7 +102,27 @@ object BubbleClassifier {
     /** "SIRENSCANS.COM", "ENSCANS.COM" apod. - viz [looksLikeWatermark]. */
     private val domainPattern = Regex("[A-Z0-9]{2,}\\.(COM|NET|ORG|INFO|IO|TO|CC|ME)")
 
-    private fun detectSfx(raw: RawTextBlock, trimmed: String, letters: String): Boolean {
+    /**
+     * Smí se použít pravidlo "krátký text velkými písmeny bez mezer = zvuk"?
+     *
+     * To pravidlo je nebezpečné samo o sobě - stejně jako "BOOM" ho splňuje i spousta
+     * skutečných krátkých replik. Jedinou pojistkou proti tomu je [shortWordsNotSfx], jenže
+     * ten seznam je čistě ANGLICKÝ. U španělského, francouzského nebo indonéského komiksu
+     * tedy pravidlo platí bez sítě a běžné krátké repliky označí za zvuk - a SFX bublina se
+     * nikdy nepřekládá ani nevykresluje, takže na stránce prostě zůstane originál.
+     *
+     * Kde seznam neplatí, se pravidlo raději vynechá. Nejhorší, co se pak stane, je že se
+     * přeloží i opravdový zvuk ("BOOM" -> "BUM") - o řád menší škoda než spolykaná replika.
+     * Skutečné zvuky navíc pořád chytá [sfxWords] a u CJK pravidlo o opakovaném vzoru.
+     *
+     * Omezení: pod "Auto" se latinkové jazyky od sebe rozeznat nedají (všechny čte jeden
+     * model, viz [AUTO_CANDIDATE_LANGUAGES]), takže tam zůstává anglické chování. Rozhoduje
+     * to, co má uživatel NASTAVENÉ.
+     */
+    private fun canVetShortAllCaps(sourceLanguage: String): Boolean =
+        sourceLanguage == AUTO_LANGUAGE || sourceLanguage == "English"
+
+    private fun detectSfx(raw: RawTextBlock, trimmed: String, letters: String, sourceLanguage: String): Boolean {
         if (trimmed.isEmpty()) return false
 
         // Čistě symboly/interpunkce - "!!!", "???", "*gasp*" bez písmen kolem
@@ -123,7 +143,8 @@ object BubbleClassifier {
         // Krátký ALL CAPS text bez mezer (typicky zvuk, ne věta) - "BOOM!!!" ale ne "NO WAY".
         // Vyjímka pro běžná krátká slova (viz shortWordsNotSfx) - ta stejné pravidlo splňují,
         // ale jsou to skutečné repliky, ne zvukové efekty.
-        if (letters.length in 1..6 && letters.all { it.isUpperCase() } && !core.contains(' ') &&
+        if (canVetShortAllCaps(sourceLanguage) &&
+            letters.length in 1..6 && letters.all { it.isUpperCase() } && !core.contains(' ') &&
             core.uppercase() !in shortWordsNotSfx
         ) return true
 

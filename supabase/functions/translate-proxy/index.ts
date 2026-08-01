@@ -12,6 +12,14 @@ const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 // zdarma, appka na to nikdy nic neplatí. Zvednuto 2026-07-27 poté, co reálné dní (24. a
 // 25. 7.) narazily na původních 500 000 znaků (508k/632k) - počet requestů (131/205) byl
 // přitom hluboko pod tehdejším limitem 5000, takže znakový limit byl ten skutečný strop.
+//
+// POZOR NA VÝZNAM ČÍSLA: počítají se POKUSY, ne úspěšné překlady. Kvóta se strhává PŘED
+// voláním upstreamu (viz checkQuota), takže dávka, která projde až na čtvrtý krok
+// fallback řetězce, si ukrojí znaky čtyřikrát. Pro účel "zastav runaway smyčku" je to
+// správně - runaway smyčka se skládá právě z pokusů - ale neplet si to s "kolik textu
+// appka přeložila", to bývá výrazně míň. Kdyby se to mělo měřit odděleně, chce to
+// rozdělit RPC na "započítej požadavek" a "připiš znaky po úspěchu"; obojí je zásah do
+// živé databáze, takže to nedělej jen tak mimochodem.
 const DAILY_CHAR_LIMIT = 3_000_000;
 const DAILY_REQUEST_LIMIT = 20_000;
 
@@ -124,9 +132,13 @@ function json(body: unknown, status: number): Response {
  *   dojely output tokeny). Tohle je vlastnost KONKRÉTNÍ dávky, ne providera - opakovat stejný
  *   požadavek nemá smysl, ale providera samotného vyřazovat nechceme.
  */
-type UpstreamErrorCode = "upstream_rate_limited" | "upstream_error";
+type UpstreamErrorCode =
+  | "upstream_rate_limited"
+  | "upstream_error"
+  | "upstream_empty";
 
-function upstreamErrorCode(status: number): UpstreamErrorCode {
+/** Jen pro stavové kódy - "upstream_empty" se nastavuje ručně tam, kde přišla prázdná odpověď. */
+function upstreamErrorCode(status: number): Exclude<UpstreamErrorCode, "upstream_empty"> {
   // 429 = rate limit, 402 = došel kredit (OpenRouter u free modelů vrací obojí),
   // 403 u Gemini běžně znamená "API klíč nemá na tenhle model nárok / kvóta projektu".
   return status === 429 || status === 402 || status === 403
@@ -324,6 +336,16 @@ async function handleGemini(payload: Record<string, unknown>): Promise<Response>
     : "gemini";
 
   if (!user) return json({ text: "" }, 200);
+
+  // Chybějící klíč znamená, že se upstream ani nezkusí zavolat - nemá tedy smysl si za to
+  // ukrajovat z denního stropu. Dřív se strhl a teprve pak se zjistilo, že není kam poslat.
+  const missingKey = (provider === "groq" && !GROQ_API_KEY) ||
+    (provider === "openrouter" && !OPENROUTER_API_KEY) ||
+    (provider === "gemini" && !GEMINI_API_KEY);
+  if (missingKey) {
+    console.error(`klíč pro providera "${provider}" není na tomhle projektu nastavený`);
+    return json({ text: "", error: "upstream_error" }, 200);
+  }
 
   const { allowed, errored } = await checkQuota(system.length + user.length);
   if (errored) return json({ text: "" }, 500);

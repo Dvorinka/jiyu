@@ -222,6 +222,33 @@ class BubbleClassifierTest {
     }
 
     @Test
+    fun `a short spanish word is not swallowed as a sound effect`() {
+        // NALEZ Z AUDITU: pravidlo "kratky text velkymi pismeny bez mezer = zvuk" ma jako
+        // jedinou pojistku ANGLICKY seznam beznych slov. U spanelskeho/francouzskeho/
+        // indoneskeho komiksu tedy platilo bez site a bezna kratka replika se oznacila za
+        // SFX - takova bublina se nikdy neprelozi ani nevykresli, takze na strance zustal
+        // original.
+        val result = BubbleClassifier.classify(rawBlock("VAMOS"), lineCount = 1, sourceLanguage = "Spanish")
+        assertFalse("spanelska replika nesmi propadnout jako zvuk", result.isSfx)
+    }
+
+    @Test
+    fun `english short words keep their existing protection`() {
+        val stop = BubbleClassifier.classify(rawBlock("STOP"), lineCount = 1, sourceLanguage = "English")
+        assertFalse(stop.isSfx)
+    }
+
+    @Test
+    fun `a real sound effect is still caught in every language`() {
+        // sfxWords je vyslovny seznam, ten plati porad - vypnuti se tyka jen toho
+        // nebezpecneho "kratke velke pismenka" pravidla.
+        listOf("English", "Spanish", "French", "Auto").forEach { language ->
+            val result = BubbleClassifier.classify(rawBlock("BOOM"), lineCount = 1, sourceLanguage = language)
+            assertTrue("BOOM ma zustat zvukem i pro $language", result.isSfx)
+        }
+    }
+
+    @Test
     fun `dialogue that simply gets extended is not a watermark cluster`() {
         // NALEZ Z AUDITU: tri repliky, kde kazda jen prodluzuje tu predchozi, se shlukly do
         // "vodoznaku" a VSECHNY se oznacily jako SFX - tedy se vubec neprelozily a na strance

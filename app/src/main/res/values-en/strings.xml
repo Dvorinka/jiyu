@@ -903,8 +903,8 @@
         <item quantity="other">✓ Found %1$d items</item>
     </plurals>
     <plurals name="settings_storage_translation_cache_count">
-        <item quantity="one">Cached translations: %1$d page</item>
-        <item quantity="other">Cached translations: %1$d pages</item>
+        <item quantity="one">Cached translations: %1$d item</item>
+        <item quantity="other">Cached translations: %1$d items</item>
     </plurals>
     <plurals name="source_browse_chapters_count">
         <item quantity="one">%1$d chapter</item>

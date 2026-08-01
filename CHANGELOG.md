@@ -4,6 +4,20 @@
 > vidět v historii commitů a v popisech jednotlivých vydání na GitHubu; zpětně to sem
 > nedopisuju, abych si nevymýšlel.
 
+## v0.8.1
+
+### Upozornění při aktualizaci
+- Uložené překlady se po instalaci zahodí a spočítají znovu (změnila se rozpoznávací a klasifikační logika). První otevření kapitoly bude pomalejší a sáhne to na denní limit překladů.
+
+### Opravené chyby
+- **Zdrojový jazyk „Auto" ve skutečnosti znamenal latinku.** Byla to první nabízená možnost, ale rozpoznávání textu pro ni nemělo vlastní větev a spadlo na latinkový model — kdo si „Auto" vybral a otevřel japonskou, korejskou nebo čínskou mangu, dostal nesmysl nebo nic. Bubliny se navíc seřadily zleva doprava, takže překladač četl repliky pozpátku. Nově se rozpoznávač vybírá podle toho, co na stránce opravdu je.
+- **Běžný dialog mohl zmizet jako „vodoznak".** Tři repliky, kde každá jen prodlužovala předchozí („HELP" / „HELP ME" / „HELP ME NOW"), se označily za nastampovaný vodoznak a vůbec se nepřeložily.
+- **Krátké repliky v neanglických komiksech se ztrácely.** Pravidlo „krátký text velkými písmeny = zvukový efekt" mělo pojistku jen pro angličtinu, takže třeba španělské „VAMOS" propadlo jako zvuk a zůstalo nepřeložené.
+
+### Data
+- **Cache přeložených novel se nikdy nezneplatnila ani neuklízela.** Po opravě překladu zůstávala stará verze napořád, tabulka rostla bez omezení a tlačítko „smazat cache překladů" se jí vůbec nedotklo.
+- Počet uložených překladů v Úložišti teď zahrnuje i novely — dřív ukazoval míň, než kolik toho appka doopravdy držela.
+
 ## v0.8.0
 
 ### Upozornění při aktualizaci

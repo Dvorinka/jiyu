@@ -909,9 +909,9 @@
         <item quantity="other">✓ Nalezeno %1$d položek</item>
     </plurals>
     <plurals name="settings_storage_translation_cache_count">
-        <item quantity="one">Uložené překlady: %1$d stránka</item>
-        <item quantity="few">Uložené překlady: %1$d stránky</item>
-        <item quantity="other">Uložené překlady: %1$d stránek</item>
+        <item quantity="one">Uložené překlady: %1$d položka</item>
+        <item quantity="few">Uložené překlady: %1$d položky</item>
+        <item quantity="other">Uložené překlady: %1$d položek</item>
     </plurals>
     <plurals name="source_browse_chapters_count">
         <item quantity="one">%1$d kapitola</item>

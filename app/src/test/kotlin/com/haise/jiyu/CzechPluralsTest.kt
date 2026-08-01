@@ -57,10 +57,10 @@ class CzechPluralsTest {
     }
 
     @Test
-    fun `page counts in the translation cache decline correctly`() {
-        assertEquals("Uložené překlady: 1 stránka", quantity(R.plurals.settings_storage_translation_cache_count, 1))
-        assertEquals("Uložené překlady: 2 stránky", quantity(R.plurals.settings_storage_translation_cache_count, 2))
-        assertEquals("Uložené překlady: 5 stránek", quantity(R.plurals.settings_storage_translation_cache_count, 5))
+    fun `item counts in the translation cache decline correctly`() {
+        assertEquals("Uložené překlady: 1 položka", quantity(R.plurals.settings_storage_translation_cache_count, 1))
+        assertEquals("Uložené překlady: 2 položky", quantity(R.plurals.settings_storage_translation_cache_count, 2))
+        assertEquals("Uložené překlady: 5 položek", quantity(R.plurals.settings_storage_translation_cache_count, 5))
     }
 
     @Test

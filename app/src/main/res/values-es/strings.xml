@@ -920,9 +920,9 @@
         <item quantity="many">✓ %1$d elementos encontrados</item>
     </plurals>
     <plurals name="settings_storage_translation_cache_count">
-        <item quantity="one">Traducciones en caché: %1$d página</item>
-        <item quantity="other">Traducciones en caché: %1$d páginas</item>
-        <item quantity="many">Traducciones en caché: %1$d páginas</item>
+        <item quantity="one">Traducciones en caché: %1$d elemento</item>
+        <item quantity="other">Traducciones en caché: %1$d elementos</item>
+        <item quantity="many">Traducciones en caché: %1$d elementos</item>
     </plurals>
     <plurals name="source_browse_chapters_count">
         <item quantity="one">%1$d capítulo</item>

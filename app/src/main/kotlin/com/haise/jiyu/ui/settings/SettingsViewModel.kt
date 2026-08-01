@@ -285,7 +285,9 @@ class SettingsViewModel @Inject constructor(
     }
 
     private fun refreshCacheCount() = viewModelScope.launch {
-        _cacheCount.value = translatedPageDao.count()
+        // Novely se do cisla dlouho nepocitaly, takze "ulozene preklady" ukazovaly min,
+        // nez kolik toho appka opravdu drzela. Proto uz popisek nemluvi o strankach.
+        _cacheCount.value = translatedPageDao.count() + translatedNovelDao.count()
     }
 
     fun addCustomSource(
