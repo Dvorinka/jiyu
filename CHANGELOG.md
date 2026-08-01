@@ -4,6 +4,11 @@
 > vidět v historii commitů a v popisech jednotlivých vydání na GitHubu; zpětně to sem
 > nedopisuju, abych si nevymýšlel.
 
+## v0.8.2
+
+### Opravené chyby
+- **Sdílení QR kódu bylo opravené jen napůl.** Ve v0.8.0 se dialog sdílení začal otevírat, ale příjemce obrázek nesměl otevřít — místo náhledu zůstalo prázdno a sdílení do řady aplikací selhalo. Nalezeno až při zkoušce na emulátoru.
+
 ## v0.8.1
 
 ### Upozornění při aktualizaci

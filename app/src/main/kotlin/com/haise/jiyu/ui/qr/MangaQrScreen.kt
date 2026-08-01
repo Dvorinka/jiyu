@@ -4,6 +4,7 @@ import compose.icons.TablerIcons
 import compose.icons.tablericons.*
 
 
+import android.content.ClipData
 import android.content.Intent
 import android.graphics.Bitmap
 import android.net.Uri
@@ -167,9 +168,19 @@ private fun shareQr(context: android.content.Context, bitmap: Bitmap, title: Str
             type = "image/png"
             putExtra(Intent.EXTRA_STREAM, uri)
             putExtra(Intent.EXTRA_TEXT, title)
+            // Podle ClipData systém pozná, na které URI má vydat dočasné oprávnění. Samotné
+            // EXTRA_STREAM mu nestačí, protože extras jsou pro něj jen neprůhledný balík dat.
+            clipData = ClipData.newUri(context.contentResolver, "QR", uri)
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
-        context.startActivity(Intent.createChooser(intent, context.getString(R.string.qr_share_button)))
+        // Příznak musí být i na obálce z createChooser, ne jen na vnitřním intentu. Obrázek
+        // si totiž otevírá i samotný dialog (com.android.intentresolver), aby vykreslil
+        // náhled - a ten na vnitřní intent nedosáhne. Ověřeno na emulátoru: bez tohohle se
+        // dialog sice otevřel, ale místo náhledu zůstalo prázdno a v logu stálo
+        // "Permission Denial: opening provider androidx.core.content.FileProvider".
+        val chooser = Intent.createChooser(intent, context.getString(R.string.qr_share_button))
+            .apply { addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION) }
+        context.startActivity(chooser)
     } catch (e: Exception) {
         // Tenhle catch tu dřív stál prázdný a schovával fakt, že FileProvider vůbec nebyl
         // v manifestu - tlačítko "Sdílet" tím pádem beze slova nedělalo nic. Ať je příště
