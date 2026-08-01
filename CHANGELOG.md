@@ -4,6 +4,15 @@
 > vidět v historii commitů a v popisech jednotlivých vydání na GitHubu; zpětně to sem
 > nedopisuju, abych si nevymýšlel.
 
+## v0.8.4
+
+### Upozornění při aktualizaci
+- Uložené překlady se po instalaci přepočítají. Změnilo se, co překladač o bublinách ví (viz níž), takže staré výsledky by tu opravu neobsahovaly. Nic se neztratí, jen první otevření kapitoly bude pomalejší.
+
+### Kvalita překladu
+- **Věta rozdělená do dvou bublin se překládá jako celek.** Překladač dosud viděl jen plochý seznam textů a neměl jak poznat, že dvě bubliny tvoří jednu repliku — kaskádový dialog (úvodní citoslovce nahoře, zbytek dole) se tak překládal po kouscích a návaznost se ztrácela. Nově se souvislost spočítá z rozmístění bublin a interpunkce a překladač ji dostane jako zadání: přelož jako celek, ale **rozděl zpátky přesně tak, jak byl rozdělený originál**. Text se nikdy nepřesouvá mezi bublinami, horní zůstává nahoře a spodní dole.
+- **Tradiční čínština se čte zprava doleva.** Směr rozhodovala jen japonština, takže tchajwanské a hongkongské komiksy dostávaly bubliny seřazené obráceně a překladač četl repliky pozpátku. Zjednodušené čínštiny se to netýká — ta se čte zleva doprava. Projeví se, jen když si zdrojový jazyk vyberete ručně.
+
 ## v0.8.3
 
 ### Upozornění při aktualizaci
