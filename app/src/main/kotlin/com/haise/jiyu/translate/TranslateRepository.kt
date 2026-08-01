@@ -517,8 +517,14 @@ class TranslateRepository @Inject constructor(
          *   kde každá jen prodlužuje předchozí ("HELP" / "HELP ME" / "HELP ME NOW"), se dřív
          *   označily za vodoznak a vůbec se nepřeložily. Staré záznamy mají obojí spočítané
          *   podle starší logiky, proto se musí přepočítat.
+         * v7 (2026-08-01): prompt nově dostává informaci o tom, které bubliny tvoří JEDNU
+         *   větu rozdělenou do dvou (viz [detectContinuations] a sekce "VĚTY PŘES VÍC BUBLIN"
+         *   v [GeminiUltraPrompt]). Dřív model viděl jen plochý seznam textů a kaskádovou
+         *   repliku překládal po kouscích - každou půlku bez druhé, takže z první vypadl úvod
+         *   nebo se druhá přeložila jako samostatná věta. Změna ovlivňuje ULOŽENÝ překlad,
+         *   proto se staré záznamy musí přepočítat.
          */
-        private const val PIPELINE_VERSION = 6
+        private const val PIPELINE_VERSION = 7
 
         /** Maximální počet znaků originálu na jedno API volání - drží výstup pod limitem max_tokens. */
         private const val NOVEL_CHUNK_CHAR_LIMIT = 2500

@@ -115,4 +115,53 @@ class GeminiUltraPromptTest {
         assertEquals(1, response.newTerms.size)
         assertEquals("Frodo", response.newTerms[0].source)
     }
+
+    // ── Věty rozdělené do víc bublin ────────────────────────────────────────────
+
+    private fun bubble(
+        text: String,
+        topF: Float,
+        bottomF: Float,
+        leftF: Float = 0.1f,
+        rightF: Float = 0.5f,
+        isSfx: Boolean = false,
+    ) = ClassifiedBubble(
+        raw = RawTextBlock(text = text, leftF = leftF, topF = topF, rightF = rightF, bottomF = bottomF),
+        sizeTag = SizeTag.SMALL,
+        bubbleType = if (isSfx) BubbleType.SFX else BubbleType.SPEECH,
+        isSfx = isSfx,
+        lineCount = 1,
+    )
+
+    @Test
+    fun `a continued bubble is marked so the model knows the sentence carries over`() {
+        // Bez tehle znacky mel model jen plochy seznam textu a nemel jak poznat, ze dve
+        // bubliny tvori jednu repliku - preklad se pak rozpadl na dva samostatne utrzky.
+        val prompt = GeminiUltraPrompt.buildUserPrompt(
+            listOf(
+                bubble("PROBOHA,", topF = 0.10f, bottomF = 0.18f),
+                bubble("TAKOVA DALKA", topF = 0.20f, bottomF = 0.30f),
+            ),
+        )
+        assertTrue("druha bublina ma byt oznacena jako pokracovani", prompt.contains("POKRAČUJE Z: [BUBBLE 0]"))
+    }
+
+    @Test
+    fun `unrelated bubbles carry no continuation marker`() {
+        val prompt = GeminiUltraPrompt.buildUserPrompt(
+            listOf(
+                bubble("HOTOVO.", topF = 0.10f, bottomF = 0.18f),
+                bubble("KAM JDEŠ?", topF = 0.20f, bottomF = 0.30f),
+            ),
+        )
+        assertFalse("ukoncena veta nepokracuje", prompt.contains("POKRAČUJE Z"))
+    }
+
+    @Test
+    fun `the system prompt forbids moving text between bubbles`() {
+        val prompt = GeminiUltraPrompt.buildSystemPrompt(emptyMap())
+        assertTrue(prompt.contains("VĚTY PŘES VÍC BUBLIN"))
+        assertTrue("musi zakazat presouvani textu", prompt.contains("NIKDY nepřesouvá"))
+        assertTrue("musi zakazat slucovani bublin", prompt.contains("nesluč"))
+    }
 }

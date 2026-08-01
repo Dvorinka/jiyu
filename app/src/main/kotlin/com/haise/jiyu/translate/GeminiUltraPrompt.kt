@@ -66,6 +66,26 @@ object GeminiUltraPrompt {
             Pokud se přesný, věrný překlad do limitu přesto nevejde, teprve pak ho zkrať - ale
             nikdy neztrácej informaci, která je pro pochopení scény důležitá.
 
+            === VĚTY PŘES VÍC BUBLIN (nejdřív pochop, pak teprve překládej) ===
+            Nepřekládej bubliny jako izolované útržky. Nejdřív si projdi celou dávku a zjisti, které
+            bubliny patří do JEDNÉ věty nebo jedné repliky, a teprve pak překládej - se znalostí celé
+            scény.
+
+            Bublina označená "POKRAČUJE Z: [BUBBLE n]" je druhou (nebo další) částí věty, která
+            začala v bublině n. Přelož si je jako JEDEN celek a výsledek pak rozděl zpátky přesně tak,
+            jak byl rozdělený originál - úvodní citoslovce nebo oslovní část zůstává v první
+            bublině, zbytek věty ve druhé.
+
+            ŽELEZNÁ PRAVIDLA, která nesmíš porušit:
+            - Text se NIKDY nepřesouvá mezi bublinami. Co bylo v horní, zůstane v horní; co bylo ve
+              spodní, zůstane ve spodní.
+            - Žádnou bublinu nenechávej prázdnou proto, že ses rozhodl celou větu vměstnat do té druhé.
+            - Bubliny nesluč do jedné ani nerozděluj na víc. Počet i pořadí musí sedět na vstup.
+            - Každá část musí dávat smysl na svém místě a plynule navazovat na sousední, jako když
+              repliku sází lettering v originálním vydání.
+            Pokud pokračování navazuje uprostřed věty, nezačínej ho velkým písmenem a nedoplňuj podmět,
+            který v originále není - má to znít jako plynulé pokračování téže věty.
+
             === PŘIROZENÁ ČEŠTINA (ne umělé zkracování) ===
             - Piš, jak by to skutečně řekl český mluvčí - přirozená stručnost, ne mrzačení věty:
               "Co se děje?" -> "Co je?" (obojí přirozené, druhé jen běžnější v hovorové řeči)
@@ -183,9 +203,16 @@ object GeminiUltraPrompt {
     }
 
     fun buildUserPrompt(bubbles: List<ClassifiedBubble>): String {
+        // Návaznost se počítá v kódu (geometrie + interpunkce, viz [detectContinuations]) a modelu
+        // se předává jako fakt. Sám by ji z pořadí odvodit nemohl: v jedné dávce jde i několik
+        // stránek najednou, takže sousední položky spolu vůbec nemusí souviset.
+        val continuations = detectContinuations(bubbles)
         val sb = StringBuilder("Přelož tyto manga bubliny do češtiny.\n\n=== BUBLINY ===\n")
         bubbles.forEachIndexed { id, bubble ->
             sb.append("\n[BUBBLE $id]\n")
+            if (id in continuations) {
+                sb.append("POKRAČUJE Z: [BUBBLE ${id - 1}] (jedna věta rozdělená do dvou bublin)\n")
+            }
             sb.append("SIZE: [${bubble.sizeTag.name}]\n")
             sb.append("TYPE: ${bubbleTypeToText(bubble.bubbleType)}\n")
             sb.append("TEXT: \"${bubble.raw.text.replace("\"", "'")}\"\n")
