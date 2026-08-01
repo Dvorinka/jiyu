@@ -4,6 +4,18 @@
 > vidět v historii commitů a v popisech jednotlivých vydání na GitHubu; zpětně to sem
 > nedopisuju, abych si nevymýšlel.
 
+## v0.8.6
+
+### Upozornění při aktualizaci
+- Uložené překlady se po instalaci přepočítají — obrys bublin se počítá jinak a staré záznamy nesou ten původní, přetékající.
+
+### Opravené chyby
+- **Kaskádová bublina pořád přemalovávala text.** Oprava z v0.8.5 se u nahlášené stránky vůbec nespustila. Rozhodovala se podle toho, jestli se rámečky rozpoznaného textu vodorovně překrývají aspoň ze čtvrtiny — jenže laloky kaskádové bubliny jsou *záměrně* posunuté do stran (horní vpravo, spodní vlevo), právě to jim dává ten schodovitý tvar, takže se rámečky překrývají sotva.
+
+  Změřeno na emulátoru před opravou: oba bloky dostaly **totožný obrys celého balónu**, tedy přesně stav bez opravy. Nově se místo rámečků ptáme na to podstatné — *pokrývá můj obrys cizí text?* Po opravě mají tytéž bloky každý svůj úsek a ani jeden už na cizí text nesahá.
+
+- **Písmo bylo zhruba o třetinu menší, než mělo.** Velikost se odhadovala z výšky rozpoznaného rámečku pevným dělením, které neodpovídalo skutečnosti. Naměřeno přímo na zařízení: rámeček je u verzálek 0,73× a u textu s malými písmeny 1,05× výška písma. Text tak v bublinách sedí o dost lépe.
+
 ## v0.8.5
 
 ### Upozornění při aktualizaci
