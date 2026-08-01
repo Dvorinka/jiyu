@@ -70,10 +70,26 @@ internal val AUTO_CANDIDATE_LANGUAGES = listOf("English", "Japanese", "Korean", 
 
 /**
  * Kolik nebílých znaků stačí, aby se průchod považoval za jistý a další se už nepouštěly.
- * Skutečná stránka textu jich má desítky; latinkový model puštěný na japonskou stránku
- * vrátí typicky pár znaků nesmyslu, takže se tenhle strop nepřekročí a zkusí se další model.
+ *
+ * Číslo bylo původně odhad. Změřeno na zařízení (viz AutoLanguageOnDeviceTest; hodnoty jsou
+ * počty nebílých znaků, které daný model našel):
+ *
+ *     japonská stránka   -> English=0,  Japanese=31, Korean=20, Chinese=0
+ *     latinková stránka  -> English=57, Japanese=57, Korean=57, Chinese=57
+ *     korejská stránka   -> English=0,  Japanese=7,  Korean=18, Chinese=10
+ *
+ * Dvě věci z toho plynou. Latinkový model na CJK stránce nenajde NIC, ne "pár znaků
+ * nesmyslu" - propadnutí na další model má tedy velkou rezervu. A CJK modely čtou latinku
+ * stejně dobře jako ten latinkový; že je English první, je proto to, co dělá běžnou
+ * anglickou stránku levnou - vyřeší se jediným průchodem.
+ *
+ * Práh se schválně NESNIŽUJE, i když by to u krátkých CJK stránek ušetřilo průchody (viz
+ * korejský řádek, kde se prahu nedosáhne a poběží všechny čtyři modely): reálné japonské
+ * skeny běžně nesou i latinku navíc - zvuky, loga, vodoznaky typu "SIRENSCANS.COM" - a s
+ * nízkým prahem by se výběr zasekl na latince a zbytek stránky by se ztratil. Raději občas
+ * pustit víc modelů než tiše přijít o text.
  */
-private const val AUTO_CONFIDENT_CHARS = 20
+internal const val AUTO_CONFIDENT_CHARS = 20
 
 /**
  * Vybere rozpoznávač pro [AUTO_LANGUAGE]: zkouší kandidáty popořadě a bere ten, který našel

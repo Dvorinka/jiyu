@@ -44,6 +44,11 @@ android {
         buildConfigField("String", "MAL_CLIENT_ID", "\"${localProps["MAL_CLIENT_ID"] ?: ""}\"")
         buildConfigField("String", "ANILIST_CLIENT_ID", "\"${localProps["ANILIST_CLIENT_ID"] ?: ""}\"")
 
+        // Bez tohohle se androidTest NESPUSTI - pouzil by se zastaraly vychozi runner, ktery
+        // AndroidX testy neumi, a existujici testy tak byly cele mesice mrtve. Vlastni runner
+        // (ne primo AndroidJUnitRunner) je nutny kvuli @HiltAndroidTest, viz HiltTestRunner.
+        testInstrumentationRunner = "com.haise.jiyu.HiltTestRunner"
+
     }
 
     buildTypes {
@@ -208,6 +213,8 @@ dependencies {
     androidTestImplementation("androidx.test.espresso:espresso-core:3.6.1")
     androidTestImplementation("androidx.navigation:navigation-testing:2.7.7")
     androidTestImplementation("com.google.dagger:hilt-android-testing:2.51.1")
+    androidTestImplementation("androidx.test:runner:1.6.2")
+    androidTestImplementation("androidx.test:rules:1.6.1")
     kspAndroidTest("com.google.dagger:hilt-android-compiler:2.51.1")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
 }
