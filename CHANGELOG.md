@@ -4,6 +4,17 @@
 > vidět v historii commitů a v popisech jednotlivých vydání na GitHubu; zpětně to sem
 > nedopisuju, abych si nevymýšlel.
 
+## v0.8.3
+
+### Upozornění při aktualizaci
+- Uložené překlady se po instalaci přepočítají. Zdrojový jazyk je součástí jejich klíče, a ten se teď mění (viz níž) — nic se neztratí, jen první otevření kapitoly bude pomalejší a sáhne to na denní limit překladů.
+
+### Opravené chyby
+- **Výchozí zdrojový jazyk byl „English", takže japonská manga se nepřeložila vůbec.** Na japonskou, korejskou i čínskou stránku se pouštěl latinkový rozpoznávač, který na nich nenajde nic — naměřeno doslova nula znaků. Výsledek: prázdný překlad bez jediného vysvětlení. Nově je výchozí „Auto" a rozpoznávač se vybírá podle toho, co na stránce doopravdy je.
+
+### Vzhled
+- **Text ležící přímo na kresbě už se nepřekrývá jednolitou plochou.** Dosud se přes celý rámeček natáhla jedna navzorkovaná barva — odtud hnědé placky přes barevné kresby a tmavé skvrny přes obličeje. Nově se zakryjí jen tahy původního písma a každý zakrytý bod se dopočítá z okolí, takže kresba mezi písmeny zůstane vidět. U běžných bublin se nic nemění, tam byla dosavadní výplň k nerozeznání od originálu.
+
 ## v0.8.2
 
 ### Opravené chyby

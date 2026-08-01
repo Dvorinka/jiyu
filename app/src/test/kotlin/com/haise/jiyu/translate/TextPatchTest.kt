@@ -119,7 +119,7 @@ class TextPatchTest {
     fun `thick strokes are covered too, not just their edges`() {
         // Tah široký 3 px - kdyby se doplňovalo jen z přímých sousedů jednou, zůstal by
         // uprostřed neopravený proužek.
-        val rows = (0 until 11).map { y ->
+        val rows = (0 until 11).map {
             (0 until 11).map { x -> if (x in 4..6) black else white }
         }
         val patch = buildTextPatch(sourceOf(rows), 11, 11, 0, 0, 11, 11, bgArgb = white)
