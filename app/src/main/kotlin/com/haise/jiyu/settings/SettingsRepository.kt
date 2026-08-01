@@ -102,8 +102,16 @@ class SettingsRepository @Inject constructor(
     val targetLanguage: Flow<String> =
         dataStore.data.map { it[SettingsKeys.TARGET_LANGUAGE] ?: "Czech" }
 
+    /**
+     * "Auto" místo napevno zvoleného písma: kdo si appku nainstaloval a otevřel japonskou
+     * (korejskou, čínskou) mangu, pouštěl na ni latinkový rozpoznávač. Ten na CJK stránce
+     * nenajde nic - naměřeno 0 znaků, viz AutoLanguageOnDeviceTest - takže žádný překlad
+     * nevznikl a uživatel dostal prázdný výsledek bez vysvětlení. Pod "Auto" si rozpoznávač
+     * appka vybere podle toho, co na stránce doopravdy je (viz resolveAutoLanguage), a běžnou
+     * latinkovou stránku vyřeší hned prvním průchodem, takže to nic nestojí navíc.
+     */
     val sourceLanguage: Flow<String> =
-        dataStore.data.map { it[SettingsKeys.SOURCE_LANGUAGE] ?: "English" }
+        dataStore.data.map { it[SettingsKeys.SOURCE_LANGUAGE] ?: "Auto" }
 
     val theme: Flow<String> =
         dataStore.data.map { it[SettingsKeys.THEME] ?: ThemeOption.SYSTEM }

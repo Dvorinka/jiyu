@@ -237,7 +237,9 @@ class ReaderViewModel @Inject constructor(
     private val _translatedPages = MutableStateFlow<Map<Int, List<TranslatedBlock>>>(emptyMap())
     val translatedPages: StateFlow<Map<Int, List<TranslatedBlock>>> = _translatedPages.asStateFlow()
 
-    private val _sourceLanguage = MutableStateFlow("English")
+    // Stejná výchozí hodnota jako v SettingsRepository - než se nastavení načte, nesmí tu
+    // chvíli platit jiný jazyk, než jaký uživatel uvidí ve čtečce.
+    private val _sourceLanguage = MutableStateFlow("Auto")
     val sourceLanguage: StateFlow<String> = _sourceLanguage.asStateFlow()
 
     private val _targetLanguage = MutableStateFlow("Czech")
