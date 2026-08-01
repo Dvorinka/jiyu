@@ -123,6 +123,23 @@ internal suspend fun resolveAutoLanguage(
     return best
 }
 
+/**
+ * Čte se tenhle jazyk zprava doleva (japonská řada panelů/bublin)?
+ *
+ * Dřív se testovala jen japonština. Tradiční čínština (Tchaj-wan, Hongkong) se ale čte stejně
+ * zprava doleva - dostávala tedy bubliny seřazené obráceně a překladový model četl repliky
+ * pozpátku, což kazí návaznost dialogu.
+ *
+ * Zjednodušená čínština schválně NE: manhua vychází typicky ve webtoonovém formátu, který se
+ * čte zleva doprava, takže zobecnit to na "cokoliv čínského" by chybu jen přesunulo jinam.
+ *
+ * Omezení: pod [AUTO_LANGUAGE] se tradiční čínština rozpoznat nedá (viz
+ * [AUTO_CANDIDATE_LANGUAGES] - oba čínské zápisy čte jeden model), takže tohle zabere jen
+ * tehdy, když si uživatel zdrojový jazyk vybere ručně.
+ */
+internal fun isRightToLeftScript(language: String): Boolean =
+    language == "Japanese" || language == "Chinese (Traditional)"
+
 /** Obaluje Bitmap do [PixelSource] pro [BubbleShapeDetector] - jediné místo, kde algoritmus vidí Android typ. */
 private class BitmapPixelSource(private val bitmap: Bitmap) : PixelSource {
     override fun colorAt(x: Int, y: Int): Int = bitmap.getPixel(x, y)
@@ -182,7 +199,7 @@ class OcrEngine @Inject constructor() {
             // Rozhoduje ROZPOZNANÝ jazyk, ne ten nastavený - pod "Auto" byl nastavený jazyk
             // doslova "Auto", takže japonská stránka dostala pořadí zleva doprava a model
             // četl repliky pozpátku.
-            rightToLeft = resolvedLanguage == "Japanese",
+            rightToLeft = isRightToLeftScript(resolvedLanguage),
         )
         merged.map { block ->
             val bgSample = sampleBackgroundColor(bitmap, block)
