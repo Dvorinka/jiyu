@@ -101,4 +101,60 @@ class ShapeLobeClampTest {
         val clamped = clampShapeToOwnLobe(shape(0.20f, 0.45f), own = own, others = listOf(above, below))
         assertTrue("tvar nesmi zmizet uplne", clamped.isNotEmpty())
     }
+
+    // ── Laloky posunute do stran (druhe nahlaseni) ──────────────────────────────
+
+    /**
+     * Kaskadova bublina, jak vypada doopravdy: horni lalok posunuty VPRAVO, spodni VLEVO.
+     * Prave to jim dava ten schodovity tvar - a prave proto se jejich OCR boxy vodorovne
+     * prekryvaji jen malo.
+     *
+     * Prvni verze orezu vyzadovala prekryv boxu aspon ze ctvrtiny, takze tady neprosla a oba
+     * bloky dostaly totozny tvar celeho balonu (zmereno na zarizeni). Rozhodovat musi to, jestli
+     * tvar POKRYVA cizi text, ne jak na sebe boxy vodorovne dosednou.
+     */
+    private fun wideShape(fromF: Float, toF: Float, leftF: Float, rightF: Float, steps: Int = 12) =
+        (0 until steps).map { i ->
+            val t = fromF + (toF - fromF) * i / (steps - 1f)
+            BubbleShapePoint(yF = t, leftF = leftF, rightF = rightF)
+        }
+
+    @Test
+    fun `offset lobes are still clamped even though their boxes barely overlap`() {
+        // Horni text vpravo, spodni vlevo - prekryv boxu jen zlomek sirky.
+        val upper = box(topF = 0.148f, bottomF = 0.237f, leftF = 0.36f, rightF = 0.74f)
+        val lower = box(topF = 0.399f, bottomF = 0.484f, leftF = 0.12f, rightF = 0.44f)
+        // Tvar celeho balonu pokryva oba laloky.
+        val whole = wideShape(0.102f, 0.637f, leftF = 0.08f, rightF = 0.82f)
+
+        val clamped = clampShapeToOwnLobe(whole, own = lower, others = listOf(upper))
+
+        val highest = clamped.minOf { it.yF }
+        assertTrue(
+            "tvar spodni bubliny nesmi sahat na horni text, sahal na $highest",
+            highest > upper.bottomF,
+        )
+    }
+
+    @Test
+    fun `the upper lobe of an offset pair is clamped downwards as well`() {
+        val upper = box(topF = 0.148f, bottomF = 0.237f, leftF = 0.36f, rightF = 0.74f)
+        val lower = box(topF = 0.399f, bottomF = 0.484f, leftF = 0.12f, rightF = 0.44f)
+        val whole = wideShape(0.102f, 0.637f, leftF = 0.08f, rightF = 0.82f)
+
+        val clamped = clampShapeToOwnLobe(whole, own = upper, others = listOf(lower))
+
+        val lowest = clamped.maxOf { it.yF }
+        assertTrue("tvar horni bubliny nesmi sahat na spodni text, sahal na $lowest", lowest < lower.topF)
+    }
+
+    @Test
+    fun `a bubble that the shape does not cover at all is ignored`() {
+        // Soused lezi mimo obrys (jina bublina vedle) - nema co orezavat.
+        val own = box(topF = 0.30f, bottomF = 0.50f, leftF = 0.10f, rightF = 0.40f)
+        val faraway = box(topF = 0.05f, bottomF = 0.12f, leftF = 0.75f, rightF = 0.95f)
+        val narrow = wideShape(0.28f, 0.52f, leftF = 0.08f, rightF = 0.42f)
+
+        assertEquals(narrow, clampShapeToOwnLobe(narrow, own = own, others = listOf(faraway)))
+    }
 }

@@ -11,16 +11,22 @@ import kotlin.math.min
  * spojitou bílou plochu. Flood-fill, který [BubbleShapeDetector] pouští kolem spodní bubliny,
  * se přes ten pas přelije nahoru a vrátí tvar pokrývající OBA laloky. Výplň se pak natáhne
  * přes obojí, a protože se bubliny kreslí shora dolů (viz [sortIntoReadingOrder]), spodní
- * přemaluje text té horní.
+ * přemaluje text té horní - včetně textu, který se vůbec nepřeložil.
  *
- * Nejhorší na tom je, že tím zmizí i text, který appka VŮBEC NEPŘELOŽILA - ať už horní bublinu
- * nenašlo OCR, nebo ji model vynechal. Nechat na stránce nepřeložený originál je vždycky lepší
- * než ho vygumovat: čtenář si ho aspoň přečte v původním jazyce.
+ * ## Proč se to napoprvé neopravilo
+ * První verze ořezávala jen podle sousedů, jejichž OCR BOX se s tím naším vodorovně překrýval
+ * aspoň ze čtvrtiny. Jenže u kaskádové bubliny jsou laloky ZÁMĚRNĚ posunuté do stran (horní
+ * vpravo, spodní vlevo) - právě to jim dává ten schodovitý tvar - takže se boxy překrývají
+ * sotva a podmínka neprošla. Změřeno na zařízení: oba bloky pak dostaly totožný tvar celého
+ * balónu, přesně jako bez opravy.
+ *
+ * Správná otázka nezní "překrývají se boxy", ale "POKRÝVÁ MŮJ TVAR CIZÍ TEXT?". Na to je
+ * přesný nástroj: obrys zná svoje levé a pravé okraje v každé výšce (viz [shapeBoundsAtYF]),
+ * takže stačí ověřit, jestli střed cizího bloku padne dovnitř.
  *
  * ## Jak se to řeší
  * Tvar se zkrátí na půli cesty mezi vlastní bublinou a tou sousední - dost na to, aby vlastní
- * bublina zůstala celá zakrytá, ale ne tak daleko, aby zasáhla cizí text. Ořezává se jen podle
- * sousedů, kteří se s bublinou VODOROVNĚ překrývají; bubliny vedle sebe si nepřekážejí.
+ * bublina zůstala celá zakrytá, ale ne tak daleko, aby zasáhla cizí text.
  *
  * @param own OCR box bubliny, které tenhle obrys patří
  * @param others OCR boxy ostatních bublin na stránce
@@ -35,7 +41,7 @@ internal fun clampShapeToOwnLobe(
     var upperLimit = 0f
     var lowerLimit = 1f
     for (other in others) {
-        if (!overlapsHorizontally(own, other)) continue
+        if (!shapeCovers(shape, other)) continue
         if (other.bottomF <= own.topF) {
             // Soused nad námi - tvar smí sahat nanejvýš do půli mezery mezi nimi.
             upperLimit = max(upperLimit, (other.bottomF + own.topF) / 2f)
@@ -55,13 +61,16 @@ internal fun clampShapeToOwnLobe(
     return clamped.ifEmpty { shape }
 }
 
-/** Překrývají se boxy vodorovně natolik, že si můžou stát v cestě? */
-private fun overlapsHorizontally(a: RawTextBlock, b: RawTextBlock): Boolean {
-    val overlap = min(a.rightF, b.rightF) - max(a.leftF, b.leftF)
-    if (overlap <= 0f) return false
-    val narrower = min(a.rightF - a.leftF, b.rightF - b.leftF)
-    if (narrower <= 0f) return false
-    return overlap / narrower >= MIN_HORIZONTAL_OVERLAP
+/**
+ * Leží střed cizího bloku uvnitř tohohle obrysu? Tedy: přemaloval by mu tvar text?
+ *
+ * Testuje se střed, ne celý box - u kaskádové bubliny cizí lalok z tvaru kouskem vyčnívá, ale
+ * jeho text v něm leží celý.
+ */
+private fun shapeCovers(shape: List<BubbleShapePoint>, other: RawTextBlock): Boolean {
+    val centerY = (other.topF + other.bottomF) / 2f
+    if (centerY < shape.first().yF || centerY > shape.last().yF) return false
+    val (left, right) = shapeBoundsAtYF(shape, centerY)
+    val centerX = (other.leftF + other.rightF) / 2f
+    return centerX in left..right
 }
-
-private const val MIN_HORIZONTAL_OVERLAP = 0.25f

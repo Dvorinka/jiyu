@@ -529,8 +529,15 @@ class TranslateRepository @Inject constructor(
          *   ten pas přelil do druhého laloku a výplň spodní bubliny pak přemalovala text té
          *   horní - včetně textu, který se vůbec nepřeložil, takže z něj nezbylo nic. Obrys se
          *   ukládá do bloku, proto se staré záznamy musí přepočítat.
+         * v9 (2026-08-01): ořez z v8 se u kaskádové bubliny vůbec nespustil. Rozhodoval se podle
+         *   toho, jestli se OCR boxy vodorovně překrývají aspoň ze čtvrtiny - jenže laloky
+         *   kaskádové bubliny jsou ZÁMĚRNĚ posunuté do stran (horní vpravo, spodní vlevo), právě
+         *   to jim dává ten schodovitý tvar, takže se boxy překrývají sotva. Změřeno na zařízení:
+         *   oba bloky dostaly totožný tvar celého balónu (0.102..0.637), přesně jako bez opravy.
+         *   Nově rozhoduje, jestli tvar POKRÝVÁ cizí text (viz [clampShapeToOwnLobe]); po opravě
+         *   tytéž bloky dostaly 0.102..0.311 a 0.335..0.637. Obrys se ukládá, proto přepočet.
          */
-        private const val PIPELINE_VERSION = 8
+        private const val PIPELINE_VERSION = 9
 
         /** Maximální počet znaků originálu na jedno API volání - drží výstup pod limitem max_tokens. */
         private const val NOVEL_CHUNK_CHAR_LIMIT = 2500
