@@ -201,9 +201,9 @@ class OcrEngine @Inject constructor() {
             // četl repliky pozpátku.
             rightToLeft = isRightToLeftScript(resolvedLanguage),
         )
-        merged.map { block ->
+        merged.mapIndexed { index, block ->
             val bgSample = sampleBackgroundColor(bitmap, block)
-            val shape = BubbleShapeDetector.detectShape(
+            val detected = BubbleShapeDetector.detectShape(
                 source = pixelSource,
                 width = bitmap.width,
                 height = bitmap.height,
@@ -212,6 +212,17 @@ class OcrEngine @Inject constructor() {
                 // gradient - průměr obou polovin je pro tenhle účel dost přesný.
                 bgColorArgb = averageArgb(bgSample.topArgb, bgSample.bottomArgb),
             )
+            // Kaskadova replika byva nakreslena jako dve PREKRYVAJICI SE bublinky, ktere tvori
+            // jednu spojitou bilou plochu - flood-fill se pres ten pas prelije do sousedniho
+            // laloku a vratil by tvar pokryvajici oba. Vypln by pak premalovala cizi text, a to
+            // i text, ktery appka vubec neprelozila. Viz clampShapeToOwnLobe.
+            val shape = detected?.let {
+                clampShapeToOwnLobe(
+                    shape = it,
+                    own = block,
+                    others = merged.filterIndexed { i, _ -> i != index },
+                )
+            }
             block.copy(
                 bgColorTopArgb = bgSample.topArgb,
                 bgColorBottomArgb = bgSample.bottomArgb,

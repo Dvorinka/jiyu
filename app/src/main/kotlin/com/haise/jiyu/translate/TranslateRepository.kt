@@ -523,8 +523,14 @@ class TranslateRepository @Inject constructor(
          *   repliku překládal po kouscích - každou půlku bez druhé, takže z první vypadl úvod
          *   nebo se druhá přeložila jako samostatná věta. Změna ovlivňuje ULOŽENÝ překlad,
          *   proto se staré záznamy musí přepočítat.
+         * v8 (2026-08-01): obrys bubliny se ořezává, aby nesahal přes text bubliny sousední
+         *   (viz [clampShapeToOwnLobe]). Kaskádová replika bývá nakreslená jako dvě
+         *   PŘEKRÝVAJÍCÍ SE bublinky tvořící jednu spojitou bílou plochu; flood-fill se přes
+         *   ten pas přelil do druhého laloku a výplň spodní bubliny pak přemalovala text té
+         *   horní - včetně textu, který se vůbec nepřeložil, takže z něj nezbylo nic. Obrys se
+         *   ukládá do bloku, proto se staré záznamy musí přepočítat.
          */
-        private const val PIPELINE_VERSION = 7
+        private const val PIPELINE_VERSION = 8
 
         /** Maximální počet znaků originálu na jedno API volání - drží výstup pod limitem max_tokens. */
         private const val NOVEL_CHUNK_CHAR_LIMIT = 2500
