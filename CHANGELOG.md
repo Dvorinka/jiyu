@@ -1,5 +1,38 @@
 # Changelog
 
+> Poznámka: mezi v0.3.3 a v0.8.0 se tenhle soubor neudržoval. Co se dělo mezitím, je
+> vidět v historii commitů a v popisech jednotlivých vydání na GitHubu; zpětně to sem
+> nedopisuju, abych si nevymýšlel.
+
+## v0.8.0
+
+### Upozornění při aktualizaci
+- Uložené překlady se po instalaci zahodí a spočítají znovu (změnil se překladový řetězec). První otevření kapitoly bude pomalejší a sáhne to na denní limit překladů.
+
+### Opravené chyby
+- **Sdílení QR kódu nedělalo vůbec nic.** Tlačítko „Sdílet" pokaždé selhalo a mlčelo o tom, protože v manifestu chyběl FileProvider.
+- **Reset hesla hlásil selhání jako úspěch.** Když se e-mail nepodařilo odeslat, vyskočila hláška „Chyba: Email pro reset odeslán". Teď se ukáže skutečná příčina.
+- **Časovač spánku držel v paměti celou obrazovku appky** po celou dobu odpočtu a po otočení displeje přestal fungovat.
+- **Obrazovka Statistik byla nedosažitelná** — 575 řádků hotového kódu, na který nevedla žádná cesta. Nově se otevírá klepnutím na statistický řádek v knihovně.
+- **Tlačítko zrušení časovače spánku** nereagovalo na to, že časovač mezitím běží.
+- **Mrtvý nebo blokující zdroj** už nevypadá, jako by prostě nic nenašel.
+- Doplněno 51 chybějících překladů — anglické rozhraní na několika místech ukazovalo češtinu.
+- Opraven únik síťového spojení při neúspěšném přihlášení ke Kitsu a MangaUpdates.
+
+### Data a soukromí
+- **Obnova ze zálohy teď běží celá najednou.** Dřív se zapisovala po částech, takže chyba uprostřed nechala knihovnu rozečtenou. Nově se obnoví buď všechno, nebo nic.
+- **Záloha z novější verze appky se odmítne** místo toho, aby se naslepo naparsovala jako ta současná.
+- **Inkognito režim už nezapisuje nic.** Dřív vynechal jen historii a hlášení trackerům, ale kapitolu stejně označil jako přečtenou, posunul „naposledy čteno" a započítal čas i stránky do Statistik.
+
+### Vzhled a texty
+- **Počty se konečně skloňují.** Místo „1 kapitol", „3 kapitol" nebo „Přidat 1 mang do kategorie" appka používá správné tvary ve všech čtyřech jazycích.
+
+### Pod kapotou
+- **Release build šel po dlouhé době znovu sestavit** — kvůli chybě v R8 padal každý pokus a vydávalo se ve skutečnosti ladicí APK. Tohle je první pořádně minifikované vydání: **51,7 MB místo 68,3 MB**.
+- Zapnuto hlášení chyb — zachycené výjimky už nemizí beze stopy.
+- Knihovna pro šifrované úložiště tracker tokenů povýšena z alpha na stabilní verzi.
+- Přibyly první testy ViewModelů; celkem jich projekt má 578.
+
 ## v0.3.3
 
 ### Nové funkce
