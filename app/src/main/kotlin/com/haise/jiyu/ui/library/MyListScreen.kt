@@ -99,6 +99,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -237,7 +238,7 @@ fun MyListScreen(
                 Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Column(modifier = Modifier.weight(1f).padding(start = 8.dp)) {
                         Text(text = stringResource(R.string.mylist_title), color = TextPrimary, fontSize = 26.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1)
-                        Text(text = stringResource(R.string.mylist_title_count, library.size), style = MaterialTheme.typography.labelMedium, color = TextSecondary, maxLines = 1)
+                        Text(text = pluralStringResource(R.plurals.mylist_title_count, library.size, library.size), style = MaterialTheme.typography.labelMedium, color = TextSecondary, maxLines = 1)
                     }
                     IconButton(onClick = { searchExpanded = !searchExpanded }) {
                         Icon(TablerIcons.Search, contentDescription = stringResource(R.string.mylist_search), tint = if (searchExpanded) GlowViolet else TextSecondary)
@@ -612,7 +613,7 @@ fun MyListScreen(
             onDismissRequest = { showMarkAllReadDialog = false },
             containerColor = Color(0xFF111B35),
             title = { Text(stringResource(R.string.mylist_mark_all_read_title), color = Color.White, fontWeight = FontWeight.Bold) },
-            text = { Text(stringResource(R.string.mylist_mark_all_read_body, library.size), color = Color(0xFFB0BEC5)) },
+            text = { Text(pluralStringResource(R.plurals.mylist_mark_all_read_body, library.size, library.size), color = Color(0xFFB0BEC5)) },
             confirmButton = {
                 TextButton(onClick = { viewModel.markEntireLibraryAsRead(); showMarkAllReadDialog = false }) {
                     Text(stringResource(R.string.mylist_mark_all), color = GlowViolet)

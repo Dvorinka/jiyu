@@ -478,7 +478,9 @@ class ReaderViewModel @Inject constructor(
             _sourceLanguage.value = settings.sourceLanguage.first()
             _targetLanguage.value = settings.targetLanguage.first()
         }
-        viewModelScope.launch { settings.updateReadingStreak() }
+        // Série čtení je taky zapsaná stopa, takže ji anonymní čtení nezvedá. Rozhoduje stav
+        // při otevření kapitoly - přepnutí přepínače uprostřed už zpětně nic neubírá.
+        if (!startIncognito) viewModelScope.launch { settings.updateReadingStreak() }
         viewModelScope.launch {
             while (true) {
                 delay(1000)
@@ -733,13 +735,20 @@ class ReaderViewModel @Inject constructor(
             val chapter = currentChapter ?: return@launch
             val chapterId = chapter.id
             val incognito = _incognitoMode.value
-            repository.updateReadProgress(chapterId, read = isRead, lastPageRead = index)
-            repository.updateLastReadChapter(chapter.mangaId, chapterId)
-            if (deltaMs > 0) {
-                settings.addReadingTime(deltaMs)
-                repository.addMangaReadingTime(chapter.mangaId, deltaMs)
+
+            // Inkognito nezapisuje NIC. Dřív vynechávalo jen historii a trackery, ale postup
+            // čtení, "naposledy čteno", čas i počet stránek se ukládaly dál - kapitola se tedy
+            // po anonymním přečtení tvářila jako přečtená a čas naskočil do Statistik.
+            // Název "Číst anonymně" tím sliboval víc, než dělal.
+            if (!incognito) {
+                repository.updateReadProgress(chapterId, read = isRead, lastPageRead = index)
+                repository.updateLastReadChapter(chapter.mangaId, chapterId)
+                if (deltaMs > 0) {
+                    settings.addReadingTime(deltaMs)
+                    repository.addMangaReadingTime(chapter.mangaId, deltaMs)
+                }
+                settings.addPagesRead(1)
             }
-            settings.addPagesRead(1)
 
             val manga = currentManga
             if (!incognito && manga != null) {
@@ -755,7 +764,9 @@ class ReaderViewModel @Inject constructor(
                 )
             }
             if (isRead) {
-                maybeAutoDelete()
+                // Taky pod inkognitem: kapitola se neoznačila přečtenou, takže by automatické
+                // mazání sahalo na stažené soubory kvůli něčemu, co se "nestalo".
+                if (!incognito) maybeAutoDelete()
                 if (!incognito && manga != null) {
                     viewModelScope.launch {
                         try { aniListRepository.updateProgress(chapter.mangaId, manga.title, chapter.chapterNumber) } catch (_: Exception) {}

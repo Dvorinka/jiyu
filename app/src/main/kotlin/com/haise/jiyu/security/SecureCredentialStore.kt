@@ -1,3 +1,7 @@
+// Suppress musí být na úrovni SOUBORU - anotace na třídě nepokryje řádky s importy,
+// a ty na zastaralé typy ukazují taky. Důvod viz KDoc u SecureCredentialStore.
+@file:Suppress("DEPRECATION")
+
 package com.haise.jiyu.security
 
 import android.content.Context
@@ -14,7 +18,19 @@ import javax.inject.Singleton
  *
  * Vlastní EncryptedSharedPreferences soubor, oddělený od "settings" DataStore,
  * aby se necitlivá nastavení nemusela komplikovat šifrováním.
+ *
+ * ## K tomu `@Suppress("DEPRECATION")`
+ * Knihovna dlouho existovala jen jako alpha; s vydáním stabilní `1.1.0` Google zároveň
+ * `EncryptedSharedPreferences` i `MasterKey` označil za zastaralé - Jetpack Security dál
+ * nerozvíjí. Volba tedy nestojí mezi "moderní" a "zastaralé", ale mezi **alpha** a
+ * **stabilní, byť zastaralou** verzí; stabilní vyhrává. Kód se nezměnil, API je stejné.
+ *
+ * Náhradu si tenhle soubor zaslouží samostatně: znamenala by vlastní šifrování nad
+ * Android Keystore **plus migraci už uložených tokenů**, jinak by se uživatel odhlásil
+ * ze všech trackerů. Do té doby jsou varování umlčená tady, ne globálně, aby zbytek
+ * projektu zůstal na nule.
  */
+@Suppress("DEPRECATION")
 @Singleton
 class SecureCredentialStore @Inject constructor(
     @ApplicationContext context: Context,

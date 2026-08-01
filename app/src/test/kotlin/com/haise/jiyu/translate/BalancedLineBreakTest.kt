@@ -266,14 +266,14 @@ class BalancedLineBreakTest {
         val longText = (1..60).joinToString(" ") { "SLOVOSLOVO$it" }
         val layout = fitOval(longText, preferredFontSp = 30f)
         assertNotNull(layout)
-        assertTrue("expected a shrink below the preferred 30sp, got ${layout!!.fontSp}", layout!!.fontSp < 30f)
+        assertTrue("expected a shrink below the preferred 30sp, got ${layout!!.fontSp}", layout.fontSp < 30f)
     }
 
     @Test
     fun `never grows past the preferred size even with room to spare`() {
         val layout = fitOval("AHOJ", preferredFontSp = 10f)
         assertNotNull(layout)
-        assertTrue("must not exceed the preferred 10sp, got ${layout!!.fontSp}", layout!!.fontSp <= 10f + 0.01f)
+        assertTrue("must not exceed the preferred 10sp, got ${layout!!.fontSp}", layout.fontSp <= 10f + 0.01f)
     }
 
     @Test
@@ -288,7 +288,7 @@ class BalancedLineBreakTest {
     fun `omitting preferredFontSp keeps the old maximize behavior`() {
         val layout = fitOval("AHOJ")
         assertNotNull(layout)
-        assertTrue("expected the old maximize behavior when preferredFontSp is null, got ${layout!!.fontSp}", layout!!.fontSp > 20f)
+        assertTrue("expected the old maximize behavior when preferredFontSp is null, got ${layout!!.fontSp}", layout.fontSp > 20f)
     }
 
     // ── maxLineWidthPx (strop podle skutečného boxu, do kterého se text kreslí) ──

@@ -34,6 +34,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -140,7 +141,7 @@ fun ReadingGoalsScreen(
                         )
                         Spacer(Modifier.height(8.dp))
                         Text(
-                            text = if (weeklyGoal == 0) stringResource(R.string.goals_off) else stringResource(R.string.goals_progress_format, chaptersThisWeek, weeklyGoal),
+                            text = if (weeklyGoal == 0) stringResource(R.string.goals_off) else pluralStringResource(R.plurals.goals_progress_format, weeklyGoal, chaptersThisWeek, weeklyGoal),
                             color = Cyan,
                             fontSize = 14.sp,
                         )

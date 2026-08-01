@@ -60,6 +60,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -502,7 +503,7 @@ private fun AddCustomSourceForm(
                 Text(stringResource(R.string.settings_source_catalog_testing), color = Color(0xFFB0BEC5), fontSize = 13.sp)
             }
             is SourceTestState.Success -> Text(
-                stringResource(R.string.settings_source_catalog_test_success, state.count),
+                pluralStringResource(R.plurals.settings_source_catalog_test_success, state.count, state.count),
                 color = Color(0xFF66BB6A), fontSize = 13.sp,
             )
             is SourceTestState.Failure -> Text(

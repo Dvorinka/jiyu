@@ -72,6 +72,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -316,7 +317,7 @@ fun MangaDetailScreen(
                             Spacer(modifier = Modifier.weight(1f))
                             val readCount = chapters.count { it.read }
                             val totalCount = chapters.size
-                            Text(text = stringResource(R.string.detail_chapter_count, totalCount), color = TextSecondary, fontSize = 11.sp)
+                            Text(text = pluralStringResource(R.plurals.detail_chapter_count, totalCount, totalCount), color = TextSecondary, fontSize = 11.sp)
                             if (totalCount > 0) {
                                 val progress = readCount.toFloat() / totalCount
                                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 4.dp)) {
@@ -578,7 +579,7 @@ fun MangaDetailScreen(
                                                 androidx.compose.material3.TextButton(
                                                     onClick = { viewModel.downloadFirstN(n); showDownloadNDialog = false },
                                                     modifier = androidx.compose.ui.Modifier.fillMaxWidth(),
-                                                ) { Text(stringResource(R.string.detail_n_chapters, n)) }
+                                                ) { Text(pluralStringResource(R.plurals.detail_n_chapters, n, n)) }
                                             }
                                         }
                                     },
@@ -811,7 +812,7 @@ private fun LibraryDuplicateDialog(
                 )
                 pending.matches.forEach { match ->
                     Text(
-                        stringResource(R.string.source_browse_dup_existing, match.sourceName, match.chapterCount),
+                        pluralStringResource(R.plurals.source_browse_dup_existing, match.chapterCount, match.sourceName, match.chapterCount),
                         color = Color.White,
                         fontSize = 13.sp,
                         modifier = Modifier.padding(vertical = 2.dp),
@@ -821,7 +822,7 @@ private fun LibraryDuplicateDialog(
                     stringResource(
                         R.string.source_browse_dup_new,
                         pending.sourceName,
-                        stringResource(R.string.source_browse_chapters_count, pending.newChapterCount),
+                        pluralStringResource(R.plurals.source_browse_chapters_count, pending.newChapterCount, pending.newChapterCount),
                     ),
                     color = GlowViolet,
                     fontSize = 13.sp,

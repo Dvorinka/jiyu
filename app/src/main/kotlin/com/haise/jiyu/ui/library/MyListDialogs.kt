@@ -99,6 +99,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -138,7 +139,7 @@ internal fun BulkCategoryDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = Color(0xFF111B35),
-        title = { Text(stringResource(R.string.mylist_add_n_to_category, count), color = Color.White, fontWeight = FontWeight.Bold) },
+        title = { Text(pluralStringResource(R.plurals.mylist_add_n_to_category, count, count), color = Color.White, fontWeight = FontWeight.Bold) },
         text = {
             Column {
                 categories.forEach { cat ->

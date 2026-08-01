@@ -28,6 +28,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -65,7 +66,7 @@ fun StorageSettingsScreen(
             ) {
                 SettingsSection(title = stringResource(R.string.settings_storage_translation_cache_title)) {
                     Text(
-                        text = stringResource(R.string.settings_storage_translation_cache_count, cacheCount),
+                        text = pluralStringResource(R.plurals.settings_storage_translation_cache_count, cacheCount, cacheCount),
                         color = TextSecondary,
                         style = MaterialTheme.typography.bodyMedium,
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),

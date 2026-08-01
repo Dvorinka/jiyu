@@ -45,6 +45,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -244,7 +245,7 @@ private fun DownloadGroupCard(
                     overflow = TextOverflow.Ellipsis,
                 )
                 val downloadedText = stringResource(R.string.downloads_manager_count_downloaded, downloaded)
-                val downloadingText = stringResource(R.string.downloads_manager_count_downloading, downloading)
+                val downloadingText = pluralStringResource(R.plurals.downloads_manager_count_downloading, downloading, downloading)
                 val queuedText = stringResource(R.string.downloads_manager_count_queued, queued)
                 Text(
                     text = buildString {
@@ -292,7 +293,7 @@ private fun DownloadGroupCard(
             onDismissRequest = { showConfirm = false },
             containerColor = Color(0xFF111B35),
             title = { Text(stringResource(R.string.downloads_manager_delete_group_confirm_title), color = Color.White, fontWeight = FontWeight.Bold) },
-            text = { Text(stringResource(R.string.downloads_manager_delete_group_confirm_body, downloaded, group.manga.title), color = Color(0xFFB0BEC5)) },
+            text = { Text(pluralStringResource(R.plurals.downloads_manager_delete_group_confirm_body, downloaded, downloaded, group.manga.title), color = Color(0xFFB0BEC5)) },
             confirmButton = {
                 TextButton(onClick = { onDeleteManga(); showConfirm = false }) {
                     Text(stringResource(R.string.common_delete), color = MaterialTheme.colorScheme.error)

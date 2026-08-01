@@ -35,6 +35,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
@@ -221,7 +222,7 @@ fun DownloadsSettingsScreen(
                 SettingsSection(title = stringResource(com.haise.jiyu.R.string.settings_downloads_chapters_section_title)) {
                     var showDeleteConfirm by remember { mutableStateOf(false) }
                     Text(
-                        text = stringResource(com.haise.jiyu.R.string.settings_downloads_downloaded_count, downloadedCount),
+                        text = pluralStringResource(com.haise.jiyu.R.plurals.settings_downloads_downloaded_count, downloadedCount, downloadedCount),
                         color = TextSecondary,
                         style = MaterialTheme.typography.bodyMedium,
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
@@ -248,7 +249,7 @@ fun DownloadsSettingsScreen(
                             onDismissRequest = { showDeleteConfirm = false },
                             containerColor = Color(0xFF111B35),
                             title = { Text(stringResource(com.haise.jiyu.R.string.settings_downloads_delete_all_dialog_title), color = Color.White, fontWeight = FontWeight.Bold) },
-                            text = { Text(stringResource(com.haise.jiyu.R.string.settings_downloads_delete_all_dialog_text, downloadedCount), color = Color(0xFFB0BEC5)) },
+                            text = { Text(pluralStringResource(com.haise.jiyu.R.plurals.settings_downloads_delete_all_dialog_text, downloadedCount, downloadedCount), color = Color(0xFFB0BEC5)) },
                             confirmButton = {
                                 TextButton(onClick = { viewModel.deleteAllDownloads(); showDeleteConfirm = false }) {
                                     Text(stringResource(com.haise.jiyu.R.string.common_delete), color = MaterialTheme.colorScheme.error)

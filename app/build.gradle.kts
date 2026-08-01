@@ -174,8 +174,9 @@ dependencies {
     implementation("androidx.appcompat:appcompat:1.7.0")
 
     // Jetpack Security — šifrované úložiště pro tracker tokeny/hesla (MAL/Kitsu/MangaUpdates).
-    // Verze zůstává v alpha už roky (MasterKey API), ale je produkčně používaná ve velkém množství appek.
-    implementation("androidx.security:security-crypto:1.1.0-alpha06")
+    // Dlouho existovala jen jako alpha (a byl tu komentář, že to tak nejspíš zůstane), ale
+    // 1.1.0 stable mezitím vyšla. API je stejné, žádná úprava kódu nebyla potřeba.
+    implementation("androidx.security:security-crypto:1.1.0")
 
     // DocumentFile — zápis do uživatelem vybrané SAF složky (např. lokálně synchronizovaná Google Drive/Dropbox složka)
     implementation("androidx.documentfile:documentfile:1.0.1")

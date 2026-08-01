@@ -126,7 +126,6 @@
     <string name="settings_sources_selector_chapter_list">Lista de capítulos</string>
     <string name="settings_sources_selector_page_image">Imagen de página</string>
     <string name="settings_sources_test_connection">Probar conexión</string>
-    <string name="settings_sources_test_success">✓ %1$d elementos encontrados</string>
     <string name="settings_sources_test_failure">✗ %1$s</string>
 
     <!-- Ajustes: Lector -->
@@ -173,7 +172,6 @@
 
     <!-- Ajustes: Almacenamiento -->
     <string name="settings_storage_translation_cache_title">Caché de traducción</string>
-    <string name="settings_storage_translation_cache_count">Traducciones en caché: %1$d páginas</string>
     <string name="settings_storage_clear_cache_button">Vaciar caché</string>
     <string name="settings_storage_image_cache_title">Caché de imágenes</string>
     <string name="settings_storage_disk_cache_size">Caché en disco: %1$s</string>
@@ -197,11 +195,9 @@
     <string name="settings_downloads_parallel_3_default">3 a la vez (por defecto)</string>
     <string name="settings_downloads_parallel_5">5 a la vez</string>
     <string name="settings_downloads_chapters_section_title">Capítulos descargados</string>
-    <string name="settings_downloads_downloaded_count">Descargados: %1$d capítulos</string>
     <string name="settings_downloads_manage_button">Gestionar</string>
     <string name="settings_downloads_delete_all_button">Eliminar todo</string>
     <string name="settings_downloads_delete_all_dialog_title">¿Eliminar todo?</string>
-    <string name="settings_downloads_delete_all_dialog_text">Elimina %1$d capítulos descargados del disco.</string>
 
     <!-- Ajustes: Comprobación de actualizaciones -->
     <string name="settings_update_title">Buscar nuevos capítulos</string>
@@ -261,10 +257,8 @@
     <string name="settings_backup_import_done_errors_label">Errores:</string>
     <string name="settings_backup_export_success">Copia exportada</string>
     <string name="settings_backup_generic_export_error">Error de exportación</string>
-    <string name="settings_backup_import_success">Restaurados: %1$d manga, %2$d capítulos</string>
     <string name="settings_backup_generic_import_error">Error de importación</string>
     <string name="settings_backup_settings_export_success">Ajustes exportados</string>
-    <string name="settings_backup_settings_import_success">%1$d ajustes restaurados</string>
 
     <!-- Ajustes: Lectura -->
     <string name="settings_reading_title">Lectura</string>
@@ -309,7 +303,6 @@
     <string name="settings_source_catalog_field_page_image">Imagen de página</string>
     <string name="settings_source_catalog_field_placeholder_default">por defecto</string>
     <string name="settings_source_catalog_testing">Probando conexión...</string>
-    <string name="settings_source_catalog_test_success">✓ Conexión OK — %1$d elementos encontrados</string>
     <string name="settings_source_catalog_test_failure">✗ %1$s</string>
     <string name="settings_source_catalog_test_button">Probar</string>
     <string name="settings_source_catalog_test_no_items">No se encontraron elementos - comprueba la dirección o los selectores</string>
@@ -355,7 +348,6 @@
     <string name="detail_status_completed">Completado</string>
     <string name="detail_status_hiatus">En pausa</string>
     <string name="detail_status_cancelled">Cancelado</string>
-    <string name="detail_chapter_count">%1$d capítulos</string>
     <string name="detail_reading_time">Tiempo de lectura: %1$s</string>
     <string name="detail_show_less">Menos</string>
     <string name="detail_show_more">Ver más</string>
@@ -385,7 +377,6 @@
     <string name="detail_download_unread">Descargar no leídos</string>
     <string name="detail_download_first_n">Descargar los primeros N…</string>
     <string name="detail_download_first_n_title">Descargar los primeros N no leídos</string>
-    <string name="detail_n_chapters">%1$d capítulos</string>
     <string name="detail_search_chapter_placeholder">Buscar capítulo…</string>
     <string name="detail_filter_unread">No leídos</string>
     <string name="detail_filter_read">Leídos</string>
@@ -482,7 +473,6 @@
     <string name="mylist_clear_selection">Borrar selección</string>
     <string name="mylist_selected_count">%1$d seleccionados</string>
     <string name="mylist_title">Mi lista</string>
-    <string name="mylist_title_count">%1$d títulos</string>
     <string name="mylist_switch_to_list">Cambiar a lista</string>
     <string name="mylist_switch_to_grid">Cambiar a cuadrícula</string>
     <string name="mylist_sort">Ordenar</string>
@@ -497,7 +487,6 @@
     <string name="mylist_importing_file">Importando archivo…</string>
     <string name="mylist_add_fab">+ Añadir</string>
     <string name="mylist_mark_all_read_title">¿Marcar toda la biblioteca como leída?</string>
-    <string name="mylist_mark_all_read_body">Todos los capítulos de los %1$d manga de tu biblioteca se marcarán como leídos. Esta acción no se puede deshacer en bloque.</string>
     <string name="mylist_mark_all">Marcar todo</string>
     <string name="mylist_try_different_term_or_search">Prueba otro término o busca por autor / género</string>
     <string name="mylist_no_titles_match_filter">Ningún título coincide con el filtro</string>
@@ -512,7 +501,6 @@
     <string name="mylist_read_total_count">%1$d / %2$d</string>
     <string name="mylist_selected_desc">Seleccionado</string>
     <string name="mylist_downloaded_offline">Descargado sin conexión</string>
-    <string name="mylist_add_n_to_category">Añadir %1$d manga a categoría</string>
     <string name="mylist_categories_title">Categorías</string>
     <string name="mylist_new_category_name">Nombre de la nueva categoría</string>
     <string name="mylist_time_hours_minutes">%1$dh %2$dmin</string>
@@ -609,8 +597,6 @@
     <string name="source_browse_add_to_library">+ Añadir a la biblioteca</string>
     <string name="source_browse_dup_title">Puede que ya tengas este manga</string>
     <string name="source_browse_dup_desc">\"%1$s\" tiene el mismo título que uno ya en tu biblioteca de otra fuente. Las fuentes difieren en el número de capítulos traducidos y en la calidad de la traducción:</string>
-    <string name="source_browse_dup_existing">• %1$s (en biblioteca): %2$d capítulos</string>
-    <string name="source_browse_chapters_count">%1$d capítulos</string>
     <string name="source_browse_checking">comprobando…</string>
     <string name="source_browse_dup_new">• %1$s (nuevo): %2$s</string>
     <string name="source_browse_add_anyway">Añadir de todos modos</string>
@@ -633,7 +619,6 @@
     <string name="search_saved_searches">BÚSQUEDAS GUARDADAS</string>
     <string name="search_empty_hint">Introduce un título de manga y busca\nen todas las fuentes a la vez</string>
     <string name="search_error">Error</string>
-    <string name="search_result_count">%1$d resultados</string>
     <string name="search_source_error">La fuente devolvió un error</string>
 
     <!-- Cuenta -->
@@ -687,14 +672,12 @@
     <string name="downloads_manager_empty_subtitle">Los capítulos descargados aparecerán aquí — lee sin conexión</string>
     <string name="downloads_manager_cover_desc">Portada: %1$s</string>
     <string name="downloads_manager_count_downloaded">%1$d descargados</string>
-    <string name="downloads_manager_count_downloading">%1$d descargando</string>
     <string name="downloads_manager_count_queued">%1$d en cola</string>
     <string name="downloads_manager_cancel_download">Cancelar descarga</string>
     <string name="downloads_manager_delete_all">Eliminar todo</string>
     <string name="downloads_manager_collapse_list">Contraer lista de capítulos</string>
     <string name="downloads_manager_expand_list">Expandir lista de capítulos</string>
     <string name="downloads_manager_delete_group_confirm_title">¿Eliminar descargas?</string>
-    <string name="downloads_manager_delete_group_confirm_body">Elimina %1$d capítulos descargados de \"%2$s\".</string>
     <string name="downloads_manager_page_count">%1$dpág.</string>
     <string name="downloads_manager_downloading_status">Descargando…</string>
     <string name="downloads_manager_queued_status">En cola</string>
@@ -703,7 +686,6 @@
 
     <!-- Duplicados -->
     <string name="duplicates_title">Duplicados</string>
-    <string name="duplicates_groups_found">%1$d grupos encontrados</string>
     <string name="duplicates_rescan">Volver a escanear</string>
     <string name="duplicates_empty_title">No se encontraron duplicados</string>
     <string name="duplicates_empty_subtitle">Todos los manga de tu biblioteca tienen títulos únicos.</string>
@@ -715,7 +697,6 @@
     <string name="goals_streak_day_plural">días de racha</string>
     <string name="goals_weekly_title">Objetivo semanal</string>
     <string name="goals_off">Desactivado</string>
-    <string name="goals_progress_format">%1$d / %2$d capítulos</string>
     <string name="goals_set_goal_label">Definir objetivo: %1$s</string>
     <string name="goals_goal_unit_format">%1$d cap/semana</string>
 
@@ -759,7 +740,6 @@
 
     <!-- Actualizaciones -->
     <string name="updates_title">Actualizaciones</string>
-    <string name="updates_new_count">%1$d nuevos</string>
     <string name="updates_show_all">Ver todo</string>
     <string name="updates_unread_only">Solo no leídos</string>
     <string name="updates_mark_all_read">Marcar todo como leído</string>
@@ -848,4 +828,115 @@
     <string name="settings_report_problem_translation">La traducción no funciona</string>
     <string name="settings_report_problem_download">La descarga no funciona</string>
     <string name="settings_report_problem_other">Otro problema</string>
+    <string name="settings_backup_import_success">Restaurados: %1$s, %2$s</string>
+
+    <!-- Pocty: cestina ma tri tvary (1 / 2-4 / 5+), proto plurals a ne prosty string. -->
+    <!-- 'many' je v es/fr jen pro cisla od milionu vys ("un million DE capitulos").
+         Tolik kapitol appka nikdy neuvidi, takze tvar zamerne kopiruje "other" - jde o to
+         umlcet lint MissingQuantity, ne o skutecne rozliseni. -->
+    <plurals name="backup_restored_chapters">
+        <item quantity="one">%1$d capítulo</item>
+        <item quantity="other">%1$d capítulos</item>
+        <item quantity="many">%1$d capítulos</item>
+    </plurals>
+    <plurals name="backup_restored_manga">
+        <item quantity="one">%1$d manga</item>
+        <item quantity="other">%1$d mangas</item>
+        <item quantity="many">%1$d mangas</item>
+    </plurals>
+    <plurals name="detail_chapter_count">
+        <item quantity="one">%1$d capítulo</item>
+        <item quantity="other">%1$d capítulos</item>
+        <item quantity="many">%1$d capítulos</item>
+    </plurals>
+    <plurals name="detail_n_chapters">
+        <item quantity="one">%1$d capítulo</item>
+        <item quantity="other">%1$d capítulos</item>
+        <item quantity="many">%1$d capítulos</item>
+    </plurals>
+    <plurals name="downloads_manager_count_downloading">
+        <item quantity="one">%1$d descargando</item>
+        <item quantity="other">%1$d descargando</item>
+        <item quantity="many">%1$d descargando</item>
+    </plurals>
+    <plurals name="downloads_manager_delete_group_confirm_body">
+        <item quantity="one">Elimina %1$d capítulo descargado de \"%2$s\".</item>
+        <item quantity="other">Elimina %1$d capítulos descargados de \"%2$s\".</item>
+        <item quantity="many">Elimina %1$d capítulos descargados de \"%2$s\".</item>
+    </plurals>
+    <plurals name="duplicates_groups_found">
+        <item quantity="one">%1$d grupo encontrado</item>
+        <item quantity="other">%1$d grupos encontrados</item>
+        <item quantity="many">%1$d grupos encontrados</item>
+    </plurals>
+    <plurals name="goals_progress_format">
+        <item quantity="one">%1$d / %2$d capítulo</item>
+        <item quantity="other">%1$d / %2$d capítulos</item>
+        <item quantity="many">%1$d / %2$d capítulos</item>
+    </plurals>
+    <plurals name="mylist_add_n_to_category">
+        <item quantity="one">Añadir %1$d manga a categoría</item>
+        <item quantity="other">Añadir %1$d mangas a categoría</item>
+        <item quantity="many">Añadir %1$d mangas a categoría</item>
+    </plurals>
+    <plurals name="mylist_mark_all_read_body">
+        <item quantity="one">Todos los capítulos de %1$d manga de tu biblioteca se marcarán como leídos. Esta acción no se puede deshacer en bloque.</item>
+        <item quantity="other">Todos los capítulos de los %1$d manga de tu biblioteca se marcarán como leídos. Esta acción no se puede deshacer en bloque.</item>
+        <item quantity="many">Todos los capítulos de los %1$d manga de tu biblioteca se marcarán como leídos. Esta acción no se puede deshacer en bloque.</item>
+    </plurals>
+    <plurals name="mylist_title_count">
+        <item quantity="one">%1$d título</item>
+        <item quantity="other">%1$d títulos</item>
+        <item quantity="many">%1$d títulos</item>
+    </plurals>
+    <plurals name="search_result_count">
+        <item quantity="one">%1$d resultado</item>
+        <item quantity="other">%1$d resultados</item>
+        <item quantity="many">%1$d resultados</item>
+    </plurals>
+    <plurals name="settings_backup_settings_import_success">
+        <item quantity="one">%1$d ajuste restaurado</item>
+        <item quantity="other">%1$d ajustes restaurados</item>
+        <item quantity="many">%1$d ajustes restaurados</item>
+    </plurals>
+    <plurals name="settings_downloads_delete_all_dialog_text">
+        <item quantity="one">Elimina %1$d capítulo descargado del disco.</item>
+        <item quantity="other">Elimina %1$d capítulos descargados del disco.</item>
+        <item quantity="many">Elimina %1$d capítulos descargados del disco.</item>
+    </plurals>
+    <plurals name="settings_downloads_downloaded_count">
+        <item quantity="one">Descargado: %1$d capítulo</item>
+        <item quantity="other">Descargados: %1$d capítulos</item>
+        <item quantity="many">Descargados: %1$d capítulos</item>
+    </plurals>
+    <plurals name="settings_source_catalog_test_success">
+        <item quantity="one">✓ Conexión OK — %1$d elemento encontrado</item>
+        <item quantity="other">✓ Conexión OK — %1$d elementos encontrados</item>
+        <item quantity="many">✓ Conexión OK — %1$d elementos encontrados</item>
+    </plurals>
+    <plurals name="settings_sources_test_success">
+        <item quantity="one">✓ %1$d elemento encontrado</item>
+        <item quantity="other">✓ %1$d elementos encontrados</item>
+        <item quantity="many">✓ %1$d elementos encontrados</item>
+    </plurals>
+    <plurals name="settings_storage_translation_cache_count">
+        <item quantity="one">Traducciones en caché: %1$d página</item>
+        <item quantity="other">Traducciones en caché: %1$d páginas</item>
+        <item quantity="many">Traducciones en caché: %1$d páginas</item>
+    </plurals>
+    <plurals name="source_browse_chapters_count">
+        <item quantity="one">%1$d capítulo</item>
+        <item quantity="other">%1$d capítulos</item>
+        <item quantity="many">%1$d capítulos</item>
+    </plurals>
+    <plurals name="source_browse_dup_existing">
+        <item quantity="one">• %1$s (en biblioteca): %2$d capítulo</item>
+        <item quantity="other">• %1$s (en biblioteca): %2$d capítulos</item>
+        <item quantity="many">• %1$s (en biblioteca): %2$d capítulos</item>
+    </plurals>
+    <plurals name="updates_new_count">
+        <item quantity="one">%1$d nuevo</item>
+        <item quantity="other">%1$d nuevos</item>
+        <item quantity="many">%1$d nuevos</item>
+    </plurals>
 </resources>

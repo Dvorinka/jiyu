@@ -2,6 +2,8 @@ package com.haise.jiyu.backup
 
 import android.content.Context
 import android.net.Uri
+import androidx.room.withTransaction
+import com.haise.jiyu.data.db.AppDatabase
 import com.haise.jiyu.data.db.MangaNoteDao
 import com.haise.jiyu.data.db.MangaTagDao
 import com.haise.jiyu.data.db.ReadHistoryDao
@@ -26,7 +28,17 @@ class BackupManager @Inject constructor(
     private val mangaNoteDao: MangaNoteDao,
     private val mangaTagDao: MangaTagDao,
     private val readHistoryDao: ReadHistoryDao,
+    private val db: AppDatabase,
 ) {
+
+    companion object {
+        /**
+         * Verze formátu, kterou zapisuje export. Zvedej ji, jakmile se změní tvar dat tak,
+         * že by ho starší appka přečetla špatně - a přidej k tomu čtení té starší podoby
+         * v [restoreFromJson].
+         */
+        const val BACKUP_VERSION = 3
+    }
 
     // ── Export ────────────────────────────────────────────────────────────────
 
@@ -54,7 +66,7 @@ class BackupManager @Inject constructor(
             .groupBy({ it.mangaId }, { it.categoryId })
 
         val root = JSONObject().apply {
-            put("version", 3)
+            put("version", BACKUP_VERSION)
             put("exportedAt", java.time.Instant.now().toString())
 
             put("categories", JSONArray().also { arr ->
@@ -173,8 +185,28 @@ class BackupManager @Inject constructor(
         restoreFromJson(json)
     }
 
-    private suspend fun restoreFromJson(json: String): ImportStats {
+    /** Oddělené od [importFromUri], aby šla obnova otestovat bez SAF a bez Uri. */
+    internal suspend fun importFromJson(json: String): Result<ImportStats> = runCatching {
+        restoreFromJson(json)
+    }
+
+    /**
+     * Celá obnova běží v JEDNÉ transakci. Dřív to bylo sedm samostatných zápisů za sebou,
+     * takže chyba uprostřed (poškozený JSON, chybějící povinné pole) nechala kategorie a
+     * mangu zapsané, ale kapitoly už ne - `runCatching` sice ohlásilo neúspěch, jenže
+     * knihovna zůstala v rozečteném stavu. Buď se obnoví všechno, nebo nic.
+     */
+    private suspend fun restoreFromJson(json: String): ImportStats = db.withTransaction {
         val root = JSONObject(json)
+
+        // Verzi si export zapisoval odjakživa, ale import ji nikdy nečetl - novější formát
+        // by se tedy naparsoval jako ten současný a tiše nadělal nesmysly. Nejstarší zálohy
+        // pole nemají vůbec, ty bereme jako ten nejstarší formát a pouštíme dál.
+        val version = root.optInt("version", 1)
+        require(version <= BACKUP_VERSION) {
+            "Záloha je z novější verze aplikace (formát $version, tahle appka umí $BACKUP_VERSION). " +
+                "Aktualizuj Jiyu a zkus to znovu."
+        }
 
         val catsArr = root.optJSONArray("categories") ?: JSONArray()
         val categories = (0 until catsArr.length()).map { i ->
@@ -297,7 +329,8 @@ class BackupManager @Inject constructor(
         }
         if (history.isNotEmpty()) readHistoryDao.upsertAll(history)
 
-        return ImportStats(mangaList.size, chapters.size, categories.size)
+        // Bez `return` - jsme uvnitř lambdy withTransaction, hodnota se vrací jako výraz.
+        ImportStats(mangaList.size, chapters.size, categories.size)
     }
 
     data class ImportStats(val mangaCount: Int, val chapterCount: Int, val categoryCount: Int)

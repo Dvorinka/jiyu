@@ -42,6 +42,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
@@ -281,7 +282,7 @@ fun SourcesSettingsScreen(
                                     }
                                     when (val s = testState) {
                                         is SourceTestState.Success -> Text(
-                                            stringResource(R.string.settings_sources_test_success, s.count),
+                                            pluralStringResource(R.plurals.settings_sources_test_success, s.count, s.count),
                                             color = Color(0xFF81C784),
                                             style = MaterialTheme.typography.bodySmall,
                                             modifier = Modifier.padding(top = 6.dp),

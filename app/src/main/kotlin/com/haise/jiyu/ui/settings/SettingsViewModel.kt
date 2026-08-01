@@ -222,7 +222,11 @@ class SettingsViewModel @Inject constructor(
         backupManager.importFromUri(uri)
             .onSuccess { stats ->
                 _backupState.value = BackupUiState.Success(
-                    context.getString(R.string.settings_backup_import_success, stats.mangaCount, stats.chapterCount)
+                    context.getString(
+                        R.string.settings_backup_import_success,
+                        context.resources.getQuantityString(R.plurals.backup_restored_manga, stats.mangaCount, stats.mangaCount),
+                        context.resources.getQuantityString(R.plurals.backup_restored_chapters, stats.chapterCount, stats.chapterCount),
+                    )
                 )
             }
             .onFailure { _backupState.value = BackupUiState.Error(it.message ?: context.getString(R.string.settings_backup_generic_import_error)) }
@@ -244,7 +248,7 @@ class SettingsViewModel @Inject constructor(
     fun importSettings(uri: Uri) = viewModelScope.launch {
         _settingsBackupState.value = BackupUiState.Working
         settingsBackupManager.importFromUri(uri)
-            .onSuccess { count -> _settingsBackupState.value = BackupUiState.Success(context.getString(R.string.settings_backup_settings_import_success, count)) }
+            .onSuccess { count -> _settingsBackupState.value = BackupUiState.Success(context.resources.getQuantityString(R.plurals.settings_backup_settings_import_success, count, count)) }
             .onFailure { _settingsBackupState.value = BackupUiState.Error(it.message ?: context.getString(R.string.settings_backup_generic_import_error)) }
     }
 

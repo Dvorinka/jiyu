@@ -44,6 +44,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -129,7 +130,7 @@ fun UpdatesScreen(
                             .padding(horizontal = 10.dp, vertical = 2.dp),
                     ) {
                         Text(
-                            text = stringResource(R.string.updates_new_count, unreadCount),
+                            text = pluralStringResource(R.plurals.updates_new_count, unreadCount, unreadCount),
                             color = Violet,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,

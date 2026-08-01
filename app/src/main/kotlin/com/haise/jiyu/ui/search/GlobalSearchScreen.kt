@@ -62,6 +62,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
@@ -226,7 +227,7 @@ fun GlobalSearchScreen(
                                 sourceResult.error != null ->
                                     Text(stringResource(R.string.search_error), color = MaterialTheme.colorScheme.error, fontSize = 11.sp)
                                 else ->
-                                    Text(stringResource(R.string.search_result_count, sourceResult.results.size), color = TextSecondary, fontSize = 11.sp)
+                                    Text(pluralStringResource(R.plurals.search_result_count, sourceResult.results.size, sourceResult.results.size), color = TextSecondary, fontSize = 11.sp)
                             }
                         }
 
@@ -287,13 +288,13 @@ private fun GlobalSearchDuplicateDialog(
                 )
                 pending.matches.forEach { match ->
                     Text(
-                        stringResource(R.string.source_browse_dup_existing, match.sourceName, match.chapterCount),
+                        pluralStringResource(R.plurals.source_browse_dup_existing, match.chapterCount, match.sourceName, match.chapterCount),
                         color = Color.White,
                         fontSize = 13.sp,
                         modifier = Modifier.padding(vertical = 2.dp),
                     )
                 }
-                val newCountText = pending.newChapterCount?.let { stringResource(R.string.source_browse_chapters_count, it) } ?: stringResource(R.string.source_browse_checking)
+                val newCountText = pending.newChapterCount?.let { pluralStringResource(R.plurals.source_browse_chapters_count, it, it) } ?: stringResource(R.string.source_browse_checking)
                 Text(
                     stringResource(R.string.source_browse_dup_new, pending.newSourceName, newCountText),
                     color = GlowViolet,

@@ -39,6 +39,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -89,7 +90,7 @@ fun DuplicateDetectorScreen(
                     style = TextStyle(brush = titleGradient, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.sp),
                 )
                 Text(
-                    text = stringResource(R.string.duplicates_groups_found, groups.size),
+                    text = pluralStringResource(R.plurals.duplicates_groups_found, groups.size, groups.size),
                     color = TextSecondary,
                     fontSize = 12.sp,
                 )

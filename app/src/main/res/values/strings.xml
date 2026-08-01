@@ -133,7 +133,6 @@
     <string name="settings_sources_selector_chapter_list">Seznam kapitol (chapter list)</string>
     <string name="settings_sources_selector_page_image">Obrázky stránky (page image)</string>
     <string name="settings_sources_test_connection">Otestovat připojení</string>
-    <string name="settings_sources_test_success">✓ Nalezeno %1$d položek</string>
     <string name="settings_sources_test_failure">✗ %1$s</string>
 
     <!-- Settings: Čtečka -->
@@ -186,7 +185,6 @@
 
     <!-- Settings: Uložiště -->
     <string name="settings_storage_translation_cache_title">Cache překladů</string>
-    <string name="settings_storage_translation_cache_count">Uložené překlady: %1$d stránek</string>
     <string name="settings_storage_clear_cache_button">Vymazat cache</string>
     <string name="settings_storage_image_cache_title">Cache obrázků</string>
     <string name="settings_storage_disk_cache_size">Disk cache: %1$s</string>
@@ -210,11 +208,9 @@
     <string name="settings_downloads_parallel_3_default">3 naráz (výchozí)</string>
     <string name="settings_downloads_parallel_5">5 naráz</string>
     <string name="settings_downloads_chapters_section_title">Stažené kapitoly</string>
-    <string name="settings_downloads_downloaded_count">Staženo: %1$d kapitol</string>
     <string name="settings_downloads_manage_button">Správa</string>
     <string name="settings_downloads_delete_all_button">Smazat vše</string>
     <string name="settings_downloads_delete_all_dialog_title">Smazat vše?</string>
-    <string name="settings_downloads_delete_all_dialog_text">Smaže %1$d stažených kapitol z disku.</string>
 
     <!-- Settings: Aktualizace -->
     <string name="settings_update_title">Zkontrolovat nové kapitoly</string>
@@ -274,10 +270,8 @@
     <string name="settings_backup_import_done_errors_label">Chyby:</string>
     <string name="settings_backup_export_success">Záloha exportována</string>
     <string name="settings_backup_generic_export_error">Chyba exportu</string>
-    <string name="settings_backup_import_success">Obnoveno: %1$d manga, %2$d kapitol</string>
     <string name="settings_backup_generic_import_error">Chyba importu</string>
     <string name="settings_backup_settings_export_success">Nastavení exportováno</string>
-    <string name="settings_backup_settings_import_success">Obnoveno %1$d nastavení</string>
 
     <!-- Settings: Čtení -->
     <string name="settings_reading_title">Čtení</string>
@@ -325,7 +319,6 @@
     <string name="settings_source_catalog_field_page_image">Obrázek stránky</string>
     <string name="settings_source_catalog_field_placeholder_default">výchozí</string>
     <string name="settings_source_catalog_testing">Testuji připojení...</string>
-    <string name="settings_source_catalog_test_success">✓ Připojení OK — nalezeno %1$d položek</string>
     <string name="settings_source_catalog_test_failure">✗ %1$s</string>
     <string name="settings_source_catalog_test_button">Otestovat</string>
     <string name="settings_source_catalog_test_no_items">Nenalezeny žádné položky - zkontroluj adresu nebo selektory</string>
@@ -373,7 +366,6 @@
     <string name="detail_status_completed">Dokončeno</string>
     <string name="detail_status_hiatus">Pauza</string>
     <string name="detail_status_cancelled">Zrušeno</string>
-    <string name="detail_chapter_count">%1$d kapitol</string>
     <string name="detail_reading_time">Čas čtení: %1$s</string>
     <string name="detail_show_less">Méně</string>
     <string name="detail_show_more">Zobrazit více</string>
@@ -403,7 +395,6 @@
     <string name="detail_download_unread">Stáhnout nepřečtené</string>
     <string name="detail_download_first_n">Stáhnout prvních N…</string>
     <string name="detail_download_first_n_title">Stáhnout prvních N nepřečtených</string>
-    <string name="detail_n_chapters">%1$d kapitol</string>
     <string name="detail_search_chapter_placeholder">Hledat kapitolu…</string>
     <string name="detail_filter_unread">Nepřečtené</string>
     <string name="detail_filter_read">Přečtené</string>
@@ -507,7 +498,6 @@
     <string name="mylist_clear_selection">Zrušit výběr</string>
     <string name="mylist_selected_count">%1$d vybráno</string>
     <string name="mylist_title">Můj seznam</string>
-    <string name="mylist_title_count">%1$d titulů</string>
     <string name="mylist_switch_to_list">Přepnout na seznam</string>
     <string name="mylist_switch_to_grid">Přepnout na mřížku</string>
     <string name="mylist_sort">Řadit</string>
@@ -532,7 +522,6 @@
     <string name="mylist_importing_file">Importuji soubor…</string>
     <string name="mylist_add_fab">+ Přidat</string>
     <string name="mylist_mark_all_read_title">Označit celou knihovnu jako přečtenou?</string>
-    <string name="mylist_mark_all_read_body">Všechny kapitoly u všech %1$d mang v knihovně budou označeny jako přečtené. Tuto akci nelze hromadně vrátit.</string>
     <string name="mylist_mark_all">Označit vše</string>
     <string name="mylist_try_different_term_or_search">Zkus jiný výraz nebo vyhledej autora / žánr</string>
     <string name="mylist_no_titles_match_filter">Žádné tituly neodpovídají filtru</string>
@@ -547,7 +536,6 @@
     <string name="mylist_read_total_count">%1$d / %2$d</string>
     <string name="mylist_selected_desc">Vybráno</string>
     <string name="mylist_downloaded_offline">Staženo offline</string>
-    <string name="mylist_add_n_to_category">Přidat %1$d mang do kategorie</string>
     <string name="mylist_categories_title">Kategorie</string>
     <string name="mylist_new_category_name">Název nové kategorie</string>
     <string name="mylist_time_hours_minutes">%1$d h %2$d min</string>
@@ -663,8 +651,6 @@
     <string name="source_browse_add_to_library">+ Přidat do knihovny</string>
     <string name="source_browse_dup_title">Možná už tuhle mangu máš</string>
     <string name="source_browse_dup_desc">\"%1$s\" má stejný název jako titul, co už máš v knihovně z jiného zdroje. Zdroje se liší v počtu přeložených kapitol i kvalitě překladu:</string>
-    <string name="source_browse_dup_existing">• %1$s (v knihovně): %2$d kapitol</string>
-    <string name="source_browse_chapters_count">%1$d kapitol</string>
     <string name="source_browse_checking">zjišťuji…</string>
     <string name="source_browse_dup_new">• %1$s (nový): %2$s</string>
     <string name="source_browse_add_anyway">Přidat i tak</string>
@@ -687,7 +673,6 @@
     <string name="search_saved_searches">ULOŽENÁ VYHLEDÁVÁNÍ</string>
     <string name="search_empty_hint">Zadej název mangy a prohledej\nvšechny zdroje najednou</string>
     <string name="search_error">Chyba</string>
-    <string name="search_result_count">%1$d výsledků</string>
     <string name="search_source_error">Zdroj vrátil chybu</string>
 
     <!-- Účet -->
@@ -741,14 +726,12 @@
     <string name="downloads_manager_empty_subtitle">Stažené kapitoly najdeš tady — čti offline bez připojení</string>
     <string name="downloads_manager_cover_desc">Obálka: %1$s</string>
     <string name="downloads_manager_count_downloaded">%1$d staženo</string>
-    <string name="downloads_manager_count_downloading">%1$d stahuje se</string>
     <string name="downloads_manager_count_queued">%1$d ve frontě</string>
     <string name="downloads_manager_cancel_download">Zrušit stahování</string>
     <string name="downloads_manager_delete_all">Smazat vše</string>
     <string name="downloads_manager_collapse_list">Sbalit seznam kapitol</string>
     <string name="downloads_manager_expand_list">Rozbalit seznam kapitol</string>
     <string name="downloads_manager_delete_group_confirm_title">Smazat stažené?</string>
-    <string name="downloads_manager_delete_group_confirm_body">Smaže %1$d stažených kapitol od \"%2$s\".</string>
     <string name="downloads_manager_page_count">%1$dstr.</string>
     <string name="downloads_manager_downloading_status">Stahuje se…</string>
     <string name="downloads_manager_queued_status">Ve frontě</string>
@@ -757,7 +740,6 @@
 
     <!-- Duplikáty -->
     <string name="duplicates_title">Duplikáty</string>
-    <string name="duplicates_groups_found">%1$d skupin nalezeno</string>
     <string name="duplicates_rescan">Znovu prohledat</string>
     <string name="duplicates_empty_title">Žádné duplikáty nenalezeny</string>
     <string name="duplicates_empty_subtitle">Všechna manga v knihovně mají unikátní názvy.</string>
@@ -769,7 +751,6 @@
     <string name="goals_streak_day_plural">dní v řadě</string>
     <string name="goals_weekly_title">Týdenní cíl</string>
     <string name="goals_off">Vypnuto</string>
-    <string name="goals_progress_format">%1$d / %2$d kapitol</string>
     <string name="goals_set_goal_label">Nastav cíl: %1$s</string>
     <string name="goals_goal_unit_format">%1$d kap/týden</string>
 
@@ -813,7 +794,6 @@
 
     <!-- Aktualizace -->
     <string name="updates_title">Aktualizace</string>
-    <string name="updates_new_count">%1$d nových</string>
     <string name="updates_show_all">Zobrazit vše</string>
     <string name="updates_unread_only">Jen nepřečtené</string>
     <string name="updates_mark_all_read">Označit vše jako přečtené</string>
@@ -841,4 +821,111 @@
     <!-- Widget -->
     <string name="widget_library_label">Knihovna</string>
     <string name="widget_empty_library">Žádné manga v knihovně</string>
+    <string name="settings_backup_import_success">Obnoveno: %1$s, %2$s</string>
+
+    <!-- Pocty: cestina ma tri tvary (1 / 2-4 / 5+), proto plurals a ne prosty string. -->
+    <plurals name="backup_restored_chapters">
+        <item quantity="one">%1$d kapitola</item>
+        <item quantity="few">%1$d kapitoly</item>
+        <item quantity="other">%1$d kapitol</item>
+    </plurals>
+    <plurals name="backup_restored_manga">
+        <item quantity="one">%1$d manga</item>
+        <item quantity="few">%1$d mangy</item>
+        <item quantity="other">%1$d mang</item>
+    </plurals>
+    <plurals name="detail_chapter_count">
+        <item quantity="one">%1$d kapitola</item>
+        <item quantity="few">%1$d kapitoly</item>
+        <item quantity="other">%1$d kapitol</item>
+    </plurals>
+    <plurals name="detail_n_chapters">
+        <item quantity="one">%1$d kapitola</item>
+        <item quantity="few">%1$d kapitoly</item>
+        <item quantity="other">%1$d kapitol</item>
+    </plurals>
+    <plurals name="downloads_manager_count_downloading">
+        <item quantity="one">%1$d se stahuje</item>
+        <item quantity="few">%1$d se stahují</item>
+        <item quantity="other">%1$d se stahuje</item>
+    </plurals>
+    <plurals name="downloads_manager_delete_group_confirm_body">
+        <item quantity="one">Smaže %1$d staženou kapitolu od \"%2$s\".</item>
+        <item quantity="few">Smaže %1$d stažené kapitoly od \"%2$s\".</item>
+        <item quantity="other">Smaže %1$d stažených kapitol od \"%2$s\".</item>
+    </plurals>
+    <plurals name="duplicates_groups_found">
+        <item quantity="one">%1$d skupina nalezena</item>
+        <item quantity="few">%1$d skupiny nalezeny</item>
+        <item quantity="other">%1$d skupin nalezeno</item>
+    </plurals>
+    <plurals name="goals_progress_format">
+        <item quantity="one">%1$d / %2$d kapitola</item>
+        <item quantity="few">%1$d / %2$d kapitoly</item>
+        <item quantity="other">%1$d / %2$d kapitol</item>
+    </plurals>
+    <plurals name="mylist_add_n_to_category">
+        <item quantity="one">Přidat %1$d mangu do kategorie</item>
+        <item quantity="few">Přidat %1$d mangy do kategorie</item>
+        <item quantity="other">Přidat %1$d mang do kategorie</item>
+    </plurals>
+    <plurals name="mylist_mark_all_read_body">
+        <item quantity="one">Všechny kapitoly u 1 mangy v knihovně budou označeny jako přečtené. Tuto akci nelze hromadně vrátit.</item>
+        <item quantity="other">Všechny kapitoly u všech %1$d mang v knihovně budou označeny jako přečtené. Tuto akci nelze hromadně vrátit.</item>
+    </plurals>
+    <plurals name="mylist_title_count">
+        <item quantity="one">%1$d titul</item>
+        <item quantity="few">%1$d tituly</item>
+        <item quantity="other">%1$d titulů</item>
+    </plurals>
+    <plurals name="search_result_count">
+        <item quantity="one">%1$d výsledek</item>
+        <item quantity="few">%1$d výsledky</item>
+        <item quantity="other">%1$d výsledků</item>
+    </plurals>
+    <plurals name="settings_backup_settings_import_success">
+        <item quantity="one">Obnoveno %1$d nastavení</item>
+        <item quantity="few">Obnovena %1$d nastavení</item>
+        <item quantity="other">Obnoveno %1$d nastavení</item>
+    </plurals>
+    <plurals name="settings_downloads_delete_all_dialog_text">
+        <item quantity="one">Smaže %1$d staženou kapitolu z disku.</item>
+        <item quantity="few">Smaže %1$d stažené kapitoly z disku.</item>
+        <item quantity="other">Smaže %1$d stažených kapitol z disku.</item>
+    </plurals>
+    <plurals name="settings_downloads_downloaded_count">
+        <item quantity="one">Staženo: %1$d kapitola</item>
+        <item quantity="few">Staženo: %1$d kapitoly</item>
+        <item quantity="other">Staženo: %1$d kapitol</item>
+    </plurals>
+    <plurals name="settings_source_catalog_test_success">
+        <item quantity="one">✓ Připojení OK — nalezena %1$d položka</item>
+        <item quantity="few">✓ Připojení OK — nalezeny %1$d položky</item>
+        <item quantity="other">✓ Připojení OK — nalezeno %1$d položek</item>
+    </plurals>
+    <plurals name="settings_sources_test_success">
+        <item quantity="one">✓ Nalezena %1$d položka</item>
+        <item quantity="few">✓ Nalezeny %1$d položky</item>
+        <item quantity="other">✓ Nalezeno %1$d položek</item>
+    </plurals>
+    <plurals name="settings_storage_translation_cache_count">
+        <item quantity="one">Uložené překlady: %1$d stránka</item>
+        <item quantity="few">Uložené překlady: %1$d stránky</item>
+        <item quantity="other">Uložené překlady: %1$d stránek</item>
+    </plurals>
+    <plurals name="source_browse_chapters_count">
+        <item quantity="one">%1$d kapitola</item>
+        <item quantity="few">%1$d kapitoly</item>
+        <item quantity="other">%1$d kapitol</item>
+    </plurals>
+    <plurals name="source_browse_dup_existing">
+        <item quantity="one">• %1$s (v knihovně): %2$d kapitola</item>
+        <item quantity="few">• %1$s (v knihovně): %2$d kapitoly</item>
+        <item quantity="other">• %1$s (v knihovně): %2$d kapitol</item>
+    </plurals>
+    <plurals name="updates_new_count">
+        <item quantity="one">%1$d nová</item>
+        <item quantity="few">%1$d nové</item>
+        <item quantity="other">%1$d nových</item>
+    </plurals>
 </resources>
