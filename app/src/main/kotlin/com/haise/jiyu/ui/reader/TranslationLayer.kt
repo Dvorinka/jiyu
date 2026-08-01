@@ -64,6 +64,7 @@ import com.haise.jiyu.translate.PositionedTranslationBlock
 import com.haise.jiyu.translate.TextMeasurement
 import com.haise.jiyu.translate.TranslatedBlock
 import com.haise.jiyu.translate.averageArgb
+import com.haise.jiyu.translate.estimateNativeFontPx
 import com.haise.jiyu.translate.fitFontSizeToBox
 import com.haise.jiyu.translate.fitTextToShape
 import com.haise.jiyu.translate.largestInscribedRect
@@ -378,6 +379,7 @@ fun TranslationOverlay(
                     imageWidthDp = imageRect.width,
                     imageHeightDp = imageRect.height,
                     nativeLineHeightF = pos.block.nativeLineHeightF,
+                    originalText = pos.block.originalText,
                 )
             }
         }
@@ -436,6 +438,8 @@ private fun AutoFitTranslatedText(
     imageHeightDp: Float = 0f,
     /** Průměrná výška JEDNOHO řádku originálu (zlomek výšky stránky) - viz [TranslatedBlock.nativeLineHeightF]. */
     nativeLineHeightF: Float = 0f,
+    /** Text originálu - rozhoduje, jestli se výška OCR boxu čte jako verzálky, nebo smíšený text. */
+    originalText: String = "",
 ) {
     val density = LocalDensity.current
     val textMeasurer = rememberTextMeasurer()
@@ -450,8 +454,12 @@ private fun AutoFitTranslatedText(
     // fontSp. Vynásobeno textScale, ať respektuje i uživatelovo nastavení velikosti textu -
     // jinak by "nativní" velikost ignorovala jeho vlastní preferenci.
     val preferredFontSp = if (nativeLineHeightF > 0f && imageHeightDp > 0f) {
-        val nativeLineHeightPx = with(density) { (nativeLineHeightF * imageHeightDp).dp.toPx() }
-        val nativeFontPx = nativeLineHeightPx / 1.25f
+        val boxHeightPx = with(density) { (nativeLineHeightF * imageHeightDp).dp.toPx() }
+        // Drive se tady delilo 1.25, jako by nativeLineHeightF byla radkova roztec. Je to ale
+        // vyska OCR BOXU, ktery obepina jen samotna pismena - odhad proto vychazel na 0,62
+        // nasobku skutecne velikosti a text zustaval maly i v obri bubline. Prevodni pomery
+        // jsou zmerene na zarizeni, viz estimateNativeFontPx.
+        val nativeFontPx = estimateNativeFontPx(boxHeightPx, originalText)
         with(density) { nativeFontPx.toSp() }.value * textScale
     } else {
         null
