@@ -19,6 +19,8 @@ import com.haise.jiyu.anilist.AniListRepository
 import com.haise.jiyu.auth.AuthRepository
 import com.haise.jiyu.auth.JiyuUser
 import com.haise.jiyu.sync.SyncRepository
+import com.haise.jiyu.util.report
+import com.haise.jiyu.util.toFriendlyMessage
 import com.haise.jiyu.work.SyncWorker
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -174,7 +176,15 @@ class AccountViewModel @Inject constructor(
                 authRepository.resetPassword(email)
                 _authState.value = AuthUiState.Done
             } catch (e: Exception) {
-                _authState.value = AuthUiState.Error(appContext.getString(R.string.account_password_reset_email_sent))
+                // Chybová větev dřív vypisovala hlášku o ÚSPĚŠNÉM odeslání. Obrazovka stav
+                // Error vykresluje přes "Chyba: %1$s", takže z toho vylezlo
+                // "Chyba: Email pro reset odeslán" - věta, která si protiřečí - a skutečná
+                // příčina se zahodila. Kdo resetoval heslo bez signálu, čekal na e-mail,
+                // který nikdy neodešel. Anti-enumeration to nebylo: Supabase u
+                // resetPasswordForEmail existenci účtu neprozrazuje ani při úspěchu, takže
+                // sem doputují jen opravdové chyby (síť, rate limit, špatný formát).
+                e.report("AccountViewModel.sendPasswordReset")
+                _authState.value = AuthUiState.Error(e.toFriendlyMessage())
             }
         }
     }

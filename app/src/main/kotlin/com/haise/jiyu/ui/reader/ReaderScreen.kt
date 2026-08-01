@@ -107,6 +107,14 @@ fun ReaderScreen(viewModel: ReaderViewModel = hiltViewModel()) {
     var showSleepTimerDialog by remember { mutableStateOf(false) }
     val activity = LocalView.current.context as Activity
 
+    // Čtečku zavírá až tenhle sběratel, ne lambda předaná do časovače. Ta totiž putovala do
+    // singletonu, který ji držel po celou dobu odpočtu i poté, co uživatel ze čtečky odešel -
+    // a spolu s ní i celou Activity. Takhle je Activity potřeba jen ve chvíli, kdy odpočet
+    // opravdu doběhne, a to už tady nikdo neposlouchá, pokud čtečka mezitím zmizela.
+    LaunchedEffect(Unit) {
+        viewModel.sleepTimerFinished.collect { activity.finish() }
+    }
+
     // Sleep timer dialog
     if (showSleepTimerDialog) {
         AlertDialog(
@@ -123,7 +131,7 @@ fun ReaderScreen(viewModel: ReaderViewModel = hiltViewModel()) {
                         60 to stringResource(R.string.reader_sleep_timer_1h),
                     ).forEach { (min, label) ->
                         TextButton(onClick = {
-                            viewModel.startSleepTimer(min) { activity.finish() }
+                            viewModel.startSleepTimer(min)
                             showSleepTimerDialog = false
                         }, modifier = Modifier.fillMaxWidth()) { Text(label, color = Color.White) }
                     }

@@ -30,6 +30,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -406,8 +407,13 @@ class ReaderViewModel @Inject constructor(
 
     fun clearTranslationError() { _translationError.value = null }
 
-    fun startSleepTimer(minutes: Int, onFinish: () -> Unit) =
-        sleepTimerManager.start(minutes, onFinish)
+    /**
+     * Konec odpočtu se ohlašuje tudy, ne callbackem - předávaná lambda `{ activity.finish() }`
+     * držela naživu celou Activity, viz [SleepTimerManager].
+     */
+    val sleepTimerFinished: SharedFlow<Unit> = sleepTimerManager.finished
+
+    fun startSleepTimer(minutes: Int) = sleepTimerManager.start(minutes)
 
     fun cancelSleepTimer() = sleepTimerManager.cancel()
 

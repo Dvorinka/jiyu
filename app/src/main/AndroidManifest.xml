@@ -39,6 +39,22 @@
                 tools:node="remove" />
         </provider>
 
+        <!-- Sdílení souborů ven z appky (QR kód titulu). Bez téhle deklarace vyhodí
+             FileProvider.getUriForFile IllegalArgumentException "Couldn't find meta-data
+             for provider with authority com.haise.jiyu.provider" - a protože ji volající
+             odchytává, tlačítko "Sdílet" pak nedělalo vůbec nic a mlčelo o tom.
+             Authority musí přesně sedět s tou, na kterou se ptá kód
+             (viz MangaQrScreen: "${context.packageName}.provider"). -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.provider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+
         <activity
             android:name=".MainActivity"
             android:exported="true"

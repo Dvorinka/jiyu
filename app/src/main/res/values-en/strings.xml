@@ -672,7 +672,6 @@
     <string name="account_sync_done">Sync complete</string>
     <string name="account_error_sync_generic">Sync error</string>
     <string name="account_error_signup_generic">Sign-up error</string>
-    <string name="account_password_reset_email_sent">Reset email sent (if the account exists)</string>
 
     <!-- Community -->
     <string name="community_title">Community manga</string>

@@ -669,7 +669,6 @@
     <string name="account_sync_done">Synchronisation terminée</string>
     <string name="account_error_sync_generic">Erreur de synchronisation</string>
     <string name="account_error_signup_generic">Erreur d\'inscription</string>
-    <string name="account_password_reset_email_sent">E-mail de réinitialisation envoyé (si le compte existe)</string>
 
     <!-- Communauté -->
     <string name="community_title">Manga communautaires</string>

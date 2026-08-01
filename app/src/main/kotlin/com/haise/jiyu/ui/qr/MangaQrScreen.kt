@@ -49,6 +49,7 @@ import com.haise.jiyu.ui.theme.TextPrimary
 import com.haise.jiyu.ui.theme.TextSecondary
 import com.haise.jiyu.ui.theme.Violet
 import com.haise.jiyu.ui.theme.screenGradient
+import com.haise.jiyu.util.report
 import java.io.File
 
 @Composable
@@ -169,5 +170,10 @@ private fun shareQr(context: android.content.Context, bitmap: Bitmap, title: Str
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
         context.startActivity(Intent.createChooser(intent, context.getString(R.string.qr_share_button)))
-    } catch (_: Exception) {}
+    } catch (e: Exception) {
+        // Tenhle catch tu dřív stál prázdný a schovával fakt, že FileProvider vůbec nebyl
+        // v manifestu - tlačítko "Sdílet" tím pádem beze slova nedělalo nic. Ať je příště
+        // vidět, že se něco pokazilo.
+        e.report("MangaQrScreen.shareQr")
+    }
 }
