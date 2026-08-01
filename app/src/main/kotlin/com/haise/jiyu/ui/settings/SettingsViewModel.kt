@@ -22,6 +22,7 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import com.haise.jiyu.backup.BackupManager
 import com.haise.jiyu.backup.SettingsBackupManager
+import com.haise.jiyu.data.db.TranslatedNovelDao
 import com.haise.jiyu.data.db.TranslatedPageDao
 import com.haise.jiyu.data.db.entity.CustomSourceEntity
 import com.haise.jiyu.data.db.entity.DownloadStatus
@@ -79,6 +80,7 @@ class SettingsViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val settings: SettingsRepository,
     private val translatedPageDao: TranslatedPageDao,
+    private val translatedNovelDao: TranslatedNovelDao,
     private val repository: MangaRepository,
     private val backupManager: BackupManager,
     private val settingsBackupManager: SettingsBackupManager,
@@ -207,6 +209,9 @@ class SettingsViewModel @Inject constructor(
 
     fun clearTranslationCache() = viewModelScope.launch {
         translatedPageDao.deleteAll()
+        // Tlacitko drive novely vynechavalo, takze "smazat cache prekladu" je ve skutecnosti
+        // nesmazalo a zabrane misto neubylo.
+        translatedNovelDao.deleteAll()
         _cacheCount.value = 0
     }
 

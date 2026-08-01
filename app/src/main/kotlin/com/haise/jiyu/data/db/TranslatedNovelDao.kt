@@ -16,4 +16,15 @@ interface TranslatedNovelDao {
 
     @Query("DELETE FROM translated_novel")
     suspend fun deleteAll()
+
+    @Query("SELECT COUNT(*) FROM translated_novel")
+    suspend fun count(): Int
+
+    /**
+     * Protějšek [TranslatedPageDao.deleteOlderThan]. Bez něj byly překlady novel jediná část
+     * cache, která nikdy nezmizela: úklid při startu (viz JiyuApp) čistil pouze stránky,
+     * takže tahle tabulka rostla, dokud uživatel neodinstaloval appku.
+     */
+    @Query("DELETE FROM translated_novel WHERE createdAt < :cutoff")
+    suspend fun deleteOlderThan(cutoff: Long)
 }

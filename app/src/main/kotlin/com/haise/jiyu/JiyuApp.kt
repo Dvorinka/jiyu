@@ -19,6 +19,7 @@ import coil.memory.MemoryCache
 import com.google.firebase.Firebase
 import com.google.firebase.analytics.analytics
 import com.google.firebase.crashlytics.crashlytics
+import com.haise.jiyu.data.db.TranslatedNovelDao
 import com.haise.jiyu.data.db.TranslatedPageDao
 import com.haise.jiyu.download.CHANNEL_DOWNLOADS
 import com.haise.jiyu.source.mangaplus.MangaPlusImageFetcher
@@ -39,6 +40,7 @@ class JiyuApp : Application(), Configuration.Provider {
     @Inject lateinit var workerFactory: HiltWorkerFactory
     @Inject lateinit var httpClient: OkHttpClient
     @Inject lateinit var translatedPageDao: TranslatedPageDao
+    @Inject lateinit var translatedNovelDao: TranslatedNovelDao
 
     override fun onCreate() {
         super.onCreate()
@@ -106,6 +108,8 @@ class JiyuApp : Application(), Configuration.Provider {
         CoroutineScope(Dispatchers.IO + SupervisorJob()).launch {
             val cutoff = System.currentTimeMillis() - 30L * 24 * 3600 * 1000
             translatedPageDao.deleteOlderThan(cutoff)
+            // Novely se dřív neuklízely vůbec - byly jediná část cache, která rostla donekonečna.
+            translatedNovelDao.deleteOlderThan(cutoff)
         }
     }
 

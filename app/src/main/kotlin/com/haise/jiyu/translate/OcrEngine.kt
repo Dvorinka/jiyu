@@ -58,6 +58,55 @@ internal fun ringSeeds(leftF: Float, topF: Float, rightF: Float, bottomF: Float,
     )
 }
 
+/** Hodnota zdrojového jazyka, která znamená "zjisti si to sám" - viz [resolveAutoLanguage]. */
+internal const val AUTO_LANGUAGE = "Auto"
+
+/**
+ * Pořadí, ve kterém se pod [AUTO_LANGUAGE] zkoušejí rozpoznávače. Latinka je první schválně:
+ * velká část zdrojů v appce jsou anglické skenlace, takže se to obvykle rozhodne hned prvním
+ * průchodem. CJK modely mají každý vlastní ML Kit model, latinkový je nechytí.
+ */
+internal val AUTO_CANDIDATE_LANGUAGES = listOf("English", "Japanese", "Korean", "Chinese")
+
+/**
+ * Kolik nebílých znaků stačí, aby se průchod považoval za jistý a další se už nepouštěly.
+ * Skutečná stránka textu jich má desítky; latinkový model puštěný na japonskou stránku
+ * vrátí typicky pár znaků nesmyslu, takže se tenhle strop nepřekročí a zkusí se další model.
+ */
+private const val AUTO_CONFIDENT_CHARS = 20
+
+/**
+ * Vybere rozpoznávač pro [AUTO_LANGUAGE]: zkouší kandidáty popořadě a bere ten, který našel
+ * nejvíc textu. Jakmile některý překročí [AUTO_CONFIDENT_CHARS], zbytek se už nespouští.
+ *
+ * Proč to vůbec je: "Auto" je v rozbalovátku zdrojového jazyka ve čtečce nabízené jako první
+ * možnost, ale [OcrEngine.recognizerFor] pro něj neměl větev a spadl do `else`, tedy na
+ * LATINKOVÝ model. Kdo si vybral "Auto" a otevřel japonskou mangu, dostal z OCR nesmysl nebo
+ * nic - a k tomu se bubliny seřadily zleva doprava, takže model dostal repliky v obráceném
+ * pořadí. Autodetekce v appce prostě žádná nebyla, jen se tak tvářila.
+ *
+ * Rozpoznávání se předává jako lambda, aby šlo tohle rozhodování otestovat bez ML Kitu.
+ *
+ * @return dvojice (rozpoznaný jazyk, jeho bloky); prázdné bloky = nenašlo se nic nikde.
+ */
+internal suspend fun resolveAutoLanguage(
+    candidates: List<String> = AUTO_CANDIDATE_LANGUAGES,
+    recognizeWith: suspend (String) -> List<RawTextBlock>,
+): Pair<String, List<RawTextBlock>> {
+    var best = candidates.first() to emptyList<RawTextBlock>()
+    var bestChars = -1
+    for (candidate in candidates) {
+        val blocks = recognizeWith(candidate)
+        val chars = blocks.sumOf { block -> block.text.count { !it.isWhitespace() } }
+        if (chars > bestChars) {
+            best = candidate to blocks
+            bestChars = chars
+        }
+        if (chars >= AUTO_CONFIDENT_CHARS) break
+    }
+    return best
+}
+
 /** Obaluje Bitmap do [PixelSource] pro [BubbleShapeDetector] - jediné místo, kde algoritmus vidí Android typ. */
 private class BitmapPixelSource(private val bitmap: Bitmap) : PixelSource {
     override fun colorAt(x: Int, y: Int): Int = bitmap.getPixel(x, y)
@@ -89,37 +138,15 @@ class OcrEngine @Inject constructor() {
 
         val image = InputImage.fromBitmap(bitmap, 0)
 
-        val result = suspendCancellableCoroutine { cont ->
-            recognizerFor(language).process(image)
-                .addOnSuccessListener { cont.resume(it) }
-                .addOnFailureListener { cont.resumeWithException(it) }
+        // Pod "Auto" se rozpoznávač vybírá podle toho, který na téhle stránce opravdu něco
+        // našel (viz resolveAutoLanguage) - dřív pro "Auto" neexistovala větev a spadlo to
+        // na latinku, takže japonská stránka nevrátila nic použitelného.
+        val (resolvedLanguage, lines) = if (language == AUTO_LANGUAGE) {
+            resolveAutoLanguage { candidate -> recognizeLines(candidate, image, w, h) }
+        } else {
+            language to recognizeLines(language, image, w, h)
         }
 
-        // ML Kit "textBlocks" jsou odstavcová seskupení odladěná na fotky dokumentů/účtenek,
-        // ne na manga bubliny - běžně buď slijí dvě sousední bubliny do jednoho bloku, nebo
-        // naopak rozseknou jednu bublinu na víc bloků. Jdeme proto o úroveň níž na "lines"
-        // (řádky) a slučujeme je vlastní geometrickou heuristikou (mergeNearbyLines), která
-        // lépe odpovídá tomu, co člověk vnímá jako jednu bublinu.
-        //
-        // (Zkoušeno i slučování na úrovni slov/elements - u ručně psaného komiksového písma
-        // ML Kit občas vrátí boundingBox jednoho "Line" objektu kratší, než je skutečná výška
-        // víceřádkového textu, ale jednotlivá slova mají stejně chybné souřadnice, takže to
-        // problém neřešilo, a navíc to rozbilo slučování slov na stejném řádku - viz [shouldMerge]
-        // dole, jehož práh je odvozený z výšky vstupu, a slova jsou o řád nižší než řádky.
-        // Oprava chybějící výšky řeší [lineCount] (kolik "lines" bylo do bloku sloučeno) -
-        // viz [PositionedTranslationBlock.minTopF] v TranslationLayout.kt, kde se podle
-        // tohohle signálu box bezpečně roztáhne nahoru jen u opravdu víceřádkových bloků.)
-        val lines = result.textBlocks.flatMap { it.lines }.mapNotNull { line ->
-            val box = line.boundingBox ?: return@mapNotNull null
-            if (line.text.isBlank()) return@mapNotNull null
-            RawTextBlock(
-                text = line.text,
-                leftF = (box.left / w).coerceIn(0f, 1f),
-                topF = (box.top / h).coerceIn(0f, 1f),
-                rightF = (box.right / w).coerceIn(0f, 1f),
-                bottomF = (box.bottom / h).coerceIn(0f, 1f),
-            )
-        }
         // Sampling barvy pozadí i detekce tvaru bubliny potřebují ještě živou bitmapu,
         // proto běží tady a ne až v TranslateRepository, kam se bitmapa vůbec nedostane
         // (jen relativní souřadnice).
@@ -136,7 +163,10 @@ class OcrEngine @Inject constructor() {
         // druhá na stránce s reklamou vytvořila jednu přebujelou barevnou plochu.
         val merged = sortIntoReadingOrder(
             mergeNearbyLines(lines) { a, b -> !hasWallBetween(pixelSource, bitmap.width, bitmap.height, a, b) },
-            rightToLeft = language == "Japanese",
+            // Rozhoduje ROZPOZNANÝ jazyk, ne ten nastavený - pod "Auto" byl nastavený jazyk
+            // doslova "Auto", takže japonská stránka dostala pořadí zleva doprava a model
+            // četl repliky pozpátku.
+            rightToLeft = resolvedLanguage == "Japanese",
         )
         merged.map { block ->
             val bgSample = sampleBackgroundColor(bitmap, block)
@@ -154,6 +184,42 @@ class OcrEngine @Inject constructor() {
                 bgColorBottomArgb = bgSample.bottomArgb,
                 bgUniform = bgSample.uniform,
                 shape = shape,
+            )
+        }
+    }
+
+    /**
+     * Jeden průchod ML Kitem daným rozpoznávačem, převedený na [RawTextBlock] s relativními
+     * souřadnicemi.
+     *
+     * ML Kit "textBlocks" jsou odstavcová seskupení odladěná na fotky dokumentů/účtenek, ne
+     * na manga bubliny - běžně buď slijí dvě sousední bubliny do jednoho bloku, nebo naopak
+     * rozseknou jednu bublinu na víc bloků. Jdeme proto o úroveň níž na "lines" (řádky) a
+     * slučujeme je vlastní geometrickou heuristikou ([mergeNearbyLines]), která lépe odpovídá
+     * tomu, co člověk vnímá jako jednu bublinu.
+     *
+     * (Zkoušeno i slučování na úrovni slov/elements - u ručně psaného komiksového písma ML Kit
+     * občas vrátí boundingBox jednoho "Line" objektu kratší, než je skutečná výška víceřádkového
+     * textu, ale jednotlivá slova mají stejně chybné souřadnice, takže to problém neřešilo, a
+     * navíc to rozbilo slučování slov na stejném řádku - viz [shouldMerge], jehož práh je
+     * odvozený z výšky vstupu, a slova jsou o řád nižší než řádky. Opravu chybějící výšky řeší
+     * [RawTextBlock.lineCount] - viz [PositionedTranslationBlock.minTopF] v TranslationLayout.kt.)
+     */
+    private suspend fun recognizeLines(language: String, image: InputImage, w: Float, h: Float): List<RawTextBlock> {
+        val result = suspendCancellableCoroutine { cont ->
+            recognizerFor(language).process(image)
+                .addOnSuccessListener { cont.resume(it) }
+                .addOnFailureListener { cont.resumeWithException(it) }
+        }
+        return result.textBlocks.flatMap { it.lines }.mapNotNull { line ->
+            val box = line.boundingBox ?: return@mapNotNull null
+            if (line.text.isBlank()) return@mapNotNull null
+            RawTextBlock(
+                text = line.text,
+                leftF = (box.left / w).coerceIn(0f, 1f),
+                topF = (box.top / h).coerceIn(0f, 1f),
+                rightF = (box.right / w).coerceIn(0f, 1f),
+                bottomF = (box.bottom / h).coerceIn(0f, 1f),
             )
         }
     }

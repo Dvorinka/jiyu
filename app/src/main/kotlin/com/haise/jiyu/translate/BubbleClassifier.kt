@@ -221,7 +221,7 @@ object BubbleClassifier {
                 } else {
                     normalized[b] to normalized[a]
                 }
-                if (isApproxSubsequence(shorter, longer)) union(a, b)
+                if (looksLikeGarbledRepeat(shorter, longer)) union(a, b)
             }
         }
 
@@ -243,6 +243,25 @@ object BubbleClassifier {
             .map { ocrConfusions[it] ?: it }
             .joinToString("")
     }
+
+    /**
+     * Jsou tyhle dva texty dvěma ČTENÍMI TÉHOŽ nápisu, každé jinak zkomolené?
+     *
+     * Samotná "je podposloupnost" nestačí a dělala falešné poplachy: tři repliky, kde každá
+     * jen prodlužuje předchozí ("HELP" / "HELP ME" / "HELP ME NOW", nebo jméno s různými
+     * příponami), tuhle podmínku splňují taky - shlukly se do "vodoznaku", označily jako SFX
+     * a tím pádem se vůbec nepřeložily; na stránce zůstal originál.
+     *
+     * Rozdíl je v tom, JAK se kratší text v delším nachází:
+     *  - souvislý úsek ("HELP" v "HELPME") = jeden text prostě pokračuje, běžný dialog
+     *  - podposloupnost s dírami ("MADANS" v "MADRASCANS") = uprostřed vypadla nebo se
+     *    zaměnila písmena, což je přesně otisk OCR čtoucího tentýž nápis pokaždé jinak
+     *
+     * Skutečný nahlášený případ (MADRASCANS / MAD ANS / 4ANS / ...) tímhle prochází dál,
+     * protože jeho varianty mají díry uvnitř, ne jen useknutý konec.
+     */
+    private fun looksLikeGarbledRepeat(shorter: String, longer: String): Boolean =
+        isApproxSubsequence(shorter, longer) && !longer.contains(shorter)
 
     /** True, když se [needle] dá najít jako podposloupnost (ne nutně souvislá) v [haystack]. */
     private fun isApproxSubsequence(needle: String, haystack: String): Boolean {

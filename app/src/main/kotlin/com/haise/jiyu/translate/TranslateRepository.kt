@@ -511,8 +511,17 @@ class TranslateRepository @Inject constructor(
          *   samostatných OCR bloků se stejným, různě zkomoleným jménem skenlační skupiny),
          *   ne jen jeden blok samotný - staré záznamy mají obojí spočítané podle starší
          *   logiky, proto se musí přepočítat.
+         * v6 (2026-08-01): dvě změny mění, co se z OCR doopravdy uloží -
+         *   (1) zdrojový jazyk "Auto" konečně vybírá rozpoznávač podle toho, co na stránce
+         *   opravdu je (viz [resolveAutoLanguage]) - dřív pro něj nebyla větev a spadl na
+         *   LATINKOVÝ model, takže japonská/korejská/čínská stránka vrátila nesmysl nebo nic
+         *   a bubliny se navíc seřadily zleva doprava; (2) shlukování dlaždicovaného vodoznaku
+         *   už nebere souvislý úsek jako důkaz (viz [looksLikeGarbledRepeat]) - tři repliky,
+         *   kde každá jen prodlužuje předchozí ("HELP" / "HELP ME" / "HELP ME NOW"), se dřív
+         *   označily za vodoznak a vůbec se nepřeložily. Staré záznamy mají obojí spočítané
+         *   podle starší logiky, proto se musí přepočítat.
          */
-        private const val PIPELINE_VERSION = 5
+        private const val PIPELINE_VERSION = 6
 
         /** Maximální počet znaků originálu na jedno API volání - drží výstup pod limitem max_tokens. */
         private const val NOVEL_CHUNK_CHAR_LIMIT = 2500
@@ -606,8 +615,13 @@ class TranslateRepository @Inject constructor(
     suspend fun getCachedNovel(chapterId: String, targetLanguage: String, sourceLanguage: String = "Auto"): String? =
         novelDao.getById(novelCacheId(chapterId, sourceLanguage, targetLanguage))?.translatedText
 
-    private fun novelCacheId(chapterId: String, sourceLanguage: String, targetLanguage: String) =
-        "$chapterId::$sourceLanguage::$targetLanguage"
+    /**
+     * Klíč cache přeložených novel. [PIPELINE_VERSION] tu dřív CHYBĚL, i když ho klíč
+     * stránek má odjakživa - překlady novel se proto po opravě promptu nikdy nepřepočítaly
+     * a uživatel viděl starou, rozbitou verzi navždycky. Přesně tomu mělo verzování zabránit.
+     */
+    internal fun novelCacheId(chapterId: String, sourceLanguage: String, targetLanguage: String) =
+        "$chapterId::$sourceLanguage::$targetLanguage::v$PIPELINE_VERSION"
 
     /**
      * Jeden "kousek" poslaný k překladu jako samostatná položka dávky. Normální (krátký)

@@ -222,6 +222,35 @@ class BubbleClassifierTest {
     }
 
     @Test
+    fun `dialogue that simply gets extended is not a watermark cluster`() {
+        // NALEZ Z AUDITU: tri repliky, kde kazda jen prodluzuje tu predchozi, se shlukly do
+        // "vodoznaku" a VSECHNY se oznacily jako SFX - tedy se vubec neprelozily a na strance
+        // zustal original. "HELP / HELP ME / HELP ME NOW" neni v akcni scene nic vyjimecneho.
+        //
+        // Rozdil oproti skutecnemu vodoznaku: tady je kratsi text SOUVISLYM usekem toho
+        // delsiho (proste pokracovani vety). Vodoznak precteny OCR pokazde jinak ma naopak
+        // uvnitr DIRY - vypadla nebo zamenena pismena, viz test s MADRASCANS vys.
+        val blocks = listOf(
+            rawBlock("HELP", leftF = 0.1f, topF = 0.05f, rightF = 0.3f, bottomF = 0.10f),
+            rawBlock("HELP ME", leftF = 0.1f, topF = 0.30f, rightF = 0.4f, bottomF = 0.35f),
+            rawBlock("HELP ME NOW", leftF = 0.1f, topF = 0.60f, rightF = 0.5f, bottomF = 0.65f),
+        )
+        val indices = BubbleClassifier.detectTiledWatermarkIndices(blocks)
+        assertTrue("postupne prodluzovana replika neni vodoznak, bylo $indices", indices.isEmpty())
+    }
+
+    @Test
+    fun `a name with different honorifics attached is not a watermark cluster`() {
+        val blocks = listOf(
+            rawBlock("NARUTO", leftF = 0.1f, topF = 0.05f, rightF = 0.3f, bottomF = 0.10f),
+            rawBlock("NARUTO KUN", leftF = 0.1f, topF = 0.30f, rightF = 0.4f, bottomF = 0.35f),
+            rawBlock("NARUTO SAN", leftF = 0.1f, topF = 0.60f, rightF = 0.4f, bottomF = 0.65f),
+        )
+        val indices = BubbleClassifier.detectTiledWatermarkIndices(blocks)
+        assertTrue("jmeno s ruznymi priponami neni vodoznak, bylo $indices", indices.isEmpty())
+    }
+
+    @Test
     fun `classifyPage leaves non-watermark blocks with their normal classification untouched`() {
         val blocks = listOf(
             rawBlock("MADRASCANS", leftF = 0.1f, topF = 0.05f, rightF = 0.4f, bottomF = 0.10f),
