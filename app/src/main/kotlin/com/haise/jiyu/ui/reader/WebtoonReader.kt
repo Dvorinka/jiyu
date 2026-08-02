@@ -65,7 +65,10 @@ fun WebtoonReader(
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
     val focusRequester = remember { FocusRequester() }
-    LaunchedEffect(Unit) { try { focusRequester.requestFocus() } catch (_: Exception) {} }
+    LaunchedEffect(Unit) {
+        // Uzsi typ nez Exception zamerne - viz stejne misto v ReaderPager.kt.
+        try { focusRequester.requestFocus() } catch (_: IllegalStateException) { }
+    }
 
     // Zabráníme náhodnému otevření panelu při scrollování ve webtoon módu.
     // Po ukončení scrollu čekáme 150 ms, než přijmeme další tap jako záměrný.

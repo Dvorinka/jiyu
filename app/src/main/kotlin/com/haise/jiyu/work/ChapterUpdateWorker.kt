@@ -23,6 +23,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
+import com.haise.jiyu.util.report
 
 const val CHANNEL_ID = "chapter_updates"
 
@@ -57,7 +58,9 @@ class ChapterUpdateWorker @AssistedInject constructor(
                                         downloadQueue.enqueue(ch, manga.url)
                                     }
                                 }
-                            } catch (_: Exception) {}
+                            } catch (e: Exception) {
+                                e.report("work:chapterUpdate:manga")
+                            }
                         }
                     }
                 }.awaitAll()

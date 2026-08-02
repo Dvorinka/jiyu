@@ -130,7 +130,9 @@ class MangaUpdatesRepository @Inject constructor(
                 .post(chapBody.toRequestBody(jsonType))
                 .build()
                 .let { httpClient.newCall(it).execute().close() }
-        } catch (_: Exception) {}
+        } catch (e: Exception) {
+            e.report("tracking:mangaupdates:updateProgress")
+        }
     }
 
     /** Stáhne uživatelův list_id (status) a hodnocení uložené přímo na MangaUpdates. */
@@ -163,7 +165,9 @@ class MangaUpdatesRepository @Inject constructor(
                         }
                     }
                 }
-        } catch (_: Exception) {}
+        } catch (e: Exception) {
+            e.report("tracking:mangaupdates:rating")
+        }
         if (listId == null && rating == null) null else MuUserStatus(listId, rating)
     }
 

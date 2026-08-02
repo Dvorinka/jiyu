@@ -231,7 +231,12 @@ fun MangaReader(
         }
 
         val focusRequester = remember { FocusRequester() }
-        androidx.compose.runtime.LaunchedEffect(Unit) { try { focusRequester.requestFocus() } catch (_: Exception) {} }
+        androidx.compose.runtime.LaunchedEffect(Unit) {
+            // Uzsi typ nez Exception zamerne: requestFocus hlasi IllegalStateException, kdyz
+            // modifier jeste neni pripojeny - bezny zavod pri prvni kompozici, ne defekt.
+            // Cokoliv jineho uz je skutecna chyba a nesmi se spolknout.
+            try { focusRequester.requestFocus() } catch (_: IllegalStateException) { }
+        }
 
         HorizontalPager(
             state = pagerState,

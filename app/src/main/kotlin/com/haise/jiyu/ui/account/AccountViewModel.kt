@@ -125,7 +125,7 @@ class AccountViewModel @Inject constructor(
     }
 
     fun signOut() = viewModelScope.launch {
-        try { authRepository.signOut() } catch (_: Exception) {}
+        try { authRepository.signOut() } catch (e: Exception) { e.report("account:signOut") }
         cancelBackgroundSync()
     }
 
@@ -200,10 +200,10 @@ class AccountViewModel @Inject constructor(
     val aniListAuthUrl: String get() = aniListRepository.authUrl
 
     fun aniListSignOut() = viewModelScope.launch {
-        try { aniListRepository.signOut() } catch (_: Exception) {}
+        try { aniListRepository.signOut() } catch (e: Exception) { e.report("account:anilist:signOut") }
     }
 
     fun handleAniListCallback(token: String) = viewModelScope.launch {
-        try { aniListRepository.handleCallback(token) } catch (_: Exception) {}
+        try { aniListRepository.handleCallback(token) } catch (e: Exception) { e.report("account:anilist:handleCallback") }
     }
 }

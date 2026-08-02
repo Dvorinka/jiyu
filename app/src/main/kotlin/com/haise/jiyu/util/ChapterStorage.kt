@@ -8,6 +8,7 @@ import java.io.File
 import java.io.FileOutputStream
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
+import com.haise.jiyu.util.report
 
 /**
  * Abstrahuje úložiště stažených kapitol - buď obyčejný File path (výchozí,
@@ -156,6 +157,8 @@ object ChapterStorage {
             } else {
                 File(dirPath).deleteRecursively()
             }
-        } catch (_: Exception) {}
+        } catch (e: Exception) {
+            e.report("storage:deleteChapterFiles")
+        }
     }
 }

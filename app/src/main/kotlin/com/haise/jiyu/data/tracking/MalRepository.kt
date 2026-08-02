@@ -13,6 +13,7 @@ import okhttp3.Request
 import org.json.JSONObject
 import javax.inject.Inject
 import javax.inject.Singleton
+import com.haise.jiyu.util.report
 
 data class MalUserStatus(val status: String?, val score: Int?, val numChaptersRead: Int?)
 
@@ -85,7 +86,9 @@ class MalRepository @Inject constructor(
                 .patch(formBuilder.build())
                 .build()
             httpClient.newCall(req).execute().close()
-        } catch (_: Exception) { }
+        } catch (e: Exception) {
+            e.report("tracking:mal:updateMangaStatus")
+        }
     }
 
     /** Stáhne uživatelův status/skóre uložený přímo na MAL (pro obousměrnou synchronizaci). */

@@ -45,6 +45,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import com.haise.jiyu.util.report
 
 @HiltViewModel
 class MangaDetailViewModel @Inject constructor(
@@ -81,7 +82,7 @@ class MangaDetailViewModel @Inject constructor(
 
     val relatedManga: StateFlow<List<SManga>> = flow {
         emit(emptyList())
-        try { emit(repository.getRelatedManga(mangaId)) } catch (_: Exception) {}
+        try { emit(repository.getRelatedManga(mangaId)) } catch (e: Exception) { e.report("detail:relatedManga") }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     // ── Řazení + filtrování kapitol ───────────────────────────────────────────
@@ -629,7 +630,7 @@ class MangaDetailViewModel @Inject constructor(
         viewModelScope.launch {
             repository.setRating(mangaId, rating)
             val m = manga.value ?: return@launch
-            try { aniListRepository.updateScore(mangaId, m.title, rating * 20) } catch (_: Exception) {}
+            try { aniListRepository.updateScore(mangaId, m.title, rating * 20) } catch (e: Exception) { e.report("detail:anilist:updateScore") }
         }
     }
 

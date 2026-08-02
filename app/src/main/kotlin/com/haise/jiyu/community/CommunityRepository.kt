@@ -7,6 +7,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import javax.inject.Inject
 import javax.inject.Singleton
+import com.haise.jiyu.util.report
 
 @Serializable
 data class PublicMangaEntry(
@@ -50,6 +51,8 @@ class CommunityRepository @Inject constructor(
                     }
                 }
             }
-        } catch (_: Exception) {}
+        } catch (e: Exception) {
+            e.report("community:setPublicList")
+        }
     }
 }

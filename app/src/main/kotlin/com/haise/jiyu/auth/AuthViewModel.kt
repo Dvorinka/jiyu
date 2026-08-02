@@ -19,6 +19,7 @@ import kotlinx.coroutines.launch
 import java.security.MessageDigest
 import java.util.UUID
 import javax.inject.Inject
+import com.haise.jiyu.util.report
 
 sealed interface AuthState {
     data object Idle : AuthState
@@ -78,7 +79,9 @@ class AuthViewModel @Inject constructor(
     fun signOut() = viewModelScope.launch {
         try {
             authRepository.signOut()
-        } catch (_: Exception) {}
+        } catch (e: Exception) {
+            e.report("auth:signOut")
+        }
     }
 
     fun clearState() { _authState.value = AuthState.Idle }

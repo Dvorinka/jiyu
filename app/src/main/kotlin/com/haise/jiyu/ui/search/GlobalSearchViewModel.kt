@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import com.haise.jiyu.util.report
 
 data class SourceResult(
     val source: MangaSource,
@@ -95,7 +96,9 @@ class GlobalSearchViewModel @Inject constructor(
                     return@launch
                 }
                 performAdd(manga, onAdded)
-            } catch (_: Exception) {}
+            } catch (e: Exception) {
+                e.report("search:addToLibrary:duplicateCheck")
+            }
         }
     }
 
@@ -107,7 +110,9 @@ class GlobalSearchViewModel @Inject constructor(
                 val catId = settings.defaultCategoryId.first()
                 if (catId != null) repository.addMangaToCategory(id, catId)
                 onAdded(id)
-            } catch (_: Exception) {}
+            } catch (e: Exception) {
+                e.report("search:addToLibrary")
+            }
         }
     }
 

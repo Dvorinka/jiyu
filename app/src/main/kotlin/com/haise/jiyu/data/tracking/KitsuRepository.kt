@@ -12,6 +12,7 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import javax.inject.Inject
 import javax.inject.Singleton
+import com.haise.jiyu.util.report
 
 data class KitsuUserEntry(val status: String?, val ratingTwenty: Int?, val progress: Int?)
 
@@ -136,7 +137,9 @@ class KitsuRepository @Inject constructor(
                     .build()
                     .let { httpClient.newCall(it).execute().close() }
             }
-        } catch (_: Exception) {}
+        } catch (e: Exception) {
+            e.report("tracking:kitsu:updateProgress")
+        }
     }
 
     /** Stáhne uživatelův status/skóre uložený přímo na Kitsu (pro obousměrnou synchronizaci). */

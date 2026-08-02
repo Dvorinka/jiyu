@@ -42,6 +42,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.io.File
 import javax.inject.Inject
+import com.haise.jiyu.util.report
 
 data class TranslationProgress(val done: Int, val total: Int)
 
@@ -545,7 +546,9 @@ class ReaderViewModel @Inject constructor(
                         } else {
                             android.graphics.BitmapFactory.decodeFile(url.removePrefix("file://"), opts)
                         }
-                    } catch (_: Exception) {}
+                    } catch (e: Exception) {
+                        e.report("reader:spreadDetect:decodeBounds")
+                    }
                     if (opts.outWidth > 0 && opts.outWidth > opts.outHeight * 1.2f) idx else null
                 }.toSet()
                 _spreadPageIndices.value = spread
@@ -638,7 +641,9 @@ class ReaderViewModel @Inject constructor(
                 val rawPages = repository.getChapterPages(nextChapter.sourceId, nextChapter.url, manga.url)
                 val urls = rawPages.mapNotNull { it.imageUrl?.takeIf { u -> u.isNotBlank() } ?: it.url.takeIf { u -> u.isNotBlank() } }
                 if (urls.isNotEmpty()) nextChapterCache[nextChapter.id] = urls
-            } catch (_: Exception) {}
+            } catch (e: Exception) {
+                e.report("reader:preloadNextChapterPages")
+            }
         }
     }
 
@@ -676,7 +681,9 @@ class ReaderViewModel @Inject constructor(
                     targetLanguage = targetLanguage,
                     sourceLanguage = sourceLanguage,
                 )
-            } catch (_: Exception) {}
+            } catch (e: Exception) {
+                e.report("reader:preloadNextChapterNovelTranslation")
+            }
         }
     }
 
@@ -716,7 +723,9 @@ class ReaderViewModel @Inject constructor(
                     targetLanguage = targetLanguage,
                     sourceLanguage = sourceLanguage,
                 ) { _, _ -> } // jen zápis do cache, žádný viditelný UI stav pro tuhle kapitolu
-            } catch (_: Exception) {}
+            } catch (e: Exception) {
+                e.report("reader:preloadNextChapterTranslation")
+            }
         }
     }
 
@@ -771,7 +780,7 @@ class ReaderViewModel @Inject constructor(
                 if (!incognito) maybeAutoDelete()
                 if (!incognito && manga != null) {
                     viewModelScope.launch {
-                        try { aniListRepository.updateProgress(chapter.mangaId, manga.title, chapter.chapterNumber) } catch (_: Exception) {}
+                        try { aniListRepository.updateProgress(chapter.mangaId, manga.title, chapter.chapterNumber) } catch (e: Exception) { e.report("reader:anilist:updateProgress") }
                     }
                     manga.malId?.let { malId ->
                         viewModelScope.launch {
@@ -781,17 +790,19 @@ class ReaderViewModel @Inject constructor(
                                     status = "reading",
                                     numChaptersRead = chapter.chapterNumber.toInt(),
                                 )
-                            } catch (_: Exception) {}
+                            } catch (e: Exception) {
+                                e.report("reader:mal:updateMangaStatus")
+                            }
                         }
                     }
                     manga.kitsuId?.let { kitsuId ->
                         viewModelScope.launch {
-                            try { kitsuRepository.updateProgress(kitsuId, chapter.chapterNumber.toInt()) } catch (_: Exception) {}
+                            try { kitsuRepository.updateProgress(kitsuId, chapter.chapterNumber.toInt()) } catch (e: Exception) { e.report("reader:kitsu:updateProgress") }
                         }
                     }
                     manga.mangaUpdatesId?.let { seriesId ->
                         viewModelScope.launch {
-                            try { muRepository.updateProgress(seriesId, chapter.chapterNumber.toInt()) } catch (_: Exception) {}
+                            try { muRepository.updateProgress(seriesId, chapter.chapterNumber.toInt()) } catch (e: Exception) { e.report("reader:mangaupdates:updateProgress") }
                         }
                     }
                 }
