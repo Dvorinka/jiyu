@@ -35,7 +35,7 @@ android {
     defaultConfig {
         applicationId = "com.haise.jiyu"
         minSdk = 26
-        targetSdk = 34
+        targetSdk = 36
         versionCode = 43
         versionName = "0.9.1"
         buildConfigField("String", "SUPABASE_URL", "\"${localProps["SUPABASE_URL"] ?: "https://placeholder.supabase.co"}\"")
