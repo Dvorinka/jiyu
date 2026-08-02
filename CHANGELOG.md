@@ -4,6 +4,22 @@
 > vidět v historii commitů a v popisech jednotlivých vydání na GitHubu; zpětně to sem
 > nedopisuju, abych si nevymýšlel.
 
+## v1.0.5
+
+Na prekladu se nic nemeni - prelozene stranky zustavaji v cache.
+
+### Prepinac "Je mi 18 a vice" zdroje pro dospele neodemykal
+Prepinac psal jen priznak potvrzeneho veku, kdezto seznam zdroju se ridi uplne jinym nastavenim (Nastaveni > Zdroje). A byl zapojeny jen JEDNIM smerem: pri vypnuti zdroje schoval, pri zapnuti neudelal nic - prestoze pod nim stoji "Odemyka zdroje s obsahem pro dospele". Tykalo se to i zdroju se smisenym obsahem.
+
+Bylo to dusledkem drivejsi zmeny, kdy se vychozi viditelnost prehodila z "zapnuto" na "vypnuto"; do te doby to bylo zapnute samo a rozpojeny smer nebyl videt.
+
+Opraveno na obou stranach: prepinac ted nastavuje obojí, a kdo ma plnoletost potvrzenou z drivejska a viditelnost nikdy vyslovne nenastavenou, uvidi zdroje hned po aktualizaci bez sahani na cokoliv. Kdo si je vypnul sam, ma svou volbu zachovanou.
+
+### Hlavicky uz pri scrollovani neplavou s obsahem
+Historie, Aktualizace, Muj seznam a Nastaveni - stejne jako driv Prochazet a Knihovna. Hlavicka stala mimo scrollovanou oblast, takze zustavala viset nahore a obsah jezdil pod ni.
+
+775 unit testu, 0 varovani.
+
 ## v1.0.4
 
 Na prekladu samotnem se nic nemeni - prelozene stranky zustavaji v cache.
