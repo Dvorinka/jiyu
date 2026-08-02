@@ -72,7 +72,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.pulltorefresh.PullToRefreshContainer
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -188,14 +188,10 @@ fun MyListScreen(
     var showFilterSheet           by remember { mutableStateOf(false) }
     var searchExpanded            by remember { mutableStateOf(false) }
 
+    // Od Material3 1.3 drží nested scroll i indikátor PullToRefreshBox sám a stav se předává
+    // rovnou z ViewModelu - dvojice LaunchedEffect, která si stav posílala tam a zpět
+    // (`pullToRefreshState.isRefreshing` -> refresh(), zpátky `endRefresh()`), odpadla.
     val pullToRefreshState = rememberPullToRefreshState()
-
-    LaunchedEffect(pullToRefreshState.isRefreshing) {
-        if (pullToRefreshState.isRefreshing) viewModel.refreshLibrary()
-    }
-    LaunchedEffect(isRefreshing) {
-        if (!isRefreshing) pullToRefreshState.endRefresh()
-    }
 
     // Exit selection mode on back press
     BackHandler(enabled = selectionMode) { viewModel.clearSelection() }
@@ -396,7 +392,12 @@ fun MyListScreen(
         // ── Grid / empty + pull-to-refresh ───────────────────────────────────
         val navBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
 
-        Box(modifier = Modifier.fillMaxSize().nestedScroll(pullToRefreshState.nestedScrollConnection)) {
+        PullToRefreshBox(
+            isRefreshing = isRefreshing,
+            onRefresh = { viewModel.refreshLibrary() },
+            modifier = Modifier.fillMaxSize(),
+            state = pullToRefreshState,
+        ) {
             if (library.isEmpty()) {
                 LibraryEmptyState(
                     hasSearch = searchQuery.isNotEmpty(),
@@ -509,9 +510,6 @@ fun MyListScreen(
                 }
             }
 
-            if (pullToRefreshState.verticalOffset > 0f) {
-                PullToRefreshContainer(state = pullToRefreshState, modifier = Modifier.align(Alignment.TopCenter))
-            }
         }
 
         if (localImportState is LocalImportState.Importing) {

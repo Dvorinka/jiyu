@@ -307,7 +307,7 @@ private fun GlassBloom(progress: Float, modifier: Modifier = Modifier) {
             val body = Path().apply {
                 moveTo(p.base.x, p.base.y)
                 cubicTo(a1.x, a1.y, a2.x, a2.y, tipA.x, tipA.y)
-                quadraticBezierTo(tipMid.x, tipMid.y, tipB.x, tipB.y)
+                quadraticTo(tipMid.x, tipMid.y, tipB.x, tipB.y)
                 cubicTo(b1.x, b1.y, b2.x, b2.y, p.base.x, p.base.y)
                 close()
             }

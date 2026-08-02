@@ -49,7 +49,7 @@ import javax.inject.Inject
 @HiltViewModel
 class MangaDetailViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
-    @dagger.hilt.android.qualifiers.ApplicationContext private val appContext: Context,
+    @param:dagger.hilt.android.qualifiers.ApplicationContext private val appContext: Context,
     private val repository: MangaRepository,
     private val downloadQueue: DownloadQueue,
     private val networkMonitor: NetworkMonitor,

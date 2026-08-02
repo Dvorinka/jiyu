@@ -51,7 +51,7 @@ sealed interface SyncState {
 
 @HiltViewModel
 class AccountViewModel @Inject constructor(
-    @ApplicationContext private val appContext: android.content.Context,
+    @param:ApplicationContext private val appContext: android.content.Context,
     private val authRepository: AuthRepository,
     private val syncRepository: SyncRepository,
     private val aniListRepository: AniListRepository,

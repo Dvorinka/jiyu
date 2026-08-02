@@ -28,6 +28,7 @@ import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberSwipeToDismissBoxState
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -201,11 +202,17 @@ private fun HistoryEntryRow(
     onOpenManga: () -> Unit = {},
     onDelete: () -> Unit,
 ) {
-    val dismissState = rememberSwipeToDismissBoxState(
-        confirmValueChange = { value ->
-            if (value == SwipeToDismissBoxValue.EndToStart) { onDelete(); true } else false
-        },
-    )
+    // `confirmValueChange` se tu používalo jako UDÁLOST ("smaž a povol"), i když je to veto -
+    // od Material3 1.4 je zastaralé právě proto, že se takhle zneužívalo. Mazání se teď váže
+    // na dokončené gesto; `reset()` vrátí řádek zpátky, kdyby položka ze seznamu nezmizela
+    // (jinak by po smazání zůstal viset prázdný odsunutý řádek).
+    val dismissState = rememberSwipeToDismissBoxState()
+    LaunchedEffect(dismissState.currentValue) {
+        if (dismissState.currentValue == SwipeToDismissBoxValue.EndToStart) {
+            onDelete()
+            dismissState.reset()
+        }
+    }
 
     SwipeToDismissBox(
         state = dismissState,

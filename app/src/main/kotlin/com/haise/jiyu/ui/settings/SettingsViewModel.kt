@@ -77,7 +77,7 @@ sealed interface BackupUiState {
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
-    @ApplicationContext private val context: Context,
+    @param:ApplicationContext private val context: Context,
     private val settings: SettingsRepository,
     private val translatedPageDao: TranslatedPageDao,
     private val translatedNovelDao: TranslatedNovelDao,

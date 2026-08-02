@@ -50,7 +50,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
-import androidx.compose.material3.pulltorefresh.PullToRefreshContainer
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -134,13 +134,9 @@ fun MangaDetailScreen(
     var showCoverFullscreen by remember { mutableStateOf(false) }
     var statusDropdownExpanded by remember { mutableStateOf(false) }
 
-    // Koordinace pull-to-refresh se stavem ViewModel
-    LaunchedEffect(pullToRefreshState.isRefreshing) {
-        if (pullToRefreshState.isRefreshing) viewModel.refreshChapters()
-    }
-    LaunchedEffect(isRefreshing) {
-        if (!isRefreshing) pullToRefreshState.endRefresh()
-    }
+    // Koordinace pull-to-refresh se stavem ViewModelu řeší od Material3 1.3 přímo
+    // PullToRefreshBox (viz níž) - dvojice LaunchedEffect, která si stav posílala tam a zpět,
+    // odpadla.
 
     // Chyba refreshe → snackbar
     LaunchedEffect(errorMessage) {
@@ -155,12 +151,14 @@ fun MangaDetailScreen(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { innerPadding ->
-        Box(
+        PullToRefreshBox(
+            isRefreshing = isRefreshing,
+            onRefresh = { viewModel.refreshChapters() },
             modifier = Modifier
                 .fillMaxSize()
                 .background(screenGradient)
-                .padding(innerPadding)
-                .nestedScroll(pullToRefreshState.nestedScrollConnection),
+                .padding(innerPadding),
+            state = pullToRefreshState,
         ) {
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
@@ -775,9 +773,6 @@ fun MangaDetailScreen(
                 item { Spacer(Modifier.height(32.dp)) }
             }
 
-            if (pullToRefreshState.verticalOffset > 0f) {
-                PullToRefreshContainer(state = pullToRefreshState, modifier = Modifier.align(Alignment.TopCenter))
-            }
         }
     }
 

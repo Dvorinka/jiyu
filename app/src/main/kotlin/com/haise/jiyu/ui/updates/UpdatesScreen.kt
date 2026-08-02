@@ -27,7 +27,8 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.pulltorefresh.PullToRefreshContainer
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -85,24 +86,35 @@ fun UpdatesScreen(
     val snackbarState  = remember { SnackbarHostState() }
     val scope          = rememberCoroutineScope()
 
-    LaunchedEffect(pullState.isRefreshing) {
-        if (pullState.isRefreshing) viewModel.refresh()
-    }
-    LaunchedEffect(isRefreshing) {
-        if (!isRefreshing) pullState.endRefresh()
-    }
     LaunchedEffect(refreshError) {
         val msg = refreshError ?: return@LaunchedEffect
         scope.launch { snackbarState.showSnackbar(msg) }
         viewModel.clearRefreshError()
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    // PullToRefreshBox si sám drží nested scroll i indikátor. Dřív to byl ruční Box +
+    // PullToRefreshContainer a dvě LaunchedEffect, které si posílaly stav tam a zpět
+    // (`pullState.isRefreshing` -> refresh(), a zpátky `endRefresh()`); od Material3 1.3
+    // se stav předává rovnou z ViewModelu a ta smyčka odpadá.
+    PullToRefreshBox(
+        isRefreshing = isRefreshing,
+        onRefresh = { viewModel.refresh() },
+        modifier = Modifier.fillMaxSize(),
+        state = pullState,
+        indicator = {
+            PullToRefreshDefaults.Indicator(
+                state = pullState,
+                isRefreshing = isRefreshing,
+                modifier = Modifier.align(Alignment.TopCenter).statusBarsPadding(),
+                containerColor = NightBlue,
+                color = Violet,
+            )
+        },
+    ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(screenGradient)
-                .nestedScroll(pullState.nestedScrollConnection),
+                .background(screenGradient),
         ) {
             Row(
                 modifier = Modifier
@@ -202,13 +214,6 @@ fun UpdatesScreen(
                 item { Spacer(Modifier.navigationBarsPadding()) }
             }
         }
-
-        PullToRefreshContainer(
-            state = pullState,
-            modifier = Modifier.align(Alignment.TopCenter).statusBarsPadding(),
-            containerColor = NightBlue,
-            contentColor = Violet,
-        )
 
         SnackbarHost(
             hostState = snackbarState,

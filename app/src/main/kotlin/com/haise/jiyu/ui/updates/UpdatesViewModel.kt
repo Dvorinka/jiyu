@@ -24,7 +24,7 @@ class UpdatesViewModel @Inject constructor(
     private val chapterDao: ChapterDao,
     private val repository: MangaRepository,
     private val settings: SettingsRepository,
-    @ApplicationContext private val appContext: Context,
+    @param:ApplicationContext private val appContext: Context,
 ) : ViewModel() {
 
     init {

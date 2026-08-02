@@ -69,7 +69,9 @@ interface MangaDao {
     suspend fun getAllLibraryGenres(): List<String>
 
     @Query("SELECT author FROM manga WHERE inLibrary = 1 AND author IS NOT NULL AND author != ''")
-    suspend fun getAllLibraryAuthors(): List<String?>
+    // Ne List<String?> - dotaz sám filtruje `author IS NOT NULL`, takže Room do výsledku null
+    // nikdy nedá a nullable typ jen nutil volajícího psát větev, která nemůže nastat.
+    suspend fun getAllLibraryAuthors(): List<String>
 
     @Query("UPDATE manga SET autoDownload = :enabled WHERE id = :id")
     suspend fun setAutoDownload(id: String, enabled: Boolean)

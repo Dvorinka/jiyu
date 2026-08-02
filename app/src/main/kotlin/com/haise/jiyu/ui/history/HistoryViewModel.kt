@@ -28,7 +28,7 @@ data class HistoryGroup(
 @HiltViewModel
 class HistoryViewModel @Inject constructor(
     private val historyDao: ReadHistoryDao,
-    @ApplicationContext private val appContext: Context,
+    @param:ApplicationContext private val appContext: Context,
 ) : ViewModel() {
 
     private val _searchQuery = MutableStateFlow("")
