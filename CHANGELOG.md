@@ -4,6 +4,21 @@
 > vidět v historii commitů a v popisech jednotlivých vydání na GitHubu; zpětně to sem
 > nedopisuju, abych si nevymýšlel.
 
+## v0.9.0
+
+Prelozene stranky se pri prvnim otevreni prelozi znovu (PIPELINE_VERSION 10 -> 11) - obe opravy nize meni to, co se uklada, takze na starych zaznamech by se neprojevily.
+
+### Opravene chyby
+- **Utrzek vety v horni bublince kaskadove ("snehulakove") bubliny zustaval anglicky.** Nahlaseny pripad: horni lalok "...SAY," anglicky, spodni lalok cesky. Dve nezavisle priciny, obe musely padnout:
+
+  **1. Klasifikator ho oznacil za zvukovy efekt** - a SFX se nikdy neposila na preklad ani nevykresluje, takze v bubline zustane original.
+
+  Pravidlo "kratky text velkymi pismeny bez mezer = zvuk" ma jedinou pojistku: seznam beznych kratkych slov, ktera zvuk nejsou. Jenze text se pred porovnanim orezaval jen o `!`, `?`, `.` a mezeru - **carka mezi ne nepatrila**. Do porovnani tedy slo "WAIT," misto "WAIT" a nikdy se netrefilo. Propadla tak i slova, ktera seznam VYSLOVNE chrani: overeno, ze jako zvuk se klasifikovalo "WAIT,", "DAMN,", "NO,", "HEY," i "AH~".
+
+  Nove se oreze veskera okrajova interpunkce (carka, strednik, dvojtecka, vlnovka, uvozovky, CJK protejsky) a navic plati, ze **text pokracujici ve vete zvuk neni** - carka na konci nebo vypustka na zacatku jsou gramaticke znacky pokracovani a funguji v jakemkoli jazyce, na rozdil od rucniho anglickeho seznamu. Do seznamu pribylo i "SAY" a dalsi bezne jednoslovne repliky.
+
+  **2. Prompt si protirecil.** Sekce o vetach pres vic bublin zakazuje nechat bublinu prazdnou, ale sekce CHYBY uvadela "utrzek" jako duvod vratit `[UNTRANSLATED]`. Horni lalok kaskadove bubliny JE utrzek, takze i kdyby se blok poslal, model mel duvod ho odmitnout. Marker je nove vyhrazeny textu, ktery se neda PRECIST (zkomolene OCR, zbytek vodoznaku); kratka nebo nedokoncena veta duvod neni.
+
 ## v0.8.9
 
 Hotove preklady zustavaji v platnosti - tahle verze meni jen vykreslovani, ne to, co je ulozene.

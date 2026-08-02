@@ -176,8 +176,12 @@ object GeminiUltraPrompt {
             "Bastard"->"Hajzl/Kretén" "Idiot"->"Idiot/Blbeček"
 
             === CHYBY ===
-            Pokud text nejde smysluplně přeložit (nečitelné OCR, útržek), vrať "translated":
-            "$UNTRANSLATED_MARKER" - nikdy nehádej význam nazdařbůh.
+            "$UNTRANSLATED_MARKER" vracej JEN u textu, který se nedá PŘEČÍST - zkomolené OCR,
+            náhodné znaky, zbytek vodoznaku. Nikdy nehádej význam nazdařbůh.
+            NEVRACEJ ho proto, že je bublina krátká nebo věta nedokončená. Útržek ("...poslyš,"
+            / "no," / "a pak") je plnohodnotná část repliky a překládá se jako útržek, i když
+            sám o sobě celou větu nedává - typicky je to horní lalok kaskádové bubliny, jejíž
+            zbytek stojí v bublině hned vedle (viz sekce VĚTY PŘES VÍC BUBLIN).
 
             === VÝSTUPNÍ FORMÁT (POUZE JSON, žádný text mimo JSON, žádné markdown bloky) ===
             {

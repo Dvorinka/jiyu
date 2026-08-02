@@ -41,6 +41,21 @@ class GeminiUltraPromptTest {
     }
 
     @Test
+    fun `the untranslated marker is reserved for unreadable text, never for a short fragment`() {
+        // Uzivatelska zpetna vazba: horni lalok kaskadove bubliny ("...SAY,") zustal anglicky.
+        // Prompt si protirecil - sekce o vetach pres vic bublin zakazuje nechat bublinu
+        // prazdnou, ale sekce CHYBY uvadela "utrzek" jako duvod pro marker. A horni lalok
+        // JE utrzek, takze model poslusne vratil marker a appka bublinu vubec nevykreslila.
+        val prompt = GeminiUltraPrompt.buildSystemPrompt(emptyMap())
+        assertFalse(
+            "utrzek nesmi byt uvedeny jako duvod pro ${GeminiUltraPrompt.UNTRANSLATED_MARKER}",
+            prompt.contains("nečitelné OCR, útržek"),
+        )
+        assertTrue("marker musi byt vyhrazeny necitelnemu textu", prompt.contains("nedá PŘEČÍST"))
+        assertTrue("prompt musi vyslovne zakazat marker u kratke bubliny", prompt.contains("NEVRACEJ"))
+    }
+
+    @Test
     fun `glossary entries are included verbatim`() {
         val prompt = GeminiUltraPrompt.buildSystemPrompt(mapOf("Gravity Magic" to "Magie tíže"))
         assertTrue(prompt.contains("\"Gravity Magic\" -> \"Magie tíže\""))

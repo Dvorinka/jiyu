@@ -36,6 +36,9 @@ object BubbleClassifier {
         "OK", "OKAY", "HUH", "WHO", "NOW", "LOOK", "COME", "MOVE", "OUT", "HERE", "THERE",
         "WHOA", "OH", "AH", "HA", "UGH", "NOPE", "YEAH", "SURE", "FINE", "GOOD", "BAD",
         "NEVER", "ALWAYS", "PLEASE", "SORRY", "THANKS", "WOW", "DAMMIT", "SHIT", "HELL",
+        // Doplněno po nálezu s "...SAY," - běžná jednoslovná replika, kterou seznam neznal.
+        "SAY", "WELL", "THEN", "TRUE", "RIGHT", "READY", "AGAIN", "MAYBE", "REALLY",
+        "SEE", "KNOW", "TELL", "HOLD", "TRY", "LET", "SOON", "ENOUGH", "ALMOST",
     )
 
     /**
@@ -128,7 +131,13 @@ object BubbleClassifier {
         // Čistě symboly/interpunkce - "!!!", "???", "*gasp*" bez písmen kolem
         if (letters.isEmpty() && trimmed.any { it == '!' || it == '?' || it == '*' }) return true
 
-        val core = trimmed.trim('*', '!', '?', '.', ' ')
+        // Odstranit se musí VŠECHNA okrajová interpunkce, ne jen ta koncověvětná. Dřív tu
+        // chyběla čárka (a dvojtečka, středník, vlnovka, uvozovky) a tím se rozbila jediná
+        // pojistka celého pravidla o krátkém ALL CAPS textu: porovnání se [shortWordsNotSfx]
+        // dostávalo "WAIT," místo "WAIT", nikdy netrefilo, a tak i slova, která seznam
+        // výslovně chrání, propadla mezi zvuky - "DAMN," i "WAIT," se klasifikovaly jako SFX,
+        // tedy se vůbec neposlaly na překlad a v bublině zůstala angličtina.
+        val core = trimmed.trim(*EDGE_PUNCTUATION)
         if (core.isEmpty()) return false
 
         if (looksLikeWatermark(raw, core)) return true
@@ -145,7 +154,8 @@ object BubbleClassifier {
         // ale jsou to skutečné repliky, ne zvukové efekty.
         if (canVetShortAllCaps(sourceLanguage) &&
             letters.length in 1..6 && letters.all { it.isUpperCase() } && !core.contains(' ') &&
-            core.uppercase() !in shortWordsNotSfx
+            core.uppercase() !in shortWordsNotSfx &&
+            !continuesSentence(trimmed)
         ) return true
 
         if (sfxWords.contains(core.uppercase())) return true
@@ -156,6 +166,37 @@ object BubbleClassifier {
 
         return false
     }
+
+    /** Interpunkce, která může obalovat text zvenčí, aniž by patřila k samotnému slovu. */
+    private val EDGE_PUNCTUATION = charArrayOf(
+        '*', '!', '?', '.', ' ', ',', ';', ':', '~', '-', '\n', '"', '\'', '…',
+        '，', '、', '；', '：', '。', '」', '』', '”', '’',
+    )
+
+    /**
+     * Pokračuje text ve větě - buď navazuje na předchozí bublinu, nebo bude pokračovat v té
+     * další? Zvukový efekt nikdy nedělá ani jedno: je to výkřik, ne kus souvětí.
+     *
+     * Proč to existuje: pravidlo "krátký ALL CAPS text bez mezer = zvuk" stálo jen na ručním
+     * seznamu [shortWordsNotSfx], tedy na tom, že někdo to slovo předem napsal. Horní lalok
+     * kaskádové bubliny přitom obsahuje přesně takový text - krátký útržek, který teprve
+     * pokračuje ve spodním laloku. Nahlášený případ: "...SAY," se označilo za zvuk, nikdy se
+     * neposlalo na překlad a v bublině zůstala angličtina, zatímco spodní lalok byl česky.
+     *
+     * Čárka na konci ani výpustka na začátku ale nejsou otázka slovní zásoby - jsou to
+     * gramatické značky pokračování a platí v jakémkoli jazyce. Skutečné zvuky ze
+     * [sfxWords] tímhle neprojdou, ty se poznají dřív podle slova samotného.
+     */
+    private fun continuesSentence(trimmed: String): Boolean {
+        val text = trimmed.trim('*', ' ', '"', '\'', '”', '’', '\n')
+        if (text.isEmpty()) return false
+        if (text.startsWith("...") || text.startsWith("…")) return true
+        val last = text.trimEnd('~', ' ').lastOrNull() ?: return false
+        return last in MID_SENTENCE_CHARS
+    }
+
+    /** Interpunkce, po které věta ještě pokračuje - včetně CJK protějšků. */
+    private val MID_SENTENCE_CHARS = setOf(',', ';', ':', '，', '、', '；', '：')
 
     /**
      * Vodoznak/tag scanlation skupiny přes kresbu (např. "SirenScans.com" diagonálně přes

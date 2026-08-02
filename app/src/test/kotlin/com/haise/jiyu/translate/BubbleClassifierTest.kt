@@ -99,6 +99,61 @@ class BubbleClassifierTest {
         assertFalse(result.isSfx)
     }
 
+    // ── útržek věty pokračující do další bubliny není zvuk (viz uživatelská zpětná vazba -
+    //    horní lalok kaskádové bubliny "...SAY," zůstal anglicky) ──
+
+    @Test
+    fun `the reported fragment of a cascading bubble is dialogue, not a sound effect`() {
+        // JÁDRO NÁLEZU: horní lalok "sněhulákové" bubliny, spodní lalok byl přeložený.
+        // Jako SFX se blok vůbec neposlal na překlad ani nevykreslil - zůstala angličtina.
+        val result = BubbleClassifier.classify(rawBlock("...SAY,"), lineCount = 1)
+        assertFalse("útržek věty se nesmí označit za zvuk", result.isSfx)
+    }
+
+    @Test
+    fun `a comma at the end used to slip past the safety list entirely`() {
+        // Druhá, širší polovina nálezu: "core" se ořezávalo jen o !?. a mezeru, takže do
+        // porovnání se seznamem šlo "WAIT," a to se nikdy netrefilo. I slova, která seznam
+        // VÝSLOVNĚ chrání, tak propadla mezi zvuky.
+        listOf("WAIT,", "DAMN,", "NO,", "HEY,", "STOP,").forEach { text ->
+            assertFalse("$text musí zůstat replikou", BubbleClassifier.classify(rawBlock(text), 1).isSfx)
+        }
+    }
+
+    @Test
+    fun `a leading ellipsis marks a continuation from the previous bubble`() {
+        assertFalse(BubbleClassifier.classify(rawBlock("...SAY"), lineCount = 1).isSfx)
+        assertFalse(BubbleClassifier.classify(rawBlock("…TAKE"), lineCount = 1).isSfx)
+    }
+
+    @Test
+    fun `a trailing tilde is stripped before the safety list is consulted`() {
+        // "AH~" je v manhwě běžné - vlnovka se dřív nepočítala mezi ořezávanou interpunkci,
+        // takže se porovnávalo "AH~" a slovo ze seznamu se minulo.
+        assertFalse(BubbleClassifier.classify(rawBlock("AH~"), lineCount = 1).isSfx)
+    }
+
+    @Test
+    fun `a real sound effect with a comma is still a sound effect`() {
+        // Pojistka proti přestřelení: čárka nesmí zachránit skutečný zvuk, ten se pozná
+        // podle slova samotného (sfxWords), ne podle interpunkce.
+        assertTrue(BubbleClassifier.classify(rawBlock("BOOM,"), lineCount = 1).isSfx)
+        assertTrue(BubbleClassifier.classify(rawBlock("CRASH,"), lineCount = 1).isSfx)
+    }
+
+    @Test
+    fun `an unknown short all-caps noise is still caught when nothing suggests a sentence`() {
+        // Druhá pojistka: pravidlo o krátkém ALL CAPS textu musí dál fungovat tam, kde
+        // opravdu jde o zvuk - jinak by oprava jen prohodila jednu chybu za druhou.
+        assertTrue(BubbleClassifier.classify(rawBlock("KRRR"), lineCount = 1).isSfx)
+        assertTrue(BubbleClassifier.classify(rawBlock("SHNK!!"), lineCount = 1).isSfx)
+    }
+
+    @Test
+    fun `say alone is dialogue`() {
+        assertFalse(BubbleClassifier.classify(rawBlock("SAY"), lineCount = 1).isSfx)
+    }
+
     @Test
     fun `real sfx word boom is still detected even though it is short and all caps`() {
         // Sanity - vyjimka pro bezna slova nesmi rozbit skutecne SFX detekce.

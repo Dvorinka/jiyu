@@ -541,8 +541,18 @@ class TranslateRepository @Inject constructor(
          *   změřeno na nahlášené stránce: 0,178. Model se tedy nedozvěděl, že obě půlky tvoří
          *   JEDNU větu, a přeložil je odděleně. Práh je nově 0,15. Ovlivňuje prompt, tedy
          *   ULOŽENÝ překlad, proto se staré záznamy musí přepočítat.
+         * v11 (2026-08-02): útržek věty se nikdy nepřeložil. Dvě nezávislé příčiny, obě mění
+         *   uložený výsledek: (1) [BubbleClassifier] označil "...SAY," za zvukový efekt, takže
+         *   se blok vůbec neposlal na překlad - "core" se ořezávalo jen o !?. a mezeru, čárka
+         *   mezi ně nepatřila, a tím se rozbila jediná pojistka pravidla o krátkém ALL CAPS
+         *   textu (porovnávalo se "WAIT," místo "WAIT", takže propadla i slova, která seznam
+         *   VÝSLOVNĚ chrání); nově se ořezává veškerá okrajová interpunkce a text pokračující
+         *   ve větě (čárka na konci, výpustka na začátku) není zvuk. (2) Prompt v sekci CHYBY
+         *   uváděl "útržek" jako důvod pro [GeminiUltraPrompt.UNTRANSLATED_MARKER], což si
+         *   protiřečilo se sekcí o větách přes víc bublin - marker je nově jen pro NEČITELNÝ
+         *   text. Staré záznamy mají obojí spočítané podle starší logiky, proto přepočet.
          */
-        private const val PIPELINE_VERSION = 10
+        private const val PIPELINE_VERSION = 11
 
         /** Maximální počet znaků originálu na jedno API volání - drží výstup pod limitem max_tokens. */
         private const val NOVEL_CHUNK_CHAR_LIMIT = 2500
