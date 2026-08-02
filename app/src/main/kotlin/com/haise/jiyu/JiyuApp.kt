@@ -20,10 +20,12 @@ import com.google.firebase.Firebase
 import com.google.firebase.analytics.analytics
 import com.google.firebase.crashlytics.crashlytics
 import com.haise.jiyu.data.db.TranslatedNovelDao
+import com.haise.jiyu.data.db.deleteBrowsedManga
 import com.haise.jiyu.data.db.TranslatedPageDao
 import com.haise.jiyu.download.CHANNEL_DOWNLOADS
 import com.haise.jiyu.source.mangaplus.MangaPlusImageFetcher
 import com.haise.jiyu.work.CHANNEL_ID
+import com.haise.jiyu.util.report
 import com.haise.jiyu.work.ChapterUpdateWorker
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
@@ -44,6 +46,9 @@ class JiyuApp : Application(), Configuration.Provider {
 
     /** Souhlas s hlášením pádů - viz [initFirebase]. */
     @Inject lateinit var settings: com.haise.jiyu.settings.SettingsRepository
+
+    /** Úklid jen prohlédnuté mangy při startu - viz [evictOldTranslationCache]. */
+    @Inject lateinit var database: com.haise.jiyu.data.db.AppDatabase
 
     override fun onCreate() {
         super.onCreate()
@@ -126,6 +131,12 @@ class JiyuApp : Application(), Configuration.Provider {
             translatedPageDao.deleteOlderThan(cutoff)
             // Novely se dřív neuklízely vůbec - byly jediná část cache, která rostla donekonečna.
             translatedNovelDao.deleteOlderThan(cutoff)
+            // Stejný důvod, jiná tabulka: procházení vkládá mangu do databáze a nic ji nikdy
+            // nemazalo, takže rostla z každého otevřeného detailu. Viz [deleteBrowsedManga] -
+            // maže jen to, co uživatel prokazatelně nechtěl (není v knihovně, nečetl ji,
+            // nezařadil, nestáhl).
+            runCatching { database.deleteBrowsedManga() }
+                .onFailure { it.report("db:evictBrowsedManga") }
         }
     }
 

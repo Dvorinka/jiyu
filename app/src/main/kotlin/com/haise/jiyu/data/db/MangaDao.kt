@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Embedded
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Transaction
 import androidx.room.Upsert
 import com.haise.jiyu.data.db.entity.MangaEntity
 import kotlinx.coroutines.flow.Flow
@@ -123,4 +124,45 @@ interface MangaDao {
 
     @Query("SELECT COUNT(*) FROM manga WHERE inLibrary = 1")
     fun observeLibraryCount(): Flow<Int>
+
+    // ── Úklid jen prohlížené mangy - viz [deleteBrowsedManga] ──────────────────────────
+    /**
+     * ID mangy, kterou lze bezpečně smazat: není v knihovně, není oblíbená, nikdy se nečetla,
+     * není v žádné kategorii a nemá staženou kapitolu.
+     *
+     * Každá podmínka brání jiné ztrátě; nejádnou z nich nevyhazuj bez náhrady. Stažená kapitola
+     * je z nich nejzákeřnější - smazáním záznamu by soubory zůstaly ležet na disku a už by na
+     * ně nic neukazovalo.
+     */
+    @Query(
+        """
+        SELECT id FROM manga
+        WHERE inLibrary = 0
+          AND isFavorite = 0
+          AND lastReadAt = 0
+          AND id NOT IN (SELECT DISTINCT mangaId FROM read_history)
+          AND id NOT IN (SELECT DISTINCT mangaId FROM manga_category)
+          AND id NOT IN (SELECT DISTINCT mangaId FROM chapter WHERE localPath IS NOT NULL)
+        """
+    )
+    suspend fun browsedMangaIds(): List<String>
+
+    @Transaction
+    suspend fun deleteChildrenOfManga(ids: List<String>) {
+        deleteChaptersOfManga(ids)
+        deleteNotesOfManga(ids)
+        deleteTagsOfManga(ids)
+    }
+
+    @Query("DELETE FROM chapter WHERE mangaId IN (:ids)")
+    suspend fun deleteChaptersOfManga(ids: List<String>)
+
+    @Query("DELETE FROM manga_note WHERE mangaId IN (:ids)")
+    suspend fun deleteNotesOfManga(ids: List<String>)
+
+    @Query("DELETE FROM manga_tag WHERE mangaId IN (:ids)")
+    suspend fun deleteTagsOfManga(ids: List<String>)
+
+    @Query("DELETE FROM manga WHERE id IN (:ids)")
+    suspend fun deleteMangaByIds(ids: List<String>)
 }
