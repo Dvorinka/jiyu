@@ -40,7 +40,7 @@ import javax.inject.Singleton
 @Singleton
 class DemonicScansSource @Inject constructor(
     private val client: OkHttpClient,
-    @ApplicationContext private val context: Context,
+    @param:ApplicationContext private val context: Context,
 ) : MangaSource {
 
     override val id = "demonicscans"

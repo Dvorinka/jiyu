@@ -23,7 +23,7 @@ import javax.inject.Singleton
 
 @Singleton
 class BackupManager @Inject constructor(
-    @ApplicationContext private val context: Context,
+    @param:ApplicationContext private val context: Context,
     private val repository: MangaRepository,
     private val mangaNoteDao: MangaNoteDao,
     private val mangaTagDao: MangaTagDao,

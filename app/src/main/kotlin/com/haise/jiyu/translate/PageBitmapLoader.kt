@@ -31,7 +31,7 @@ import javax.inject.Singleton
  */
 @Singleton
 class PageBitmapLoader @Inject constructor(
-    @ApplicationContext private val context: Context,
+    @param:ApplicationContext private val context: Context,
 ) {
     /**
      * @param maxDimension když je zadané, Coil stránku zmenší tak, aby se vešla do čtverce téhle

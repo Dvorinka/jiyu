@@ -28,7 +28,7 @@ data class DownloadGroup(val manga: MangaEntity, val chapters: List<ChapterEntit
 
 @HiltViewModel
 class DownloadManagerViewModel @Inject constructor(
-    @ApplicationContext private val context: Context,
+    @param:ApplicationContext private val context: Context,
     private val repository: MangaRepository,
     private val downloadQueue: DownloadQueue,
 ) : ViewModel() {

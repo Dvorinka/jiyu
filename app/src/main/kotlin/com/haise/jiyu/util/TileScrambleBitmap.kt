@@ -16,7 +16,9 @@ object TileScrambleBitmap {
 
     fun descramble(input: Bitmap, grid: Int, seed: Long): Bitmap {
         val copies = TileScramble.computeTileCopies(input.width, input.height, grid, seed)
-        val output = Bitmap.createBitmap(input.width, input.height, input.config)
+        // `Bitmap.config` je v novějších SDK stubech nullable - u hardwarové bitmapy opravdu
+        // null je. Bez náhrady by se ten null propašoval do createBitmap a spadlo by to.
+        val output = Bitmap.createBitmap(input.width, input.height, input.config ?: Bitmap.Config.ARGB_8888)
         val canvas = Canvas(output)
         val paint = Paint(Paint.FILTER_BITMAP_FLAG)
         val srcRect = Rect()

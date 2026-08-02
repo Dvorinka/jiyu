@@ -43,7 +43,7 @@ sealed interface StatsExportState {
 
 @HiltViewModel
 class ExtendedStatsViewModel @Inject constructor(
-    @ApplicationContext private val context: Context,
+    @param:ApplicationContext private val context: Context,
     private val settings: SettingsRepository,
     private val historyDao: ReadHistoryDao,
     private val mangaDao: MangaDao,
@@ -82,7 +82,7 @@ class ExtendedStatsViewModel @Inject constructor(
 
         val authorMap = mutableMapOf<String, Int>()
         mangaDao.getAllLibraryAuthors().forEach { a ->
-            val author = (a ?: return@forEach).trim()
+            val author = a.trim()
             if (author.isNotBlank()) authorMap[author] = (authorMap[author] ?: 0) + 1
         }
         val topAuthors = authorMap.entries.sortedByDescending { it.value }.take(5).map { it.key to it.value }

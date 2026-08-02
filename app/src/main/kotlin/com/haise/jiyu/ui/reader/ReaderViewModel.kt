@@ -48,7 +48,7 @@ data class TranslationProgress(val done: Int, val total: Int)
 @HiltViewModel
 class ReaderViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
-    @ApplicationContext private val context: Context,
+    @param:ApplicationContext private val context: Context,
     private val repository: MangaRepository,
     private val translateRepository: TranslateRepository,
     private val settings: SettingsRepository,

@@ -15,7 +15,7 @@ import javax.inject.Singleton
 
 @Singleton
 class DownloadQueue @Inject constructor(
-    @ApplicationContext private val context: Context,
+    @param:ApplicationContext private val context: Context,
     private val settings: SettingsRepository,
 ) {
     suspend fun enqueue(chapter: ChapterEntity, mangaUrl: String) {

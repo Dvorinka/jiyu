@@ -18,7 +18,7 @@ import javax.inject.Singleton
 
 @Singleton
 class LocalMangaImporter @Inject constructor(
-    @ApplicationContext private val context: Context,
+    @param:ApplicationContext private val context: Context,
     private val mangaDao: MangaDao,
     private val chapterDao: ChapterDao,
 ) {

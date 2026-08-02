@@ -29,7 +29,7 @@ class SourceBrowseViewModel @Inject constructor(
     private val repository: MangaRepository,
     private val sourceManager: SourceManager,
     private val networkMonitor: NetworkMonitor,
-    @ApplicationContext private val appContext: Context,
+    @param:ApplicationContext private val appContext: Context,
 ) : ViewModel() {
 
     private val sourceId: String = checkNotNull(savedStateHandle["sourceId"])
