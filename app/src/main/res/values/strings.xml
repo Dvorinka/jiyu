@@ -482,6 +482,7 @@
     <string name="library_continue_reading">POKRAČOVAT VE ČTENÍ</string>
     <string name="library_recently_added">NEDÁVNO PŘIDANÉ</string>
     <string name="library_completed">DOKONČENÉ</string>
+    <string name="library_section_empty">V této sekci zatím nic není</string>
     <string name="library_show_all">Zobrazit vše</string>
     <string name="library_stats_books">Knih v knihovně</string>
     <string name="library_stats_favorites">Oblíbené</string>

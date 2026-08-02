@@ -18,6 +18,8 @@ import com.haise.jiyu.ui.downloads.DownloadManagerScreen
 import com.haise.jiyu.ui.goals.ReadingGoalsScreen
 import com.haise.jiyu.ui.history.HistoryScreen
 import com.haise.jiyu.ui.library.LibraryScreen
+import com.haise.jiyu.ui.library.LibrarySection
+import com.haise.jiyu.ui.library.LibrarySectionScreen
 import com.haise.jiyu.ui.library.MyListScreen
 import com.haise.jiyu.ui.onboarding.OnboardingScreen
 import com.haise.jiyu.ui.qr.MangaQrScreen
@@ -57,6 +59,7 @@ internal object Routes {
     const val ACCOUNT       = "account"
     const val GLOBAL_SEARCH = "global_search"
     const val STATS         = "stats"
+    const val LIBRARY_SECTION = "library_section/{section}"
     const val GOALS         = "goals"
     const val COMMUNITY     = "community"
     const val CUSTOM_CSS    = "custom_css"
@@ -75,6 +78,9 @@ internal object Routes {
     const val SETTINGS_BACKUP       = "settings_backup"
     const val SETTINGS_READING      = "settings_reading"
     const val SETTINGS_ABOUT        = "settings_about"
+
+    /** Cesta nese název konstanty [LibrarySection] - proto se ty konstanty nesmí přejmenovat. */
+    fun librarySection(section: LibrarySection) = "library_section/${section.name}"
 
     fun detail(mangaId: String) = "detail/${android.net.Uri.encode(mangaId)}"
     fun detailInfo(mangaId: String) = "detail_info/${android.net.Uri.encode(mangaId)}"
@@ -109,6 +115,24 @@ fun JiyuNavGraph(
                 onOpenChapter = { chapterId -> navController.navigate(Routes.reader(chapterId)) },
                 onOpenSettings = { navController.navigate(Routes.SETTINGS) },
                 onOpenStats = { navController.navigate(Routes.STATS) },
+                onOpenSection = { section -> navController.navigate(Routes.librarySection(section)) },
+            )
+        }
+
+        composable(
+            route = Routes.LIBRARY_SECTION,
+            arguments = listOf(navArgument("section") { type = NavType.StringType }),
+        ) { entry ->
+            // Neznámý název sekce (stará zkratka, ručně zadaná cesta) skončí na "pokračovat
+            // ve čtení" místo pádu - je to ta sekce, kterou uživatel otevírá nejčastěji.
+            val section = entry.arguments?.getString("section")
+                ?.let { name -> LibrarySection.entries.firstOrNull { it.name == name } }
+                ?: LibrarySection.CONTINUE_READING
+            LibrarySectionScreen(
+                section = section,
+                onBack = { navController.popBackStack() },
+                onOpenManga = { mangaId -> navController.navigate(Routes.detail(mangaId)) },
+                onOpenChapter = { chapterId -> navController.navigate(Routes.reader(chapterId)) },
             )
         }
 

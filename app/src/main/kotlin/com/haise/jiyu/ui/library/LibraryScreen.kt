@@ -29,6 +29,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
@@ -92,6 +93,7 @@ fun LibraryScreen(
     onOpenSettings: () -> Unit,
     onOpenChapter: (String) -> Unit = {},
     onOpenStats: () -> Unit = {},
+    onOpenSection: (LibrarySection) -> Unit = {},
     viewModel: LibraryViewModel = hiltViewModel(),
 ) {
     val library         by viewModel.library.collectAsState()
@@ -106,13 +108,19 @@ fun LibraryScreen(
     val todayReadingMinutes        by viewModel.todayReadingMinutes.collectAsState()
     val contentTypeFilter            by viewModel.contentTypeFilter.collectAsState()
 
-    Column(modifier = Modifier.fillMaxSize().background(screenGradient)) {
+    Column(modifier = Modifier.fillMaxSize().background(screenGradient).statusBarsPadding()) {
         // ── Header ───────────────────────────────────────────────────────────
+        // Hlavička je lambda, protože se vkládá DOVNITŘ scrollovaného obsahu - v každé větvi
+        // jiného typu kontejneru. Dřív stála mimo scroll a zůstávala viset nahoře; uživatel
+        // si stěžoval, že s ním cestuje a zabírá místo.
+        //
+        // statusBarsPadding je proto na obalu výš, ne tady: na hlavičce by odscrolovalo pryč
+        // s ní a obsah by vjel pod stavovou lištu.
+        val header: @Composable () -> Unit = {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(Brush.verticalGradient(listOf(NightBlue, DeepSpace.copy(alpha = 0f))))
-                .statusBarsPadding()
                 .padding(horizontal = 12.dp)
                 .padding(top = 10.dp, bottom = 8.dp),
         ) {
@@ -170,11 +178,13 @@ fun LibraryScreen(
                 )
             }
         }
+        }
 
         if (searchQuery.isNotEmpty()) {
             // ── Výsledky hledání (plochý grid) ──────────────────────────────
             val navBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
             if (library.isEmpty()) {
+                header()
                 DashboardEmptyState(text = stringResource(R.string.library_nothing_found), subtitle = stringResource(R.string.library_try_different_term))
             } else {
                 LazyVerticalGrid(
@@ -184,6 +194,7 @@ fun LibraryScreen(
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                     modifier = Modifier.fillMaxSize(),
                 ) {
+                    item(span = { GridItemSpan(maxLineSpan) }) { header() }
                     items(library, key = { it.id }) { manga ->
                         SearchResultCard(manga = manga, onClick = { onOpenManga(manga.id) })
                     }
@@ -191,6 +202,7 @@ fun LibraryScreen(
             }
         } else if (continueReading.isEmpty() && recentlyAdded.isEmpty() && completed.isEmpty()) {
             // ── Prázdný stav ─────────────────────────────────────────────────
+            header()
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(horizontal = 40.dp)) {
                     Box(
@@ -223,6 +235,7 @@ fun LibraryScreen(
         } else {
             // ── Karusely ─────────────────────────────────────────────────────
             Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = 24.dp)) {
+                header()
                 val heroItem = continueReading.firstOrNull()
                 if (heroItem != null) {
                     HeroContinueReadingCard(
@@ -245,7 +258,11 @@ fun LibraryScreen(
                 )
 
                 if (continueReading.isNotEmpty()) {
-                    CarouselSection(title = stringResource(R.string.library_continue_reading), count = continueReading.size) {
+                    CarouselSection(
+                        title = stringResource(R.string.library_continue_reading),
+                        count = continueReading.size,
+                        onShowAll = { onOpenSection(LibrarySection.CONTINUE_READING) },
+                    ) {
                         LazyRow(contentPadding = PaddingValues(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                             items(continueReading, key = { it.manga.id }) { item ->
                                 ContinueReadingCard(
@@ -261,7 +278,11 @@ fun LibraryScreen(
                     }
                 }
                 if (recentlyAdded.isNotEmpty()) {
-                    CarouselSection(title = stringResource(R.string.library_recently_added), count = recentlyAdded.size) {
+                    CarouselSection(
+                        title = stringResource(R.string.library_recently_added),
+                        count = recentlyAdded.size,
+                        onShowAll = { onOpenSection(LibrarySection.RECENTLY_ADDED) },
+                    ) {
                         LazyRow(contentPadding = PaddingValues(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                             items(recentlyAdded, key = { it.id }) { manga ->
                                 SimpleMangaCard(manga = manga, showNewBadge = true, onClick = { onOpenManga(manga.id) })
@@ -270,7 +291,11 @@ fun LibraryScreen(
                     }
                 }
                 if (completed.isNotEmpty()) {
-                    CarouselSection(title = stringResource(R.string.library_completed), count = completed.size) {
+                    CarouselSection(
+                        title = stringResource(R.string.library_completed),
+                        count = completed.size,
+                        onShowAll = { onOpenSection(LibrarySection.COMPLETED) },
+                    ) {
                         LazyRow(contentPadding = PaddingValues(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                             items(completed, key = { it.id }) { manga ->
                                 SimpleMangaCard(manga = manga, showNewBadge = false, onClick = { onOpenManga(manga.id) })
@@ -507,10 +532,15 @@ private fun StatBox(
 }
 
 @Composable
-private fun CarouselSection(title: String, count: Int, content: @Composable () -> Unit) {
+private fun CarouselSection(title: String, count: Int, onShowAll: () -> Unit, content: @Composable () -> Unit) {
     Column(modifier = Modifier.fillMaxWidth().padding(top = 18.dp)) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
+            // Klepnutí bere celý řádek nadpisu, ne jen text "Zobrazit vše" - ten je malý
+            // a šipka vedle něj ještě menší, takže by se do toho muselo trefovat.
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onShowAll)
+                .padding(horizontal = 16.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
@@ -655,7 +685,7 @@ private fun SimpleMangaCard(manga: MangaEntity, showNewBadge: Boolean, onClick: 
 }
 
 @Composable
-private fun SearchResultCard(manga: MangaEntity, onClick: () -> Unit) {
+internal fun SearchResultCard(manga: MangaEntity, onClick: () -> Unit) {
     Box(
         modifier = Modifier
             .aspectRatio(0.68f)

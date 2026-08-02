@@ -464,6 +464,7 @@
     <string name="library_continue_reading">CONTINUER LA LECTURE</string>
     <string name="library_recently_added">AJOUTÉS RÉCEMMENT</string>
     <string name="library_completed">TERMINÉS</string>
+    <string name="library_section_empty">Rien ici pour l’instant</string>
     <string name="library_show_all">Tout afficher</string>
     <string name="library_refresh_error">Échec de la mise à jour : %1$s%2$s</string>
     <string name="library_refresh_error_and_more"> et plus</string>
