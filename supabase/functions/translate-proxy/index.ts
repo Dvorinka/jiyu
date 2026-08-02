@@ -13,13 +13,17 @@ const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 // 25. 7.) narazily na původních 500 000 znaků (508k/632k) - počet requestů (131/205) byl
 // přitom hluboko pod tehdejším limitem 5000, takže znakový limit byl ten skutečný strop.
 //
-// POZOR NA VÝZNAM ČÍSLA: počítají se POKUSY, ne úspěšné překlady. Kvóta se strhává PŘED
-// voláním upstreamu (viz checkQuota), takže dávka, která projde až na čtvrtý krok
-// fallback řetězce, si ukrojí znaky čtyřikrát. Pro účel "zastav runaway smyčku" je to
-// správně - runaway smyčka se skládá právě z pokusů - ale neplet si to s "kolik textu
-// appka přeložila", to bývá výrazně míň. Kdyby se to mělo měřit odděleně, chce to
-// rozdělit RPC na "započítej požadavek" a "připiš znaky po úspěchu"; obojí je zásah do
-// živé databáze, takže to nedělej jen tak mimochodem.
+// POZOR NA VÝZNAM OBOU ČÍSEL - od 2026-08-02 každé měří něco jiného:
+//
+// DAILY_REQUEST_LIMIT počítá POKUSY, ne úspěšné překlady. Dávka, která projde až na čtvrtý
+// krok fallback řetězce, se započítá čtyřikrát, a je to tak správně: tohle číslo je pojistka
+// proti rozjeté smyčce a rozjetá smyčka se skládá právě z neúspěšných pokusů.
+//
+// DAILY_CHAR_LIMIT naopak od té doby odhaduje SKUTEČNĚ zpracovaný objem. Znaky se pořád
+// strhávají PŘED voláním upstreamu (jinak by strop nešlo vynutit atomicky), ale když upstream
+// požadavek odmítne (HTTP != 2xx), vrátí se zpátky - viz [refundQuota] a [shouldRefund].
+// Znaky se NEVRACEJÍ, když upstream odpoví 200 bez použitelného textu; model v tom případě
+// běžel a tokeny spotřeboval.
 const DAILY_CHAR_LIMIT = 3_000_000;
 const DAILY_REQUEST_LIMIT = 20_000;
 
@@ -174,6 +178,37 @@ async function checkQuota(charCount: number): Promise<{ allowed: boolean; errore
     return { allowed: false, errored: true };
   }
   return { allowed: Boolean(allowed), errored: false };
+}
+
+/**
+ * Vrátí znaky do denního stropu za pokus, při kterém upstream vůbec nic nevygeneroval.
+ *
+ * Počet požadavků se ZÁMĚRNĚ nevrací - viz komentář u `refund_translate_usage` ve
+ * supabase/schema.sql. Stručně: request_count je pojistka proti rozjeté smyčce a ta se
+ * skládá právě z neúspěšných pokusů, takže vracet ho by pojistku vyřadilo.
+ *
+ * Selhání refundu se jen zaloguje. Kvóta pak zůstane stržená, což je bezpečný směr chyby
+ * (napočítá se víc, nikdy míň), a rozhodně to není důvod zahodit už hotovou odpověď.
+ */
+async function refundQuota(charCount: number): Promise<void> {
+  const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
+  const { error } = await supabase.rpc("refund_translate_usage", { p_chars: charCount });
+  if (error) console.error("refund rpc failed", error);
+}
+
+/**
+ * Má se za tuhle chybu vracet kvóta?
+ *
+ * ANO u "upstream_rate_limited" a "upstream_error" - upstream odmítl požadavek (HTTP != 2xx),
+ * takže nic nespočítal a žádné tokeny nespotřeboval; strhnout si za to znaky by znamenalo
+ * účtovat si práci, která se nestala.
+ *
+ * NE u "upstream_empty" - tam upstream odpověděl HTTP 200, model tedy BĚŽEL a tokeny spotřeboval;
+ * jen z toho nevypadl použitelný text (bezpečnostní filtr, došly output tokeny, rozbitý JSON).
+ * To je stejně reálné čerpání free-tieru jako úspěch a strop ho má vidět.
+ */
+function shouldRefund(error: unknown): boolean {
+  return error === "upstream_rate_limited" || error === "upstream_error";
 }
 
 async function handleGeminiApi(system: string, user: string, model: string): Promise<Response> {
@@ -347,13 +382,24 @@ async function handleGemini(payload: Record<string, unknown>): Promise<Response>
     return json({ text: "", error: "upstream_error" }, 200);
   }
 
-  const { allowed, errored } = await checkQuota(system.length + user.length);
+  const charCount = system.length + user.length;
+  const { allowed, errored } = await checkQuota(charCount);
   if (errored) return json({ text: "" }, 500);
   if (!allowed) return json({ text: "", error: "daily_quota_exceeded" }, 429);
 
-  if (provider === "groq") return await handleGroqApi(system, user);
-  if (provider === "openrouter") return await handleOpenRouterApi(system, user);
-  return await handleGeminiApi(system, user, model);
+  const resp = provider === "groq"
+    ? await handleGroqApi(system, user)
+    : provider === "openrouter"
+    ? await handleOpenRouterApi(system, user)
+    : await handleGeminiApi(system, user, model);
+
+  // Důvod selhání nesou handlery v těle odpovědi, ne v návratovém typu. Přečíst si ho z
+  // KLONU je tady levnější a bezpečnější než přestavovat všechny tři cesty tak, aby místo
+  // hotové Response vracely mezistav - tahle funkce běží v ostrém provozu a menší zásah
+  // znamená menší riziko. Klon je nutný proto, že tělo Response jde přečíst jen jednou.
+  const body = await resp.clone().json().catch(() => null);
+  if (shouldRefund(body?.error)) await refundQuota(charCount);
+  return resp;
 }
 
 /**
@@ -458,7 +504,10 @@ async function handleGroq(payload: Record<string, unknown>, mode: "manga" | "nov
   // odpověď zahodila jako "server chyba, zkus znovu" a k poli "error", ve kterém stojí
   // "tenhle provider má vyčerpanou kvótu", by se vůbec nedostala. Viz [UpstreamErrorCode].
   const { content, error } = await callChatCompletion(provider, systemPrompt, JSON.stringify(texts));
-  if (content === null) return json({ translations: [], error }, 200);
+  if (content === null) {
+    if (shouldRefund(error)) await refundQuota(charCount);
+    return json({ translations: [], error }, 200);
+  }
   if (!content.trim()) return json({ translations: [], error: "upstream_empty" }, 200);
 
   const cleaned = content.trim()

@@ -122,3 +122,31 @@ begin
   return v_count <= p_daily_request_limit and v_chars <= p_daily_char_limit;
 end;
 $function$;
+
+-- Vrátí do denního ZNAKOVÉHO stropu znaky za pokus, při kterém upstream vůbec nic
+-- nevygeneroval (HTTP chyba nebo rate limit) - viz refundQuota v index.ts.
+--
+-- POČET POŽADAVKŮ SE ZÁMĚRNĚ NEVRACÍ. Ta hodnota není měřítko práce, ale pojistka proti
+-- rozjeté smyčce, a rozjetá smyčka se skládá právě z NEÚSPĚŠNÝCH pokusů. Kdyby se
+-- request_count vracel, provider, který odpovídá pořád 429, by šlo volat donekonečna a
+-- na denní strop by se nikdy nenarazilo - tedy přesně to, před čím má strop chránit.
+--
+-- Znaky se naopak vracejí, protože znakový limit má odhadovat SKUTEČNĚ přeložený objem;
+-- fallback řetězec appky (Gemini -> Groq -> OpenRouter -> ...) si jinak za jednu dávku
+-- ukrojí znaky tolikrát, kolikrát selhal, i když se nakonec přeložila jen jednou.
+--
+-- `greatest(0, ...)` je pojistka pro případ, kdy pokus začne před půlnocí a vrátí se až po
+-- ní: refund pak trefí ŘÁDKU NOVÉHO DNE, kde ty znaky nikdy připsané nebyly. Rozdíl je
+-- zanedbatelný, ale počítadlo nesmí spadnout pod nulu.
+CREATE OR REPLACE FUNCTION public.refund_translate_usage(p_chars INTEGER)
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public'
+AS $function$
+begin
+  update public.translate_usage
+     set char_count = greatest(0, char_count - p_chars)
+   where day = current_date;
+end;
+$function$;
