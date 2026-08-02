@@ -4,6 +4,31 @@
 > vidět v historii commitů a v popisech jednotlivých vydání na GitHubu; zpětně to sem
 > nedopisuju, abych si nevymýšlel.
 
+## v1.0.0
+
+Prvni plna verze. Prelozene stranky se pri prvnim otevreni prelozi znovu (PIPELINE_VERSION 11 -> 12, viz v0.9.1).
+
+### Preklad
+- **Rucni oprava bubliny.** Dlouhy stisk -> prepsat text -> ulozit. Preklad stoji na free modelech, ktere obcas selzou, a do ted s tim neslo nic delat. Opravy zijou ve vlastni tabulce, takze prezijou i prepocet po zvednuti verze pipeline; bublina se pozna podle puvodniho textu, ne podle poradi. Prazdne pole opravu zrusi.
+- Cerna placka pres pul panelu v miste vodoznaku (v0.9.1), rozmazany cizi text pres preklad (v0.8.9), necentrovany text v bublinach s ocaskem (v0.8.8), neprelozeny utrzek v kaskadove bubline (v0.9.0).
+
+### Soukromi a vek
+- Novy krok onboardingu: datum narozeni (uklada se JEN odvozeny priznak, datum se zahodi) a prehled toho, co z telefonu odchazi.
+- Zdroje pro dospele jsou nove VYCHOZE SKRYTE - drive se nabizely rovnou po instalaci.
+- Hlaseni padu je nezaskrtnuty souhlas. Do ted se sbiralo v kazdem release buildu natvrdo.
+- Obojí jde kdykoli zmenit v Nastaveni -> O aplikaci -> Soukromi.
+
+### Pod kapotou
+- **Skok zavislosti**: Kotlin 1.9.24 -> 2.2.21, AGP 8.5.2 -> 8.13.2, Compose BOM 2024.06 -> 2025.12, Room 2.8.4, Gradle 8.13. targetSdk 34 -> 36, overeno na skutecnem Androidu 16.
+- Pull-to-refresh prepsan na PullToRefreshBox, TabRow -> SecondaryTabRow a dalsi vynucene migrace.
+- **Zadny catch uz chybu nespolkne beze stopy** - 25 mist prevedeno na ErrorReporter.
+- Kvota prekladove proxy se uz nestrhava za pokusy, ktere upstream odmitl.
+- Uklid jen prohlednute mangy pri startu - tabulka rostla z kazdeho otevreneho detailu a nic ji nemazalo.
+- Vsechny instrumentovane testy zapnute (drive 5 z 6 vypnutych) a nezavisle na stavu zarizeni.
+- CHANGELOG doplnen o 23 chybejicich verzi (v0.3.4 - v0.7.9).
+
+707 unit testu, 14 instrumentovanych, 0 varovani kompilatoru.
+
 ## v0.9.1
 
 Prelozene stranky se pri prvnim otevreni prelozi znovu (PIPELINE_VERSION 11 -> 12) - obrys bubliny se uklada, takze na starych zaznamech by se oprava neprojevila.
