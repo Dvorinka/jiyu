@@ -4,6 +4,24 @@
 > vidět v historii commitů a v popisech jednotlivých vydání na GitHubu; zpětně to sem
 > nedopisuju, abych si nevymýšlel.
 
+## v0.9.1
+
+Prelozene stranky se pri prvnim otevreni prelozi znovu (PIPELINE_VERSION 11 -> 12) - obrys bubliny se uklada, takze na starych zaznamech by se oprava neprojevila.
+
+### Opravene chyby
+- **Cerna placka pres pul panelu tam, kde je vodoznak skenlacni skupiny.** Obrys bubliny se hleda vylitim barvy od bodu kolem OCR textu. U vodoznaku lezicino na tmavem pruhu je plocha kolem nej souvisle tmava pres cely panel, takze se vyliti nezastavilo na zadne hranici. Jedina pojistka byl plosny limit vztazeny ke CELE strance (ctvrtina) - jenze ctvrtina stranky 1440x3120 je pres milion pixelu, do kterych se unikle vyliti pohodlne vejde.
+
+  Zmereno na zarizeni na nahlasene strance (obalovy obdelnik obrysu proti OCR boxu textu):
+
+  | blok | pomer |
+  |---|---|
+  | "MOUNTAIN BEASTS..." | 2,7x |
+  | "GOOD HEAVENS, IT'S A TRAP!" | 4,3x |
+  | "DAMN..." (jedno slovo v kulate bubline) | 16,1x |
+  | vodoznak "SIRENSCANS.COM" | 54x az 216x |
+
+  Skutecne bubliny tedy konci u 17x, unikle vyliti zacina nad 54x. Novy limit je 30x - lezi mezi nimi s rezervou na obe strany. Pri prekroceni se obrys zahodi a pouzije se heuristicky obdelnik: horsi odhad tvaru, ale nikdy ne placka pres kresbu. Overeno na skutecne strance v sesti ruznych rozlisenich: vodoznak obrys ztratil ve vsech, vsechny tri skutecne bubliny si ho ve vsech nechaly.
+
 ## v0.9.0
 
 Prelozene stranky se pri prvnim otevreni prelozi znovu (PIPELINE_VERSION 10 -> 11) - obe opravy nize meni to, co se uklada, takze na starych zaznamech by se neprojevily.

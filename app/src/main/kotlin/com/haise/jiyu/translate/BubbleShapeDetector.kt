@@ -32,6 +32,27 @@ object BubbleShapeDetector {
     private const val INITIAL_QUEUE_CAPACITY = 4096
 
     /**
+     * Kolikrát smí být obalový obdélník nalezeného obrysu větší než OCR box textu uvnitř.
+     *
+     * Plošný limit [detectShape] parametru `maxAreaFraction` je vztažený ke CELÉ STRÁNCE, a to
+     * je u vysokých stránek obrovská rezerva: čtvrtina stránky 1440x3120 je přes milion pixelů.
+     * Flood-fill, který unikl z bubliny do tmavé kresby, se do ní pohodlně vejde - a výplň pak
+     * přemaluje půl panelu jednou barvou. Nahlášeno u vodoznaku skenlační skupiny na tmavém
+     * pruhu: text zabíral kousek rohu, ale plocha kolem něj byla souvisle tmavá, takže se
+     * vylitím spojila přes celý panel.
+     *
+     * Změřeno na nahlášené stránce (ML Kit na zařízení, obalový obdélník obrysu proti OCR boxu):
+     *   "MOUNTAIN BEASTS..."        2,7x
+     *   "GOOD HEAVENS, IT'S A TRAP!" 4,3x
+     *   "DAMN..." (jedno slovo v kulaté bublině) 16,1x
+     *   vodoznak "SIRENSCANS.COM"   54x až 216x podle rozlišení
+     * Skutečné bubliny tedy končí u 16x, uniklé vylití začíná nad 54x. Práh 30x leží mezi nimi
+     * s rezervou na obě strany. Když se překročí, vrátí se null a použije se heuristický
+     * obdélník - horší odhad tvaru, ale nikdy ne placka přes kresbu.
+     */
+    private const val MAX_SHAPE_TO_TEXT_AREA_RATIO = 30L
+
+    /**
      * BFS flood-fill (fronta, ne rekurze - kvůli velkým bublinám a JVM stack limitu).
      *
      * Navštívené pixely drží BITOVÁ MAPA (jeden bit na pixel) a fronta je primitivní IntArray
@@ -47,9 +68,12 @@ object BubbleShapeDetector {
      * "u překladu se appka normálně vypne"). Plošný limit [maxAreaFraction] přitom fungoval
      * správně - jen se kontroloval AŽ potom, co se všechna ta paměť naalokovala.
      *
-     * @return null když detekce selhala/vypadá nedůvěryhodně (žádný platný seed, nebo
+     * @param textAreaPx plocha OCR boxu textu v pixelech; > 0 zapne kontrolu
+     *   [MAX_SHAPE_TO_TEXT_AREA_RATIO] (viz tam), 0 ji vypne
+     * @return null když detekce selhala/vypadá nedůvěryhodně (žádný platný seed,
      *   navštívená plocha přesáhla [maxAreaFraction] celé stránky - typicky text přímo
-     *   na kresbě/SFX bez uzavřeného pozadí) - volající pak použije starý heuristický obdélník.
+     *   na kresbě/SFX bez uzavřeného pozadí - nebo je nalezený obrys nesmyslně velký proti
+     *   textu uvnitř) - volající pak použije starý heuristický obdélník.
      */
     fun detectShape(
         source: PixelSource,
@@ -59,6 +83,7 @@ object BubbleShapeDetector {
         bgColorArgb: Int,
         colorDistanceThreshold: Int = 40,
         maxAreaFraction: Float = 0.25f,
+        textAreaPx: Long = 0,
     ): List<BubbleShapePoint>? {
         if (width <= 0 || height <= 0) return null
         val totalPixels = width.toLong() * height.toLong()
@@ -154,6 +179,18 @@ object BubbleShapeDetector {
         val sortedRows = ArrayList<Int>()
         for (y in topY..bottomY) if (rowMin[y] != Int.MAX_VALUE) sortedRows.add(y)
         if (sortedRows.isEmpty()) return null
+
+        // Obrys nesmyslně velký proti textu, který má obepínat - viz [MAX_SHAPE_TO_TEXT_AREA_RATIO].
+        if (textAreaPx > 0) {
+            var minX = Int.MAX_VALUE
+            var maxX = Int.MIN_VALUE
+            for (y in sortedRows) {
+                if (rowMin[y] < minX) minX = rowMin[y]
+                if (rowMax[y] > maxX) maxX = rowMax[y]
+            }
+            val boundsArea = (maxX - minX + 1).toLong() * (bottomY - topY + 1).toLong()
+            if (boundsArea > textAreaPx * MAX_SHAPE_TO_TEXT_AREA_RATIO) return null
+        }
 
         return (0 until SAMPLE_COUNT).map { i ->
             val frac = i / (SAMPLE_COUNT - 1).toFloat()

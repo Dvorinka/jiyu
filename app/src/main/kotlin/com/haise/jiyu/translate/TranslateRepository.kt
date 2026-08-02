@@ -551,8 +551,14 @@ class TranslateRepository @Inject constructor(
          *   uváděl "útržek" jako důvod pro [GeminiUltraPrompt.UNTRANSLATED_MARKER], což si
          *   protiřečilo se sekcí o větách přes víc bublin - marker je nově jen pro NEČITELNÝ
          *   text. Staré záznamy mají obojí spočítané podle starší logiky, proto přepočet.
+         * v12 (2026-08-02): obrys se odmítne, když je nesmyslně velký proti textu uvnitř (viz
+         *   [BubbleShapeDetector] MAX_SHAPE_TO_TEXT_AREA_RATIO). Plošný limit byl vztažený ke celé
+         *   stránce, což je u vysokých stránek obrovská rezerva - flood-fill, který unikl z bubliny
+         *   do tmavé kresby, se do ní pohodlně vešel a výplň pak přemalovala půl panelu. Změřeno na
+         *   zařízení na nahlášené stránce: skutečné bubliny 2,6x až 17,4x plochy svého OCR boxu,
+         *   vodoznak na tmavém pruhu 54x až 216x. Obrys se ukládá do bloku, proto přepočet.
          */
-        private const val PIPELINE_VERSION = 11
+        private const val PIPELINE_VERSION = 12
 
         /** Maximální počet znaků originálu na jedno API volání - drží výstup pod limitem max_tokens. */
         private const val NOVEL_CHUNK_CHAR_LIMIT = 2500

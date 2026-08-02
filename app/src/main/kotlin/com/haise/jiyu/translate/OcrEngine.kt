@@ -58,6 +58,16 @@ internal fun ringSeeds(leftF: Float, topF: Float, rightF: Float, bottomF: Float,
     )
 }
 
+/**
+ * Plocha OCR boxu v pixelech - měřítko, proti kterému [BubbleShapeDetector.detectShape] pozná
+ * obrys, který se vylil mimo bublinu (viz tam MAX_SHAPE_TO_TEXT_AREA_RATIO).
+ */
+internal fun textAreaPx(leftF: Float, topF: Float, rightF: Float, bottomF: Float, w: Int, h: Int): Long {
+    val width = ((rightF - leftF) * w).toLong().coerceAtLeast(0)
+    val height = ((bottomF - topF) * h).toLong().coerceAtLeast(0)
+    return width * height
+}
+
 /** Hodnota zdrojového jazyka, která znamená "zjisti si to sám" - viz [resolveAutoLanguage]. */
 internal const val AUTO_LANGUAGE = "Auto"
 
@@ -211,6 +221,7 @@ class OcrEngine @Inject constructor() {
                 // Detektor tvaru (flood-fill) potřebuje JEDNU referenční barvu pozadí, ne
                 // gradient - průměr obou polovin je pro tenhle účel dost přesný.
                 bgColorArgb = averageArgb(bgSample.topArgb, bgSample.bottomArgb),
+                textAreaPx = textAreaPx(block.leftF, block.topF, block.rightF, block.bottomF, bitmap.width, bitmap.height),
             )
             // Kaskadova replika byva nakreslena jako dve PREKRYVAJICI SE bublinky, ktere tvori
             // jednu spojitou bilou plochu - flood-fill se pres ten pas prelije do sousedniho
@@ -286,6 +297,7 @@ class OcrEngine @Inject constructor() {
                 height = h,
                 seeds = ringSeeds(tb.leftF, tb.topF, tb.rightF, tb.bottomF, w, h),
                 bgColorArgb = tb.bgColorArgb,
+                textAreaPx = textAreaPx(tb.leftF, tb.topF, tb.rightF, tb.bottomF, w, h),
             )
             tb.copy(shape = shape)
         }

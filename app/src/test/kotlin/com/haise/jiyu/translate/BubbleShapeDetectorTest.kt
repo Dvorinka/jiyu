@@ -123,4 +123,97 @@ class BubbleShapeDetectorTest {
 
         assertNotNull(shape)
     }
+
+    // ── obrys nesmyslně velký proti textu uvnitř (viz MAX_SHAPE_TO_TEXT_AREA_RATIO) ──
+
+    /**
+     * Vodoznak na tmavém pruhu: text zabírá kousek rohu, ale tmavá plocha kolem něj je souvislá
+     * přes celý panel, takže se flood-fill vylije daleko za bublinu. Plošný limit vztažený ke
+     * CELÉ stránce to nezachytí - čtvrtina vysoké stránky je obrovská rezerva.
+     */
+    private fun watermarkOnDarkBand(): FakeCanvas {
+        // Vysoka stranka schvalne - prave tam je plosny limit 0,25 STRANKY obrovska rezerva
+        // (pruh 380x161 = 61 180 px je jen 17 % z 400x900), takze uniklou vypln nezachyti.
+        val canvas = FakeCanvas(400, 900, 0xFFFFFFFF.toInt())
+        canvas.fillRect(10, 60, 389, 220, BG) // souvisla tmava plocha pres cely panel
+        return canvas
+    }
+
+    @Test
+    fun `a shape that dwarfs its own text is rejected`() {
+        val canvas = watermarkOnDarkBand()
+        // OCR box vodoznaku: maly obdelnik v pravem dolnim rohu tmave plochy (64x10 px),
+        // obalovy obdelnik vyliti je proti nemu 95x vetsi.
+        val textArea = textAreaPx(0.80f, 0.2167f, 0.96f, 0.2278f, 400, 900)
+
+        val shape = BubbleShapeDetector.detectShape(
+            source = canvas,
+            width = 400,
+            height = 900,
+            seeds = listOf(350 to 195),
+            bgColorArgb = BG,
+            textAreaPx = textArea,
+        )
+
+        assertNull("obrys 95x vetsi nez text neni bublina, ale unikle vyliti", shape)
+    }
+
+    @Test
+    fun `without the text area the old behaviour is kept`() {
+        // Zpetna kompatibilita: volani bez textAreaPx (0) kontrolu vubec nepousti - a prave
+        // tenhle pripad ukazuje, ze plosny limit stranky sam o sobe unik nezachyti.
+        val canvas = watermarkOnDarkBand()
+        val shape = BubbleShapeDetector.detectShape(
+            source = canvas,
+            width = 400,
+            height = 900,
+            seeds = listOf(350 to 195),
+            bgColorArgb = BG,
+        )
+
+        assertNotNull(shape)
+    }
+
+    @Test
+    fun `a real bubble around a single short word survives the check`() {
+        // Nejtesnejsi ZMERENY skutecny pripad z nahlasene stranky: "DAMN..." v kulate bubline,
+        // obalovy obdelnik obrysu 16,1x plocha OCR boxu. Musi projit, jinak by oprava vzala
+        // tvar i bublinam, ktere zadnou chybu nemaji.
+        val canvas = FakeCanvas(400, 300, ART)
+        canvas.fillRect(120, 90, 279, 209, BG) // bublina 160x120 = 19200 px
+        val textArea = 19200L / 16 // ~1200 px, tedy pomer 16x
+
+        val shape = BubbleShapeDetector.detectShape(
+            source = canvas,
+            width = 400,
+            height = 300,
+            seeds = listOf(200 to 150),
+            bgColorArgb = BG,
+            textAreaPx = textArea,
+        )
+
+        assertNotNull("pomer 16x je skutecna bublina, ne unik", shape)
+    }
+
+    @Test
+    fun `the ratio is measured against the shape bounds, not the filled pixels`() {
+        // Kreslit se bude obalovy obdelnik po radcich (viz BubbleClipShape), takze rozhoduje
+        // on - ne pocet doopravdy vylitych pixelu. Tenky kriz ma malo pixelu, ale obri obalovy
+        // obdelnik, a prave ten by premaloval kresbu.
+        val canvas = FakeCanvas(400, 300, ART)
+        canvas.fillRect(10, 145, 389, 154, BG) // vodorovne rameno
+        canvas.fillRect(195, 20, 204, 279, BG) // svisle rameno
+        val textArea = 400L // maly text
+
+        val shape = BubbleShapeDetector.detectShape(
+            source = canvas,
+            width = 400,
+            height = 300,
+            seeds = listOf(200 to 150),
+            bgColorArgb = BG,
+            textAreaPx = textArea,
+        )
+
+        assertNull("obalovy obdelnik krize je 380x260, tedy 247x plocha textu", shape)
+    }
 }
