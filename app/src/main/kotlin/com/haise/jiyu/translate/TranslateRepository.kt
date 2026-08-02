@@ -333,6 +333,10 @@ class TranslateRepository @Inject constructor(
         // vždycky přednost - proto se přeskočí, když glosář už stejný zdrojový termín má
         // (ignoreCase, protože ID záznamu je case-insensitive, viz GlossaryRepository.upsert).
         for (term in response.newTerms) {
+            // Do te doby se ukladalo VSECHNO, co model vratil, bez kontroly - a glosar je
+            // v promptu zavazny, takze jeden nesmysl si model vnucoval ve vsech dalsich
+            // kapitolach. Viz [isPlausibleGlossaryTerm].
+            if (!isPlausibleGlossaryTerm(term.source, term.target)) continue
             if (glossary.keys.none { it.equals(term.source, ignoreCase = true) }) {
                 glossaryRepository.upsert(mangaId, term.source, term.target, targetLanguage)
             }
@@ -592,8 +596,20 @@ class TranslateRepository @Inject constructor(
          *   do tmavé kresby, se do ní pohodlně vešel a výplň pak přemalovala půl panelu. Změřeno na
          *   zařízení na nahlášené stránce: skutečné bubliny 2,6x až 17,4x plochy svého OCR boxu,
          *   vodoznak na tmavém pruhu 54x až 216x. Obrys se ukládá do bloku, proto přepočet.
+         * v13 (2026-08-02): tri opravy kvality prekladu naraz, vsechny meni ULOZENY vysledek.
+         *   (1) Slova, ktera lettering deli pomlckou na konci radku, se pred odeslanim spoji.
+         *   Bublina "EVERY-" / "ONE DON'T SCATTER..." dorazila k modelu jako rozsypany zacatek
+         *   vety a v prekladu z ni vypadl zapor - vysla veta, ktera si odporuje sama v sobe
+         *   ("rozptylte se, zustavejte spolu"). Viz [joinHyphenatedLineBreaks].
+         *   (2) Do glosare uz nejde ulozit cokoliv. Do ted se zapsalo vse, co model vratil,
+         *   a glosar je v promptu zavazny, takze jeden nesmysl si model vnucoval i ve vsech
+         *   dalsich kapitolach - odtud nahlaseny nesmysl "ZAVRI PANU" misto "drz hubu",
+         *   pricemz slovo "mouth" zadny druhy vyznam nema. Viz [isPlausibleGlossaryTerm].
+         *   (3) Prompt ma nove pet pravidel uplne nahore (zapor se nesmi ztratit, veta si nesmi
+         *   odporovat) a zaverecnou kontrolu pred sestavenim JSON; glosar uz neni nadrazeny
+         *   smyslu vety.
          */
-        private const val PIPELINE_VERSION = 12
+        private const val PIPELINE_VERSION = 13
 
         /** Maximální počet znaků originálu na jedno API volání - drží výstup pod limitem max_tokens. */
         private const val NOVEL_CHUNK_CHAR_LIMIT = 2500

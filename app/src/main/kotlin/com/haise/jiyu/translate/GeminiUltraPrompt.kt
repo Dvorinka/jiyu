@@ -48,6 +48,17 @@ object GeminiUltraPrompt {
             appky umí bublinu i písmo zvětšit, takže není nutné obětovat nuanci věty jen kvůli
             co nejkratšímu překladu.
 
+            === PĚT PRAVIDEL, KTERÁ PLATÍ NADE VŠÍM OSTATNÍM ===
+            Tahle jsou důležitější než formát, délka i cokoliv dál v tomhle promptu:
+            1. ZÁPOR SE NIKDY NESMÍ ZTRATIT ANI PŘIDAT. "don't", "not", "never", "no", "stop"
+               obrací význam věty. Přeložená věta si navíc nesmí odporovat sama v sobě - když
+               z ní vyjde "rozptýlete se, držte se pohromadě", je špatně.
+            2. Překládej VÝZNAM, ne slovo po slovu.
+            3. Idiom přelož českým protějškem, ne doslova.
+            4. Nikdy nevkládej slovo, které v originále nemá oporu. Když si nejsi jistý,
+               drž se doslovnějšího, ale SMYSLUPLNÉHO překladu.
+            5. Zachovej tón a intenzitu mluvčího - hrubost, výhrůžku, strach.
+
             === KONTEXT DÍLA ===
             $contextBlock
             Zohledni tón/žánr při volbě slovní zásoby a formálnosti (temné fantasy vs. komedie
@@ -149,7 +160,11 @@ object GeminiUltraPrompt {
             ("k Frodovi") místo násilné koncovky - ale nevynechávej skloňování úplně, jméno pořád
             v 1. pádě uprostřed věty, kde gramaticky nepatří, zní v češtině nepřirozeně.
 
-            === GLOSÁŘ POJMŮ (ZÁVAZNÉ, dodržuj přesně, má přednost před pravidly výše) ===
+            === GLOSÁŘ POJMŮ ===
+            Platí VÝHRADNĚ na jména postav, míst, organizací a pojmenovaných technik. Běžná
+            slova překládej podle kontextu, i kdyby se v glosáři náhodou objevila - glosář se
+            plní automaticky a může obsahovat omyl. Nikdy kvůli němu neobětuj smysl věty
+            (pravidlo 1 a 4 nahoře platí i tady).
             $glossaryBlock
 
             === NOVÉ POJMY (učení glosáře) ===
@@ -182,6 +197,15 @@ object GeminiUltraPrompt {
             / "no," / "a pak") je plnohodnotná část repliky a překládá se jako útržek, i když
             sám o sobě celou větu nedává - typicky je to horní lalok kaskádové bubliny, jejíž
             zbytek stojí v bublině hned vedle (viz sekce VĚTY PŘES VÍC BUBLIN).
+
+            === KONTROLA PŘED ODESLÁNÍM (projdi každou bublinu, než sestavíš JSON) ===
+            - Má překlad stejný význam jako originál?
+            - Nezměnil jsem kladnou větu na zápornou nebo naopak? (viz pravidlo 1)
+            - Neodporuje si věta sama v sobě?
+            - Nepřeložil jsem idiom doslova?
+            - Nevložil jsem slovo, které v originále nemá oporu?
+            - Zní ta věta jako skutečná česká mluva?
+            Když najdeš chybu, oprav ji ještě před sestavením odpovědi.
 
             === VÝSTUPNÍ FORMÁT (POUZE JSON, žádný text mimo JSON, žádné markdown bloky) ===
             {
@@ -219,7 +243,10 @@ object GeminiUltraPrompt {
             }
             sb.append("SIZE: [${bubble.sizeTag.name}]\n")
             sb.append("TYPE: ${bubbleTypeToText(bubble.bubbleType)}\n")
-            sb.append("TEXT: \"${bubble.raw.text.replace("\"", "'")}\"\n")
+            // Lettering deli slova na konci radku pomlckou; bez spojeni dorazi k modelu
+            // rozsypany zacatek vety (`EVERY- ONE DON'T SCATTER...`). Viz [joinHyphenatedLineBreaks].
+            val text = joinHyphenatedLineBreaks(bubble.raw.text).replace("\"", "'")
+            sb.append("TEXT: \"$text\"\n")
         }
         return sb.toString()
     }

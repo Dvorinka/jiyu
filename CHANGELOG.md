@@ -4,6 +4,19 @@
 > vidět v historii commitů a v popisech jednotlivých vydání na GitHubu; zpětně to sem
 > nedopisuju, abych si nevymýšlel.
 
+## v1.0.1
+
+Prelozene stranky se pri prvnim otevreni prelozi znovu (PIPELINE_VERSION 12 -> 13).
+
+### Kvalita prekladu - tri doblozene priciny
+- **Slova delena pomlckou na konci radku se spoji.** Bublina "EVERY-" / "ONE DON'T SCATTER, STAY TOGETHER!" dorazila k modelu jako rozsypany zacatek vety a v prekladu z ni vypadl zapor: "VSICHNI SE ROZPTYLEJTE, ZUSTAVEJTE SPOLU!" - veta, ktera si odporuje sama v sobe. Pomlcka se nemaze, jen se odstrani zalomeni za ni, takze skutecny spojovnik ("well-known") zustane nedotceny.
+- **Do glosare uz nejde ulozit cokoliv.** Plnil se automaticky z toho, co model vratil, BEZ jedine kontroly - a v promptu byl oznaceny jako zavazny. Stacilo, aby si tam jednou zapsal nesmysl, a vnucoval si ho ve vsech dalsich kapitolach. Odtud "ZAVRI PANU" misto "drz hubu"; slovo "mouth" pritom zadny druhy vyznam nema. Nove projde jen to, co vypada jako jmeno, ne bezne slovo ani cela veta.
+- **Prompt ma pet pravidel uplne nahore** (zapor se nesmi ztratit, veta si nesmi odporovat, idiom nedoslova) a **zaverecnou kontrolu** pred sestavenim odpovedi. Glosar uz neni nadrazeny smyslu vety.
+
+Zadne z toho nestoji jedine API volani navic.
+
+725 unit testu (+18), 0 varovani.
+
 ## v1.0.0
 
 Prvni plna verze. Prelozene stranky se pri prvnim otevreni prelozi znovu (PIPELINE_VERSION 11 -> 12, viz v0.9.1).
