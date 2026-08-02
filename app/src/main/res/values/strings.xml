@@ -952,4 +952,9 @@
     <string name="reader_edit_bubble_title">Upravit překlad</string>
     <string name="reader_edit_bubble_label">Český text</string>
     <string name="reader_edit_bubble_hint">Prázdné pole vrátí strojový překlad.</string>
+    <string name="detail_translate_next_n">Přeložit dopředu…</string>
+    <string name="detail_translate_next_n_title">Kolik kapitol přeložit?</string>
+    <string name="translate_worker_notification_title">Překlad – %1$s</string>
+    <string name="translate_worker_notification_chapter">%1$s</string>
+    <string name="detail_translate_enqueued">Zařazeno k překladu na pozadí</string>
 </resources>

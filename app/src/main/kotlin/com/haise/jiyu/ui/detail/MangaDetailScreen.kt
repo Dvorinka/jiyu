@@ -127,6 +127,7 @@ fun MangaDetailScreen(
     val pullToRefreshState = rememberPullToRefreshState()
     var showChapterOverflowMenu by remember { mutableStateOf(false) }
     var showDownloadNDialog by remember { mutableStateOf(false) }
+    var showTranslateNDialog by remember { mutableStateOf(false) }
     var chapterSearchActive by remember { mutableStateOf(false) }
     var chapterGridView by remember { mutableStateOf(false) }
     var groupByVolume by remember { mutableStateOf(false) }
@@ -566,6 +567,12 @@ fun MangaDetailScreen(
                                     leadingIcon = { Icon(TablerIcons.Download, contentDescription = null) },
                                     onClick = { showDownloadNDialog = true; showChapterOverflowMenu = false },
                                 )
+                                HorizontalDivider()
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(R.string.detail_translate_next_n)) },
+                                    leadingIcon = { Icon(TablerIcons.Language, contentDescription = null) },
+                                    onClick = { showTranslateNDialog = true; showChapterOverflowMenu = false },
+                                )
                             }
                             if (showDownloadNDialog) {
                                 androidx.compose.material3.AlertDialog(
@@ -583,6 +590,28 @@ fun MangaDetailScreen(
                                     },
                                     confirmButton = {
                                         androidx.compose.material3.TextButton(onClick = { showDownloadNDialog = false }) { Text(stringResource(R.string.common_cancel)) }
+                                    },
+                                )
+                            }
+                            if (showTranslateNDialog) {
+                                androidx.compose.material3.AlertDialog(
+                                    onDismissRequest = { showTranslateNDialog = false },
+                                    title = { Text(stringResource(R.string.detail_translate_next_n_title)) },
+                                    text = {
+                                        androidx.compose.foundation.layout.Column {
+                                            listOf(1, 3, 5, 10).forEach { n ->
+                                                androidx.compose.material3.TextButton(
+                                                    onClick = {
+                                                        viewModel.translateNextN(n)
+                                                        showTranslateNDialog = false
+                                                    },
+                                                    modifier = androidx.compose.ui.Modifier.fillMaxWidth(),
+                                                ) { Text(pluralStringResource(R.plurals.detail_n_chapters, n, n)) }
+                                            }
+                                        }
+                                    },
+                                    confirmButton = {
+                                        androidx.compose.material3.TextButton(onClick = { showTranslateNDialog = false }) { Text(stringResource(R.string.common_cancel)) }
                                     },
                                 )
                             }

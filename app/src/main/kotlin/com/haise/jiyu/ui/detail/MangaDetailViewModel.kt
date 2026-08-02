@@ -53,6 +53,7 @@ class MangaDetailViewModel @Inject constructor(
     @param:dagger.hilt.android.qualifiers.ApplicationContext private val appContext: Context,
     private val repository: MangaRepository,
     private val downloadQueue: DownloadQueue,
+    private val translateQueue: com.haise.jiyu.translate.TranslateQueue,
     private val networkMonitor: NetworkMonitor,
     private val mangaNoteDao: MangaNoteDao,
     private val mangaTagDao: MangaTagDao,
@@ -558,6 +559,28 @@ class MangaDetailViewModel @Inject constructor(
                     repository.setDownloadStatus(chapter.id, DownloadStatus.QUEUED)
                     downloadQueue.enqueue(chapter, mangaUrl)
                 }
+        }
+    }
+
+    /**
+     * Zaradi dalsich [n] neprectenych kapitol k prekladu na pozadi (viz TranslateChapterWorker).
+     *
+     * Bere se od nejnizsiho cisla kapitoly z NEPRECTENYCH - to je "kam se ctenar dostal".
+     * Prelozit dopredu uz precetene kapitoly nedava smysl a jen by to sezralo znakovou kvotu.
+     */
+    fun translateNextN(n: Int) {
+        viewModelScope.launch {
+            val ids = com.haise.jiyu.translate.chaptersToTranslateAhead(
+                chapters.value.map {
+                    com.haise.jiyu.translate.TranslatableChapter(
+                        id = it.id,
+                        number = it.chapterNumber,
+                        read = it.read,
+                    )
+                },
+                count = n,
+            )
+            translateQueue.enqueue(ids)
         }
     }
 
