@@ -348,8 +348,19 @@ class SettingsRepository @Inject constructor(
     // Výchozí hodnota je od 2026-08-02 false, dřív true. Zdroje pro dospělé (nhentai, hitomi)
     // se tak nabízely rovnou po instalaci, bez jediné otázky. Odemyká je teď potvrzený věk
     // v onboardingu (viz [isAdult]) a přepínač jde kdykoli vypnout v Nastavení.
+    // Když si uživatel viditelnost nikdy VÝSLOVNĚ nenastavil, řídí se potvrzeným věkem.
+    //
+    // Není to kosmetika, opravuje to už rozbité instalace: kdo měl potvrzenou plnoletost
+    // z dřívějška a klíč SHOW_ADULT_SOURCES nikdy nezapsaný, dostal po překlopení výchozí
+    // hodnoty na false schované zdroje bez jakéhokoli vysvětlení - a samotná oprava
+    // přepínače (viz [setAdultConfirmed]) by mu nepomohla, dokud by na něj nesáhl.
+    //
+    // Čte se chybějící klíč, ne hodnota false: kdo si zdroje vypnul sám, má tam false
+    // zapsané a jeho volba zůstává. Vlastní volba má přednost před odvozením.
     val showAdultSources: Flow<Boolean> =
-        dataStore.data.map { it[SettingsKeys.SHOW_ADULT_SOURCES] ?: false }
+        dataStore.data.map { prefs ->
+            prefs[SettingsKeys.SHOW_ADULT_SOURCES] ?: prefs[SettingsKeys.IS_ADULT] ?: false
+        }
 
     suspend fun setShowAdultSources(enabled: Boolean) =
         dataStore.edit { it[SettingsKeys.SHOW_ADULT_SOURCES] = enabled }
@@ -360,6 +371,29 @@ class SettingsRepository @Inject constructor(
 
     suspend fun setIsAdult(adult: Boolean) =
         dataStore.edit { it[SettingsKeys.IS_ADULT] = adult }
+
+    /**
+     * Potvrdí (nebo odvolá) plnoletost a rovnou podle toho nastaví viditelnost zdrojů
+     * pro dospělé. Tohle je to, co má volat přepínač "Je mi 18 a více".
+     *
+     * Existuje proto, že ty dva příznaky se rozešly. Přepínač v Nastavení psal jen
+     * [IS_ADULT] a při VYPNUTÍ navíc schoval zdroje - ale při ZAPNUTÍ je neodemkl,
+     * přestože pod ním stojí "Odemyká zdroje s obsahem pro dospělé". Uživatel si ho
+     * zapnul, nic navíc neuviděl a neměl jak zjistit, že skutečný filtr je jinde
+     * (Nastavení > Zdroje).
+     *
+     * Naplno se to projevilo, až když výchozí hodnota [showAdultSources] přešla z true
+     * na false. Do té doby bylo zapnuto samo, takže rozpojený směr nebyl vidět.
+     *
+     * Jemnější ovládání zůstává: [setShowAdultSources] jde pořád vypnout samostatně,
+     * když si někdo věk potvrdit chce, ale zdroje vidět ne.
+     */
+    suspend fun setAdultConfirmed(adult: Boolean) {
+        dataStore.edit {
+            it[SettingsKeys.IS_ADULT] = adult
+            it[SettingsKeys.SHOW_ADULT_SOURCES] = adult
+        }
+    }
 
     /** Souhlas s hlášením pádů - viz [SettingsKeys.CRASH_REPORTING]. */
     val crashReporting: Flow<Boolean> =

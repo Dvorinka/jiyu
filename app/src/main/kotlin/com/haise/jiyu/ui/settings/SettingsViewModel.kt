@@ -425,12 +425,8 @@ class SettingsViewModel @Inject constructor(
     val isAdult: StateFlow<Boolean> = settings.isAdult
         .stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
-    fun setIsAdult(adult: Boolean) = viewModelScope.launch {
-        settings.setIsAdult(adult)
-        // Odvolání plnoletosti musí zdroje pro dospělé rovnou zase schovat, jinak by přepínač
-        // zůstal zapnutý a potvrzení by nic neznamenalo.
-        if (!adult) settings.setShowAdultSources(false)
-    }
+    // Obě strany přepínače řeší [SettingsRepository.setAdultConfirmed] - viz tam, proč.
+    fun setIsAdult(adult: Boolean) = viewModelScope.launch { settings.setAdultConfirmed(adult) }
 
     val crashReporting: StateFlow<Boolean> = settings.crashReporting
         .stateIn(viewModelScope, SharingStarted.Eagerly, false)
