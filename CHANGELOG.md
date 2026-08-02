@@ -4,6 +4,18 @@
 > vidět v historii commitů a v popisech jednotlivých vydání na GitHubu; zpětně to sem
 > nedopisuju, abych si nevymýšlel.
 
+## v1.0.3
+
+Jen ovladani, na prekladu se nic nemeni - prelozene stranky zustavaji v cache.
+
+### Hlavicky uz pri scrollovani neplavou s obsahem
+Na Prochazet i na Knihovne stala hlavicka (nadpis, hledani, filtry) mimo scrollovanou oblast a zustavala viset nahore. Zabirala skoro tretinu obrazovky porad, i pri scrollovani hluboko v seznamu. Ted odjede s obsahem: v Prochazet je po odscrolovani videt 7 rad zdroju misto 4,5.
+
+### "Zobrazit vse" na Knihovne konecne neco dela
+Sipka i napis vypadaly jako odkaz, ale byl to obycejny text bez jakehokoli kliknuti - nikdy to nic nedelalo. Otevira se ted obrazovka s celou sekci (Pokracovat ve cteni / Nedavno pridane / Dokoncene) v mrizce po trech misto vodorovneho posuvniku, ve kterem se u vic titulu neda nic najit. U rozecetenych titulu vede klepnuti rovnou do posledni kapitoly.
+
+757 unit testu, 0 varovani.
+
 ## v1.0.2
 
 Prelozene stranky se pri prvnim otevreni prelozi znovu (PIPELINE_VERSION 13 -> 15).
