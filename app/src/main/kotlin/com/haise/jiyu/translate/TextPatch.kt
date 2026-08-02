@@ -30,7 +30,15 @@ import kotlin.math.min
  * světlém, nebo naopak. Průměry okolí se počítají z integrálního obrazu, takže cena na pixel
  * nezávisí na velikosti okna.
  *
+ * ## Proč se hledá jen uvnitř [textLeft]..[textBottom]
+ * Záplata musí pokrýt celý box, přes který se bublina kreslí, a ten je větší než OCR box
+ * samotného textu (viz [renderBoxRect]). Prahovat i ten přesah by znamenalo dopočítávat
+ * kresbu tam, kde žádné písmo nikdy nebylo - tedy rozmazávat obraz bez důvodu. Mimo textovou
+ * oblast se proto pixely jen opíší.
+ *
  * @param left/top/right/bottom oblast v pixelech; ořízne se na rozměry obrázku
+ * @param textLeft/textTop/textRight/textBottom oblast, kde se smí hledat písmo (OCR box);
+ *   výchozí -1 znamená "celá záplata", jako to bylo dřív
  * @param bgArgb navzorkované pozadí - použije se jen jako záchrana, když nelze dopočítat nic
  * @return ARGB pixely oblasti, řádek po řádku; prázdné pole pro prázdnou oblast
  */
@@ -43,6 +51,10 @@ internal fun buildTextPatch(
     right: Int,
     bottom: Int,
     bgArgb: Int,
+    textLeft: Int = -1,
+    textTop: Int = -1,
+    textRight: Int = -1,
+    textBottom: Int = -1,
 ): IntArray {
     val x0 = left.coerceIn(0, imageWidth)
     val y0 = top.coerceIn(0, imageHeight)
@@ -65,6 +77,18 @@ internal fun buildTextPatch(
 
     val isText = markTextPixels(luminance, w, h)
     dilate(isText, w, h, MASK_DILATION)
+    // Až PO dilataci - jinak by lem rozšířený z písma u kraje textové oblasti zůstal viset
+    // venku a dopočítal by se z něj kus kresby.
+    restrictToTextRegion(
+        mask = isText,
+        w = w,
+        h = h,
+        left = textLeft - x0,
+        top = textTop - y0,
+        right = textRight - x0,
+        bottom = textBottom - y0,
+        enabled = textLeft >= 0 && textTop >= 0 && textRight > textLeft && textBottom > textTop,
+    )
 
     // Nemá se z čeho počítat (celá oblast vyšla jako text) - vrátí se navzorkované pozadí.
     // Lepší než nic a nikdy to nespadne.
@@ -111,6 +135,30 @@ private fun markTextPixels(luminance: IntArray, w: Int, h: Int): BooleanArray {
         }
     }
     return isText
+}
+
+/**
+ * Vymaže z masky všechno mimo zadaný obdélník - viz komentář u [buildTextPatch] k textové
+ * oblasti. Souřadnice jsou už relativní k záplatě a smí přesahovat přes její okraj.
+ */
+private fun restrictToTextRegion(
+    mask: BooleanArray,
+    w: Int,
+    h: Int,
+    left: Int,
+    top: Int,
+    right: Int,
+    bottom: Int,
+    enabled: Boolean,
+) {
+    if (!enabled) return
+    for (y in 0 until h) {
+        val insideRow = y >= top && y < bottom
+        for (x in 0 until w) {
+            if (insideRow && x >= left && x < right) continue
+            mask[y * w + x] = false
+        }
+    }
 }
 
 /** Rozšíří masku o [radius] pixelů - zachytí antialiasový lem, který by jinak zůstal jako duch. */

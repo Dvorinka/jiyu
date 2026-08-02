@@ -70,6 +70,7 @@ import com.haise.jiyu.translate.fitTextToShape
 import com.haise.jiyu.translate.largestInscribedRect
 import com.haise.jiyu.translate.layoutTranslationBlocks
 import com.haise.jiyu.translate.matchOriginalCase
+import com.haise.jiyu.translate.renderBoxRect
 import dagger.hilt.android.EntryPointAccessors
 import com.haise.jiyu.translate.snapBubbleBg
 
@@ -166,7 +167,7 @@ fun BubbleOverlayLayer(
     }
     val patches by produceState(initialValue = emptyMap<Int, android.graphics.Bitmap>(), pageUrl, blocks) {
         val url = pageUrl
-        value = if (url == null) emptyMap() else patchProvider.patchesFor(url, blocks)
+        value = if (url == null) emptyMap() else patchProvider.patchesFor(url, positioned)
     }
     positioned.forEachIndexed { bubbleIndex, pos ->
         // isUntranslated = model vrátil UNTRANSLATED_MARKER (nečitelné OCR) - stejně jako u
@@ -178,9 +179,10 @@ fun BubbleOverlayLayer(
                 imageRect = imageRect,
                 textScale = textScale,
                 isFlipped = "$pageIndex:$bubbleIndex" in flippedBubbles,
-                // Klíč je index v PŮVODNÍM seznamu blocks (tak je klíčuje TextPatchProvider),
-                // ne pozice v `positioned` - to je filtrovaný a přeskládaný seznam.
-                patch = patches[blocks.indexOf(pos.block)],
+                // Klíčem je pozice v `positioned` - stejně, jako je klíčuje TextPatchProvider.
+                // Dřív se dohledávalo přes blocks.indexOf(pos.block), jenže dva shodné bloky
+                // jsou si podle data class rovny a druhý z nich pak dostal cizí záplatu.
+                patch = patches[bubbleIndex],
                 onTap = { onToggleFlip(pageIndex, bubbleIndex) },
             )
         }
@@ -243,10 +245,18 @@ fun TranslationOverlay(
     // obrysu) NErozšiřujeme o bleed - jinak výplň přejede přes černý obrys bubliny a ten
     // zmizí. Bez tvaru (heuristický obdélník) bleed zůstává, protože tam OCR box bývá o chlup
     // těsnější než text a bez přesahu by po stranách prosvítal originál.
-    val bleed = if (pos.block.shape != null) 0.dp else TRANSLATION_BOX_BLEED
-    val left = (imageRect.left + imageRect.width * pos.leftF).dp - bleed
-    val top  = (imageRect.top + imageRect.height * pos.minTopF).dp - bleed
-    val w    = (imageRect.width * (pos.rightF - pos.leftF)).dp.coerceAtLeast(0.dp) + bleed * 2
+    //
+    // Blok se záplatou bleed také nedostává: záplata NENÍ jednolitá výplň, ale skutečné
+    // pixely stránky, a ty musí sedět 1:1 (viz [patchPlan]). Rozšířit box o bleed by je
+    // posunulo, a posunutý zbytek původního tahu je vidět víc než seam, kterému bleed
+    // předchází - u výplně jednou barvou navíc žádný barevný seam nevzniká.
+    val bleed = if (pos.block.shape != null || patch != null) 0.dp else TRANSLATION_BOX_BLEED
+    // Jediný zdroj pravdy pro "jak velký kus stránky bublina zakryje" - stejnou funkci
+    // používá TextPatchProvider, aby se obojí nemohlo rozejít.
+    val box = renderBoxRect(pos)
+    val left = (imageRect.left + imageRect.width * box.leftF).dp - bleed
+    val top  = (imageRect.top + imageRect.height * box.topF).dp - bleed
+    val w    = (imageRect.width * (box.rightF - box.leftF)).dp.coerceAtLeast(0.dp) + bleed * 2
     // maxBottomF je HORNÍ LIMIT růstu (může sahat až k dalšímu prvku na stránce, klidně přes
     // spoustu prázdného pozadí) - použít ho jako MINIMUM by box nutilo vyplnit i prázdný
     // prostor, kde žádný originál nebyl. Skutečné minimum je vlastní OCR rozsah bubliny
@@ -328,7 +338,15 @@ fun TranslationOverlay(
                         m.paint(
                             painter = BitmapPainter(patch.asImageBitmap()),
                             sizeToIntrinsics = false,
-                            contentScale = ContentScale.FillBounds,
+                            // FillWidth + TopStart, ne FillBounds: záplata je výřez skutečné
+                            // stránky a musí ležet přesně na svém místě. Šířka boxu je pevná
+                            // a záplata je spočítaná přesně přes ni, takže vodorovně sedí 1:1
+                            // a stejné měřítko vyjde i svisle. Výška boxu se ale řídí textem
+                            // (heightIn min..max), a FillBounds ji dorovnával svislým
+                            // roztažením - zbytky původních tahů se tím zvětšily a posunuly
+                            // doprostřed překladu. Přebytek dole se radši ořízne.
+                            alignment = Alignment.TopStart,
+                            contentScale = ContentScale.FillWidth,
                             alpha = TRANSLATION_BOX_ALPHA,
                         )
                     } else {

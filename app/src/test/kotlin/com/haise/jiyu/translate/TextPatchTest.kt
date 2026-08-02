@@ -128,4 +128,57 @@ class TextPatchTest {
             assertEquals("sloupec $x se má celý zaplnit pozadím", white, patch[5 * 11 + x])
         }
     }
+
+    // -- Textová oblast: záplata je větší než OCR box, prahovat se smí jen uvnitř ----------
+
+    @Test
+    fun `art outside the text region is copied through untouched`() {
+        // Záplata pokrývá celý box, přes který se bublina kreslí, a ten je větší než OCR box
+        // (viz patchPlan). Kresba mimo text nesmí projít prahováním ani dopočítáváním - jinak
+        // by se rozmazala tam, kde žádné písmo nikdy nebylo.
+        val rows = (0 until 15).map { y ->
+            (0 until 15).map { x ->
+                when {
+                    x in 6..8 && y in 6..8 -> black // "písmeno" uvnitř textové oblasti
+                    x == 1 && y in 2..12 -> black // detail kresby daleko od textu
+                    else -> white
+                }
+            }
+        }
+        val patch = buildTextPatch(
+            sourceOf(rows), 15, 15, 0, 0, 15, 15, bgArgb = white,
+            textLeft = 5, textTop = 5, textRight = 10, textBottom = 10,
+        )
+
+        assertEquals("tah uvnitř textové oblasti se zakryje", white, patch[7 * 15 + 7])
+        assertEquals("kresba mimo textovou oblast zůstává", black, patch[7 * 15 + 1])
+    }
+
+    @Test
+    fun `without a text region the whole patch is thresholded as before`() {
+        // Zpětná kompatibilita - volání bez textové oblasti se chová přesně jako dřív.
+        val rows = (0 until 15).map { y ->
+            (0 until 15).map { x -> if (x == 1 && y in 2..12) black else white }
+        }
+        val patch = buildTextPatch(sourceOf(rows), 15, 15, 0, 0, 15, 15, bgArgb = white)
+
+        assertNotEquals("bez omezení se tah zakryje kdekoliv", black, patch[7 * 15 + 1])
+    }
+
+    @Test
+    fun `the text region is read in image coordinates, not patch coordinates`() {
+        // Záplata začíná na (4,4) obrázku, textová oblast je zadaná v souřadnicích OBRÁZKU -
+        // kdyby se braly jako souřadnice záplaty, posunula by se o celý offset a maska by
+        // dopadla na jiné písmeno.
+        val rows = (0 until 20).map { y ->
+            (0 until 20).map { x -> if (x in 12..13 && y in 12..13) black else white }
+        }
+        val patch = buildTextPatch(
+            sourceOf(rows), 20, 20, 4, 4, 20, 20, bgArgb = white,
+            textLeft = 11, textTop = 11, textRight = 15, textBottom = 15,
+        )
+
+        val w = 16
+        assertEquals("tah na (12,12) obrázku leží v záplatě na (8,8)", white, patch[8 * w + 8])
+    }
 }

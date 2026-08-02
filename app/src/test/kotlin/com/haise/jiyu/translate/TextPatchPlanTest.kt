@@ -1,0 +1,150 @@
+package com.haise.jiyu.translate
+
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+/**
+ * Testy k tomu, KDE se počítá záplata pozadí (viz [patchPlan]).
+ *
+ * Nález, kvůli kterému to vzniklo: záplata se počítala z OCR boxu textu, ale vykreslovala se
+ * přes celý box bubliny. Kreslí se přes `ContentScale.FillBounds`, takže se malý obrázek
+ * roztáhl přes velkou plochu - a zbytky tahů, které inpainting nedočistil, se tím zvětšily
+ * a posunuly. V bublině se pak uprostřed českého překladu vznášel rozmazaný cizí text.
+ */
+class TextPatchPlanTest {
+
+    private fun block(
+        left: Float = 0.30f,
+        top: Float = 0.40f,
+        right: Float = 0.50f,
+        bottom: Float = 0.46f,
+        shape: List<BubbleShapePoint>? = null,
+        bgUniform: Boolean = false,
+        isSfx: Boolean = false,
+        isUntranslated: Boolean = false,
+    ) = TranslatedBlock(
+        originalText = "TEXT",
+        translatedText = "TEXT",
+        leftF = left,
+        topF = top,
+        rightF = right,
+        bottomF = bottom,
+        shape = shape,
+        bgUniform = bgUniform,
+        isSfx = isSfx,
+        isUntranslated = isUntranslated,
+        lineCount = 2,
+    )
+
+    /** Kruhová bublina - obrys je mnohem vyšší i širší než OCR box textu uvnitř. */
+    private fun circleShape(): List<BubbleShapePoint> = (0..10).map { i ->
+        val yF = 0.34f + 0.18f * i / 10f
+        val half = 0.16f * kotlin.math.sin(Math.PI * i / 10.0).toFloat().coerceAtLeast(0.02f)
+        BubbleShapePoint(yF = yF, leftF = 0.40f - half, rightF = 0.40f + half)
+    }
+
+    @Test
+    fun `a bubble with a detected outline gets no patch at all`() {
+        // JÁDRO NÁLEZU: přesně tyhle bubliny uživatel hlásil. Uvnitř nalezeného obrysu je
+        // jedna barva, takže oříznutá výplň je od originálu k nerozeznání - záplata tam nemá
+        // co zlepšit a jen zavlekla roztažené zbytky původního textu.
+        val positioned = layoutTranslationBlocks(listOf(block(shape = circleShape())))
+
+        assertTrue("bublina s obrysem nesmí chtít záplatu", patchPlan(positioned).isEmpty())
+    }
+
+    @Test
+    fun `text lying on artwork still gets a patch`() {
+        // Kvůli čemu záplata vznikla: text bez bubliny, přímo přes kresbu. Tam jednolitá
+        // výplň dělá placku a záplata je jediná cesta.
+        val positioned = layoutTranslationBlocks(listOf(block(shape = null)))
+
+        assertEquals(1, patchPlan(positioned).size)
+    }
+
+    @Test
+    fun `the patch is computed over the box that will be painted, not over the OCR box`() {
+        val b = block(shape = null)
+        val positioned = layoutTranslationBlocks(listOf(b))
+        val pos = positioned.single()
+        val rect = patchPlan(positioned).getValue(0)
+
+        assertEquals(pos.leftF, rect.leftF, 0f)
+        assertEquals(pos.minTopF, rect.topF, 0f)
+        assertEquals(pos.rightF, rect.rightF, 0f)
+        assertEquals(pos.maxBottomF, rect.bottomF, 0f)
+    }
+
+    @Test
+    fun `the painted box really is bigger than the OCR box - otherwise this bug could not exist`() {
+        // Pojistka proti "test, co nic netestuje": kdyby rozvržení box nezvětšovalo, sedělo by
+        // i staré počítání z OCR boxu a předchozí test by prošel omylem.
+        val b = block(shape = null)
+        val pos = layoutTranslationBlocks(listOf(b)).single()
+
+        assertTrue(
+            "rozvržení musí box roztáhnout (${pos.leftF}..${pos.rightF} proti ${b.leftF}..${b.rightF})",
+            pos.leftF < b.leftF && pos.rightF > b.rightF,
+        )
+        assertTrue(
+            "rozvržení musí box protáhnout dolů (${pos.maxBottomF} proti ${b.bottomF})",
+            pos.maxBottomF > b.bottomF,
+        )
+    }
+
+    @Test
+    fun `a bubble with uniform background gets no patch`() {
+        val positioned = layoutTranslationBlocks(listOf(block(shape = null, bgUniform = true)))
+        assertTrue(patchPlan(positioned).isEmpty())
+    }
+
+    @Test
+    fun `sound effects and untranslated blocks get no patch`() {
+        val positioned = layoutTranslationBlocks(
+            listOf(block(shape = null, isSfx = true), block(left = 0.6f, right = 0.8f, isUntranslated = true)),
+        )
+        assertTrue(patchPlan(positioned).isEmpty())
+    }
+
+    @Test
+    fun `keys are positions in the positioned list, so equal blocks cannot swap patches`() {
+        // Dřív se záplata dohledávala přes blocks.indexOf(block). Dva shodné bloky (stejný
+        // text i souřadnice po zaokrouhlení) jsou si podle data class rovny, takže indexOf
+        // vrátil pořád ten první a druhá bublina dostala cizí záplatu.
+        val a = block(left = 0.10f, right = 0.30f)
+        val b = block(left = 0.60f, right = 0.80f)
+        val positioned = layoutTranslationBlocks(listOf(a, b))
+        val plan = patchPlan(positioned)
+
+        assertEquals(setOf(0, 1), plan.keys)
+        positioned.forEachIndexed { index, pos ->
+            assertEquals(
+                "záplata $index musí patřit svému boxu",
+                renderBoxRect(pos),
+                plan.getValue(index),
+            )
+        }
+    }
+
+    @Test
+    fun `the render box rect is exactly what the renderer draws`() {
+        // renderBoxRect je jediný zdroj pravdy pro obě strany - viz TranslationOverlay.
+        val pos = layoutTranslationBlocks(listOf(block(shape = circleShape()))).single()
+        val rect = renderBoxRect(pos)
+
+        assertEquals(pos.leftF, rect.leftF, 0f)
+        assertEquals(pos.minTopF, rect.topF, 0f)
+        assertEquals(pos.rightF, rect.rightF, 0f)
+        assertEquals(pos.maxBottomF, rect.bottomF, 0f)
+    }
+
+    @Test
+    fun `an empty page asks for nothing`() {
+        assertTrue(patchPlan(emptyList()).isEmpty())
+        assertNull(patchPlan(emptyList())[0])
+        assertFalse(patchPlan(emptyList()).containsKey(0))
+    }
+}

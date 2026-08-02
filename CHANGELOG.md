@@ -4,6 +4,24 @@
 > vidět v historii commitů a v popisech jednotlivých vydání na GitHubu; zpětně to sem
 > nedopisuju, abych si nevymýšlel.
 
+## v0.8.9
+
+Hotove preklady zustavaji v platnosti - tahle verze meni jen vykreslovani, ne to, co je ulozene.
+
+### Opravene chyby
+- **V nekterych bublinach se pres cesky preklad vznasel rozmazany cizi text.** Zaplata pozadi (ta, co u textu leziciho primo na kresbe zakryva jen tahy pisma a zbytek obrazu nechava byt) se POCITALA z OCR boxu textu, ale VYKRESLOVALA se pres cely box bubliny - a ten je vzdycky vetsi. Kreslila se pres `ContentScale.FillBounds`, takze se maly vyrez roztahl pres velkou plochu. Zbytky tahu, ktere se pri dopoctu nepodarilo docistit, se tim zvetsily, rozmazaly a posunuly mimo sve misto - doprostred prelozeneho textu.
+
+  Zmereno na nahlasene strance: radkovani zbytku 88 px proti 62 px v originale, tedy zvetseni 1,4x. U textu na kresbe muze byt box az 3,3x sirsi nez OCR box, tam bylo roztazeni jeste vetsi.
+
+  Tri opravy:
+  - Bublina s **detekovanym obrysem** zaplatu uz nedostava vubec. Flood-fill najde obrys jen tam, kde je uvnitr souvisla plocha jedne barvy - to je definice skutecne nakreslene bubliny, kde je vypln oriznuta tvarem od originalu k nerozeznani. Presne tyhle bubliny byly na nahlasenych snimcich.
+  - U zbylych bloku se zaplata pocita presne pres ten obdelnik, pres ktery se vykresli. Obe strany si ho berou ze stejne funkce, takze uz se nemuzou rozejit.
+  - Kresli se `FillWidth` + zarovnane k hornimu okraji misto `FillBounds`, takze vyska boxu (ta se ridi delkou textu) uz zaplatu svisle netahne.
+
+- **Pismo se hleda jen v miste, kde ho OCR naslo.** Zaplata ted pokryva vetsi plochu nez drive, a prahovat i ten presah by znamenalo rozmazavat kresbu tam, kde zadny text nikdy nebyl. Mimo textovou oblast se pixely jen opisou.
+
+- **Dve shodne bubliny na strance si mohly prohodit zaplatu.** Dohledavala se pres `blocks.indexOf(block)`; dva bloky se stejnym textem i souradnicemi jsou si podle data class rovny, takze `indexOf` vracel porad ten prvni. Klicem je nove poloha v seznamu.
+
 ## v0.8.8
 
 Hotove preklady zustavaji v platnosti - tahle verze meni jen vykreslovani, ne to, co je ulozene.

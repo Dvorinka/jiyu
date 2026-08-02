@@ -35,20 +35,24 @@ class TextPatchProvider @Inject constructor(
     }
 
     /**
-     * @return záplaty klíčované indexem bloku v [blocks]; prázdná mapa, když není co záplatovat
+     * @param positioned bloky i s obdélníkem, přes který se doopravdy vykreslí - záplata se
+     *   počítá přesně přes něj (viz [patchPlan]), ne přes OCR box textu.
+     * @return záplaty klíčované pozicí v [positioned]; prázdná mapa, když není co záplatovat
      *   nebo se stránku nepodařilo načíst (volající pak jen nakreslí výplň jako dosud).
      */
-    suspend fun patchesFor(pageUrl: String, blocks: List<TranslatedBlock>): Map<Int, Bitmap> {
-        val wanted = blocks.withIndex().filter { (_, b) -> b.needsPatch() }.map { it.index }
-        if (wanted.isEmpty()) return emptyMap()
+    suspend fun patchesFor(pageUrl: String, positioned: List<PositionedTranslationBlock>): Map<Int, Bitmap> {
+        val plan = patchPlan(positioned)
+        if (plan.isEmpty()) return emptyMap()
 
-        val key = "$pageUrl#${wanted.joinToString(",")}"
+        val key = "$pageUrl#" + plan.entries.joinToString(",") { (i, r) ->
+            "$i:${r.leftF},${r.topF},${r.rightF},${r.bottomF}"
+        }
         cache.get(key)?.let { return it }
 
         return withContext(Dispatchers.Default) {
             val bitmap = pageBitmapLoader.load(pageUrl, PATCH_SOURCE_MAX_DIMENSION)
                 ?: return@withContext emptyMap()
-            val result = runCatching { buildPatches(bitmap, blocks, wanted) }
+            val result = runCatching { buildPatches(bitmap, positioned, plan) }
                 .onFailure { it.report("translate:patch:build") }
                 .getOrDefault(emptyMap())
             if (result.isNotEmpty()) cache.put(key, result)
@@ -58,20 +62,20 @@ class TextPatchProvider @Inject constructor(
 
     private fun buildPatches(
         bitmap: Bitmap,
-        blocks: List<TranslatedBlock>,
-        wanted: List<Int>,
+        positioned: List<PositionedTranslationBlock>,
+        plan: Map<Int, PatchRect>,
     ): Map<Int, Bitmap> {
         val w = bitmap.width
         val h = bitmap.height
         if (w <= 0 || h <= 0) return emptyMap()
         val source = PixelSource { x, y -> bitmap.getPixel(x, y) }
 
-        return wanted.mapNotNull { index ->
-            val b = blocks[index]
-            val left = (b.leftF * w).toInt()
-            val top = (b.topF * h).toInt()
-            val right = (b.rightF * w).toInt()
-            val bottom = (b.bottomF * h).toInt()
+        return plan.mapNotNull { (index, rect) ->
+            val b = positioned[index].block
+            val left = (rect.leftF * w).toInt()
+            val top = (rect.topF * h).toInt()
+            val right = (rect.rightF * w).toInt()
+            val bottom = (rect.bottomF * h).toInt()
             val boxW = (right - left).coerceAtMost(w)
             val boxH = (bottom - top).coerceAtMost(h)
             if (boxW <= 0 || boxH <= 0) return@mapNotNull null
@@ -88,6 +92,12 @@ class TextPatchProvider @Inject constructor(
                 right = right,
                 bottom = bottom,
                 bgArgb = b.bgColorArgb,
+                // Písmo se hledá jen tam, kde ho OCR opravdu našlo - zbytek boxu je kresba,
+                // kterou nemá smysl prahovat ani dopočítávat (viz [buildTextPatch]).
+                textLeft = (b.leftF * w).toInt(),
+                textTop = (b.topF * h).toInt(),
+                textRight = (b.rightF * w).toInt(),
+                textBottom = (b.bottomF * h).toInt(),
             )
             if (argb.isEmpty()) return@mapNotNull null
             val clampedW = minOf(boxW, w - left.coerceAtLeast(0))
@@ -98,19 +108,16 @@ class TextPatchProvider @Inject constructor(
     }
 
     companion object {
-        /**
-         * Záplatu chce jen bublina, která se doopravdy kreslí a jejíž okolí NENÍ jednolité.
-         * U skutečné bubliny (jednolité pozadí) je dosavadní výplň jednou barvou k nerozeznání
-         * od originálu, takže není co zlepšovat - a nemá smysl kvůli ní dekódovat stránku.
-         */
-        private fun TranslatedBlock.needsPatch(): Boolean =
-            !isSfx && !isUntranslated && !bgUniform
-
         /** Zmenšení zdrojové stránky pro účely záplaty - viz komentář u třídy. */
         private const val PATCH_SOURCE_MAX_DIMENSION = 1600
 
-        /** Strop plochy jedné záplaty (~1,2 MB jako ARGB). */
-        private const val MAX_PATCH_PIXELS = 300_000L
+        /**
+         * Strop plochy jedné záplaty (~2,4 MB jako ARGB). Zvednuto z 300 000 spolu s přechodem
+         * na obdélník celého boxu (viz [patchPlan]): ten je u textu na kresbě znatelně větší
+         * než OCR box, ze kterého se počítalo dřív, a při starém stropu by řada bloků spadla
+         * zpátky na jednolitou výplň - tedy přesně na tu placku, kvůli které záplata vznikla.
+         */
+        private const val MAX_PATCH_PIXELS = 600_000L
 
         /** Strop celé vyrovnávací paměti záplat. */
         private const val CACHE_BYTES = 12 * 1024 * 1024
