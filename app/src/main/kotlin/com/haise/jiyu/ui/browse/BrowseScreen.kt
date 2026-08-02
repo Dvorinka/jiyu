@@ -30,6 +30,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
@@ -109,163 +110,187 @@ fun BrowseScreen(
     // prohledávat všechny zdroje najednou.
     var searchBySourceName by rememberSaveable { mutableStateOf(false) }
 
+    val navBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+
+    // Hlavička (nadpis, přepínač hledání, vyhledávací pole, oba řádky filtrů i oblíbené
+    // zdroje) je SOUČÁSTÍ mřížky, ne pruh nad ní. Dřív stála mimo a zůstávala přilepená
+    // nahoře - zabírala skoro třetinu obrazovky pořád, i když uživatel scroloval hluboko
+    // v seznamu, a přesně na to si stěžoval ("zavazí to, když hledám zdroje"). Jako
+    // položky mřížky přes celou šířku odjedou s obsahem a seznam dostane celou plochu.
+    //
+    // statusBarsPadding je proto tady, na obalu: kdyby zůstalo na hlavičce, odscrolovalo
+    // by pryč s ní a obsah by se dostal pod stavovou lištu.
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(screenGradient)
+            .statusBarsPadding()
     ) {
-        // ── Header ──────────────────────────────────────────────────────────
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(Brush.verticalGradient(colors = listOf(NightBlue, DeepSpace.copy(alpha = 0f))))
-                .statusBarsPadding()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(3),
+            contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 16.dp + navBottom),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.fillMaxSize(),
         ) {
-            Text(
-                text = stringResource(R.string.browse_title),
-                style = TextStyle(brush = titleGradient, fontSize = 24.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 2.sp),
-            )
+            // ── Header ──────────────────────────────────────────────────────────
+            item(span = { GridItemSpan(maxLineSpan) }) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Brush.verticalGradient(colors = listOf(NightBlue, DeepSpace.copy(alpha = 0f))))
+                        // Vodorovné odsazení je 4.dp, ne 16.dp: mřížka přidává svých 12.dp
+                        // v contentPadding, takže výsledek zůstává na původních 16.dp.
+                        .padding(horizontal = 4.dp, vertical = 12.dp),
+                ) {
+                    Text(
+                        text = stringResource(R.string.browse_title),
+                        style = TextStyle(brush = titleGradient, fontSize = 24.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 2.sp),
+                    )
 
-            // Přepínač režimu hledání - viz komentář u [searchBySourceName].
-            Row(
-                modifier = Modifier.padding(top = 10.dp),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
-                FilterChip(label = stringResource(R.string.browse_search_mode_title), selected = !searchBySourceName) {
-                    searchBySourceName = false
-                    viewModel.setSourceNameFilter("")
-                }
-                FilterChip(label = stringResource(R.string.browse_search_mode_source), selected = searchBySourceName) {
-                    searchBySourceName = true
+                    // Přepínač režimu hledání - viz komentář u [searchBySourceName].
+                    Row(
+                        modifier = Modifier.padding(top = 10.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        FilterChip(label = stringResource(R.string.browse_search_mode_title), selected = !searchBySourceName) {
+                            searchBySourceName = false
+                            viewModel.setSourceNameFilter("")
+                        }
+                        FilterChip(label = stringResource(R.string.browse_search_mode_source), selected = searchBySourceName) {
+                            searchBySourceName = true
+                        }
+                    }
+
+                    // Titul: klik naviguje na GlobalSearch (beze změny). Zdroj: skutečné textové
+                    // pole, které jen lokálně filtruje mřížku zdrojů podle jejich názvu.
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 8.dp)
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(NightBlue.copy(alpha = 0.7f))
+                            .glassBorder(14.dp)
+                            .then(
+                                if (searchBySourceName) Modifier else Modifier.clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = null,
+                                    onClick = onGlobalSearch,
+                                )
+                            )
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(TablerIcons.Search, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(10.dp))
+                            if (searchBySourceName) {
+                                Box(modifier = Modifier.weight(1f)) {
+                                    if (sourceNameFilter.isEmpty()) {
+                                        Text(stringResource(R.string.browse_search_by_source_placeholder), color = TextSecondary, fontSize = 15.sp)
+                                    }
+                                    BasicTextField(
+                                        value = sourceNameFilter,
+                                        onValueChange = viewModel::setSourceNameFilter,
+                                        singleLine = true,
+                                        textStyle = TextStyle(color = TextPrimary, fontSize = 15.sp),
+                                        cursorBrush = SolidColor(Violet),
+                                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                                        modifier = Modifier.fillMaxWidth(),
+                                    )
+                                }
+                            } else {
+                                Text(stringResource(R.string.browse_search_placeholder), color = TextSecondary, fontSize = 15.sp)
+                            }
+                        }
+                    }
                 }
             }
 
-            // Titul: klik naviguje na GlobalSearch (beze změny). Zdroj: skutečné textové
-            // pole, které jen lokálně filtruje mřížku zdrojů podle jejich názvu.
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 8.dp)
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(NightBlue.copy(alpha = 0.7f))
-                    .glassBorder(14.dp)
-                    .then(
-                        if (searchBySourceName) Modifier else Modifier.clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null,
-                            onClick = onGlobalSearch,
-                        )
-                    )
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(TablerIcons.Search, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(10.dp))
-                    if (searchBySourceName) {
-                        Box(modifier = Modifier.weight(1f)) {
-                            if (sourceNameFilter.isEmpty()) {
-                                Text(stringResource(R.string.browse_search_by_source_placeholder), color = TextSecondary, fontSize = 15.sp)
-                            }
-                            BasicTextField(
-                                value = sourceNameFilter,
-                                onValueChange = viewModel::setSourceNameFilter,
-                                singleLine = true,
-                                textStyle = TextStyle(color = TextPrimary, fontSize = 15.sp),
-                                cursorBrush = SolidColor(Violet),
-                                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                                modifier = Modifier.fillMaxWidth(),
+            // ── Typový filtr - kompaktní řádek chipů ─────────────────────────────
+            item(span = { GridItemSpan(maxLineSpan) }) {
+                val contentTypes = listOf(
+                    "ALL" to stringResource(R.string.common_all),
+                    BrowseViewModel.MANGA_GROUP to stringResource(R.string.browse_filter_manga),
+                    "NOVEL" to stringResource(R.string.browse_filter_novels),
+                    "COMIC" to stringResource(R.string.browse_filter_comics),
+                )
+                LazyRow(
+                    contentPadding = PaddingValues(vertical = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    items(contentTypes) { (type, label) ->
+                        FilterChip(label = label, selected = contentTypeFilter == type) { viewModel.setContentTypeFilter(type) }
+                    }
+                }
+            }
+
+            // ── Jazykový filtr - kompaktní řádek chipů ───────────────────────────
+            item(span = { GridItemSpan(maxLineSpan) }) {
+                val languages = listOf(
+                    "ALL" to stringResource(R.string.browse_lang_all),
+                    "en"  to "🇺🇸 EN",
+                    "fr"  to "🇫🇷 FR",
+                    "es"  to "🇪🇸 ES",
+                    "pt"  to "🇧🇷 PT",
+                    "ja"  to "🇯🇵 RAW",
+                )
+                LazyRow(
+                    contentPadding = PaddingValues(vertical = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    items(languages) { (code, label) ->
+                        FilterChip(label = label, selected = languageFilter == code) { viewModel.setLanguageFilter(code) }
+                    }
+                }
+            }
+
+            // ── Oblíbené zdroje - horizontální karusel zvýrazněných karet ────────
+            val favoriteSources = sources.filter { it.id in favoriteSourceIds }
+            if (favoriteSources.isNotEmpty()) {
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    Column(modifier = Modifier.padding(top = 4.dp, bottom = 4.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Icon(TablerIcons.Heart, contentDescription = null, tint = Pink, modifier = Modifier.size(16.dp))
+                            Text(
+                                text = stringResource(R.string.browse_favorites_section),
+                                color = TextPrimary,
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(start = 6.dp),
                             )
                         }
-                    } else {
-                        Text(stringResource(R.string.browse_search_placeholder), color = TextSecondary, fontSize = 15.sp)
+                        LazyRow(
+                            contentPadding = PaddingValues(horizontal = 4.dp),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
+                            items(favoriteSources, key = { "fav_${it.id}" }) { source ->
+                                FeaturedSourceCard(source = source, onClick = { onOpenSource(source.id) })
+                            }
+                        }
                     }
                 }
             }
-        }
 
-        // ── Typový filtr - kompaktní řádek chipů ─────────────────────────────
-        val contentTypes = listOf(
-            "ALL" to stringResource(R.string.common_all),
-            BrowseViewModel.MANGA_GROUP to stringResource(R.string.browse_filter_manga),
-            "NOVEL" to stringResource(R.string.browse_filter_novels),
-            "COMIC" to stringResource(R.string.browse_filter_comics),
-        )
-        LazyRow(
-            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            items(contentTypes) { (type, label) ->
-                FilterChip(label = label, selected = contentTypeFilter == type) { viewModel.setContentTypeFilter(type) }
-            }
-        }
-
-        // ── Jazykový filtr - kompaktní řádek chipů ───────────────────────────
-        val languages = listOf(
-            "ALL" to stringResource(R.string.browse_lang_all),
-            "en"  to "🇺🇸 EN",
-            "fr"  to "🇫🇷 FR",
-            "es"  to "🇪🇸 ES",
-            "pt"  to "🇧🇷 PT",
-            "ja"  to "🇯🇵 RAW",
-        )
-        LazyRow(
-            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            items(languages) { (code, label) ->
-                FilterChip(label = label, selected = languageFilter == code) { viewModel.setLanguageFilter(code) }
-            }
-        }
-
-        // ── Oblíbené zdroje - horizontální karusel zvýrazněných karet ────────
-        val favoriteSources = sources.filter { it.id in favoriteSourceIds }
-        if (favoriteSources.isNotEmpty()) {
-            Column(modifier = Modifier.padding(top = 4.dp, bottom = 4.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Icon(TablerIcons.Heart, contentDescription = null, tint = Pink, modifier = Modifier.size(16.dp))
-                    Text(
-                        text = stringResource(R.string.browse_favorites_section),
-                        color = TextPrimary,
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(start = 6.dp),
-                    )
-                }
-                LazyRow(
-                    contentPadding = PaddingValues(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    items(favoriteSources, key = { "fav_${it.id}" }) { source ->
-                        FeaturedSourceCard(source = source, onClick = { onOpenSource(source.id) })
+            // ── Mřížka zdrojů ─────────────────────────────────────────────────────
+            if (sources.isEmpty()) {
+                // Hláška je POLOŽKA mřížky, ne náhrada za celou mřížku. Dřív nahrazovala i to,
+                // co je nad ní - což bylo neškodné, dokud hlavička stála mimo. Teď by s ní
+                // zmizely i filtry, takže by uživatel, který si vyfiltroval prázdno, neměl čím
+                // filtr vrátit zpátky.
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    Box(
+                        modifier = Modifier.fillMaxWidth().padding(top = 48.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(stringResource(R.string.browse_no_sources_match), color = TextSecondary, style = MaterialTheme.typography.bodyMedium)
                     }
                 }
-            }
-        }
-
-        // ── Mřížka zdrojů ─────────────────────────────────────────────────────
-        val navBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-        if (sources.isEmpty()) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text(stringResource(R.string.browse_no_sources_match), color = TextSecondary, style = MaterialTheme.typography.bodyMedium)
-            }
-        } else {
-            // weight(1f), ne fillMaxSize() - garantuje, že mřížka dostane přesně ZBÝVAJÍCÍ
-            // prostor pod hlavičkou/filtry (ty se měří první na svou přirozenou výšku) a
-            // jen ONA sama scrolluje, ne celá obrazovka - hlavička s filtry zůstává
-            // připevněná nahoře při scrollování mřížky.
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(3),
-                contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 12.dp, bottom = 16.dp + navBottom),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.weight(1f).fillMaxWidth(),
-            ) {
+            } else {
                 items(sources, key = { it.id }) { source ->
                     SourceCard(
                         source = source,
