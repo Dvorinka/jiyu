@@ -42,6 +42,9 @@ class JiyuApp : Application(), Configuration.Provider {
     @Inject lateinit var translatedPageDao: TranslatedPageDao
     @Inject lateinit var translatedNovelDao: TranslatedNovelDao
 
+    /** Souhlas s hlášením pádů - viz [initFirebase]. */
+    @Inject lateinit var settings: com.haise.jiyu.settings.SettingsRepository
+
     override fun onCreate() {
         super.onCreate()
 
@@ -75,12 +78,25 @@ class JiyuApp : Application(), Configuration.Provider {
      * Crashlytics + Analytics — jede jen pokud existuje app/google-services.json
      * (BuildConfig.FIREBASE_ENABLED se nastavuje v gradle podle přítomnosti souboru).
      * V debug buildu sbírání crashů vypínáme, ať si nezanášíme dashboard testovacím haraburdím.
+     *
+     * Od 2026-08-02 navíc rozhoduje SOUHLAS uživatele (viz [SettingsKeys.CRASH_REPORTING]).
+     * Do té doby se v každém release buildu sbíralo natvrdo a bez ptaní; ze všeho, co z appky
+     * odchází, je tohle jediná věc, kterou si uživatel nevyžádal a nic mu nepřináší.
+     *
+     * Sbírání se zapíná/vypíná ZA BĚHU podle toho, jak uživatel přepínač v Nastavení mění -
+     * proto se stav sleduje, ne čte jednorázově při startu. Výchozí hodnota je false, takže
+     * než dorazí první hodnota z DataStore, nic se neodesílá.
      */
     private fun initFirebase() {
         if (!BuildConfig.FIREBASE_ENABLED) return
 
-        Firebase.crashlytics.setCrashlyticsCollectionEnabled(!BuildConfig.DEBUG)
-        Firebase.analytics.setAnalyticsCollectionEnabled(!BuildConfig.DEBUG)
+        CoroutineScope(Dispatchers.IO + SupervisorJob()).launch {
+            settings.crashReporting.collect { consented ->
+                val enabled = consented && !BuildConfig.DEBUG
+                Firebase.crashlytics.setCrashlyticsCollectionEnabled(enabled)
+                Firebase.analytics.setAnalyticsCollectionEnabled(enabled)
+            }
+        }
     }
 
     override val workManagerConfiguration: Configuration

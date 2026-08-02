@@ -32,6 +32,14 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.SelectableDates
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
@@ -40,6 +48,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -64,6 +75,11 @@ import com.haise.jiyu.ui.theme.TextPrimary
 import com.haise.jiyu.ui.theme.TextSecondary
 import com.haise.jiyu.ui.theme.Accent
 import com.haise.jiyu.ui.theme.Violet
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 
 @Composable
 fun OnboardingScreen(
@@ -75,6 +91,9 @@ fun OnboardingScreen(
     val readingDir      by viewModel.readingDir.collectAsState()
     val readingMode     by viewModel.readingMode.collectAsState()
     val downloadFolder  by viewModel.downloadFolderUri.collectAsState()
+    val birthDate       by viewModel.birthDate.collectAsState()
+    val crashReporting  by viewModel.crashReporting.collectAsState()
+    var showDatePicker  by remember { mutableStateOf(false) }
 
     val context = LocalContext.current
     val folderPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
@@ -133,7 +152,13 @@ fun OnboardingScreen(
                         onPickFolder = { folderPicker.launch(null) },
                         onClearFolder = { viewModel.setDownloadFolderUri(null) },
                     )
-                    3 -> DoneStep()
+                    3 -> PrivacyStep(
+                        birthDate = birthDate,
+                        onPickDate = { showDatePicker = true },
+                        crashReporting = crashReporting,
+                        onCrashReportingChange = viewModel::setCrashReporting,
+                    )
+                    4 -> DoneStep()
                 }
             }
 
@@ -173,6 +198,52 @@ fun OnboardingScreen(
                 }
             }
         }
+    }
+
+    if (showDatePicker) {
+        BirthDatePickerDialog(
+            onDismiss = { showDatePicker = false },
+            onPicked = { date ->
+                viewModel.setBirthDate(date)
+                showDatePicker = false
+            },
+        )
+    }
+}
+
+/**
+ * Výběr data narození. Vybraná hodnota se předá dál, ale NIKAM se neukládá - volající si z ní
+ * spočítá jen příznak plnoletosti (viz [OnboardingViewModel.complete]).
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun BirthDatePickerDialog(onDismiss: () -> Unit, onPicked: (LocalDate) -> Unit) {
+    val state = rememberDatePickerState(
+        // Výběr do budoucnosti nedává smysl a jen by vedl k "proč se mi nic neodemklo".
+        selectableDates = object : SelectableDates {
+            override fun isSelectableYear(year: Int) = year <= LocalDate.now().year
+            override fun isSelectableDate(utcTimeMillis: Long) =
+                utcTimeMillis <= System.currentTimeMillis()
+        },
+    )
+    DatePickerDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            TextButton(
+                enabled = state.selectedDateMillis != null,
+                onClick = {
+                    val millis = state.selectedDateMillis ?: return@TextButton
+                    // DatePicker vrací UTC půlnoc - převod přes UTC, ne přes systémovou zónu,
+                    // jinak by se ve východních pásmech datum posunulo o den zpátky.
+                    onPicked(Instant.ofEpochMilli(millis).atZone(ZoneOffset.UTC).toLocalDate())
+                },
+            ) { Text(stringResource(R.string.common_ok)) }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) }
+        },
+    ) {
+        DatePicker(state = state, title = null)
     }
 }
 
@@ -328,7 +399,143 @@ private fun StorageStep(
     }
 }
 
-// ── Krok 4: Dokončení ─────────────────────────────────────────────────────────
+// ── Krok 4: Věk a soukromí ────────────────────────────────────────────────────
+/**
+ * Jediné místo, kde appka nahlas říká, co z telefonu odchází - a jediné, kde se ptá na věk.
+ *
+ * Věk i souhlas s hlášením pádů jde kdykoli změnit v Nastavení; souhlas, který nejde odvolat,
+ * by byl k ničemu. Datum narození se nikam neukládá (viz [OnboardingViewModel.complete]).
+ */
+@Composable
+private fun PrivacyStep(
+    birthDate: LocalDate?,
+    onPickDate: () -> Unit,
+    crashReporting: Boolean,
+    onCrashReportingChange: (Boolean) -> Unit,
+) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        StepIcon(TablerIcons.Lock)
+        Spacer(Modifier.height(16.dp))
+        Text(
+            text = stringResource(R.string.onb_privacy_title),
+            color = TextPrimary, fontSize = 26.sp, fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center,
+        )
+        Spacer(Modifier.height(8.dp))
+        Text(
+            text = stringResource(R.string.onb_privacy_subtitle),
+            color = TextSecondary, fontSize = 15.sp, textAlign = TextAlign.Center,
+        )
+        Spacer(Modifier.height(24.dp))
+
+        // ── Datum narození ────────────────────────────────────────────────────
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(12.dp))
+                .background(
+                    if (birthDate != null) GlowViolet.copy(alpha = 0.15f)
+                    else Color.White.copy(alpha = 0.05f)
+                )
+                .border(
+                    1.dp,
+                    if (birthDate != null) Violet else Color.White.copy(alpha = 0.12f),
+                    RoundedCornerShape(12.dp),
+                )
+                .clickable(onClick = onPickDate)
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                TablerIcons.User, contentDescription = null,
+                tint = if (birthDate != null) Violet else TextSecondary,
+                modifier = Modifier.size(20.dp),
+            )
+            Spacer(Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = stringResource(R.string.onb_privacy_birthdate),
+                    color = if (birthDate != null) TextPrimary else TextSecondary,
+                    fontSize = 14.sp,
+                    fontWeight = if (birthDate != null) FontWeight.Medium else FontWeight.Normal,
+                )
+                Text(
+                    text = birthDate?.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM))
+                        ?: stringResource(R.string.onb_privacy_birthdate_hint),
+                    color = TextSecondary, fontSize = 12.sp,
+                )
+            }
+            if (birthDate != null) {
+                Icon(TablerIcons.Check, contentDescription = null, tint = Violet, modifier = Modifier.size(18.dp))
+            }
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        // ── Co odchází z telefonu ─────────────────────────────────────────────
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(12.dp))
+                .background(Color.White.copy(alpha = 0.05f))
+                .padding(16.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.onb_privacy_data_title),
+                color = TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.Medium,
+            )
+            Spacer(Modifier.height(8.dp))
+            listOf(
+                R.string.onb_privacy_data_translation,
+                R.string.onb_privacy_data_account,
+                R.string.onb_privacy_data_sync,
+            ).forEach { res ->
+                Text(
+                    text = "•  " + stringResource(res),
+                    color = TextSecondary, fontSize = 13.sp,
+                    modifier = Modifier.padding(bottom = 4.dp),
+                )
+            }
+        }
+
+        Spacer(Modifier.height(12.dp))
+
+        // ── Hlášení pádů (nezaškrtnuté) ───────────────────────────────────────
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(12.dp))
+                .clickable { onCrashReportingChange(!crashReporting) }
+                .padding(horizontal = 4.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Checkbox(
+                checked = crashReporting,
+                onCheckedChange = onCrashReportingChange,
+                colors = CheckboxDefaults.colors(checkedColor = Violet),
+            )
+            Spacer(Modifier.width(4.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = stringResource(R.string.onb_privacy_crash_title),
+                    color = TextPrimary, fontSize = 14.sp,
+                )
+                Text(
+                    text = stringResource(R.string.onb_privacy_crash_subtitle),
+                    color = TextSecondary, fontSize = 12.sp,
+                )
+            }
+        }
+
+        Spacer(Modifier.height(8.dp))
+        Text(
+            text = stringResource(R.string.onb_privacy_changeable),
+            color = TextSecondary, fontSize = 12.sp, textAlign = TextAlign.Center,
+        )
+    }
+}
+
+// ── Krok 5: Dokončení ─────────────────────────────────────────────────────────
 @Composable
 private fun DoneStep() {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {

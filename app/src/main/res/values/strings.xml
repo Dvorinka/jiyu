@@ -928,4 +928,22 @@
         <item quantity="few">%1$d nové</item>
         <item quantity="other">%1$d nových</item>
     </plurals>
+
+    <!-- Krok onboardingu: vek a soukromi -->
+    <string name="onb_privacy_title">Věk a soukromí</string>
+    <string name="onb_privacy_subtitle">Než začneme, dvě věci na rovinu.</string>
+    <string name="onb_privacy_birthdate">Datum narození</string>
+    <string name="onb_privacy_birthdate_hint">Ťukni a vyber — odemyká zdroje pro dospělé</string>
+    <string name="onb_privacy_data_title">Co odchází z telefonu</string>
+    <string name="onb_privacy_data_translation">Text z bublin jde na překladový server a odtud na Gemini, Groq nebo OpenRouter.</string>
+    <string name="onb_privacy_data_account">E-mail, jen když se přihlásíš.</string>
+    <string name="onb_privacy_data_sync">Knihovna a historie čtení, jen když je zapnutá synchronizace.</string>
+    <string name="onb_privacy_crash_title">Posílat hlášení pádů</string>
+    <string name="onb_privacy_crash_subtitle">Pomáhá hledat chyby. Vypnuté, dokud to nezapneš.</string>
+    <string name="onb_privacy_changeable">Obojí se dá kdykoli změnit v Nastavení.</string>
+    <string name="settings_privacy_title">Soukromí</string>
+    <string name="settings_privacy_adult">Je mi 18 a více</string>
+    <string name="settings_privacy_adult_desc">Odemyká zdroje s obsahem pro dospělé.</string>
+    <string name="settings_privacy_crash">Posílat hlášení pádů</string>
+    <string name="settings_privacy_crash_desc">Anonymní hlášení o pádech appky.</string>
 </resources>

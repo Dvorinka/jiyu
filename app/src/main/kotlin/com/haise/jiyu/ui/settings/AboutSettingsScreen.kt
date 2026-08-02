@@ -11,6 +11,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -18,6 +20,8 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -25,10 +29,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -53,6 +59,8 @@ fun AboutSettingsScreen(
     val downloadState by viewModel.updateDownloadState.collectAsState()
     val updateCtx = LocalContext.current
     var showReportDialog by remember { mutableStateOf(false) }
+    val isAdult by viewModel.isAdult.collectAsState()
+    val crashReporting by viewModel.crashReporting.collectAsState()
 
     Scaffold(containerColor = Color.Transparent, contentWindowInsets = WindowInsets(0, 0, 0, 0)) { innerPadding ->
         Column(
@@ -172,6 +180,24 @@ fun AboutSettingsScreen(
                     }
                 }
 
+                // ── Soukromí ──────────────────────────────────────────────────
+                // Obojí se ptá už v onboardingu; tady se to dá kdykoli změnit. Souhlas, který
+                // jde dát jen jednou při instalaci a nikdy odvolat, by byl k ničemu.
+                SettingsSection(title = stringResource(R.string.settings_privacy_title)) {
+                    PrivacyToggle(
+                        title = stringResource(R.string.settings_privacy_adult),
+                        description = stringResource(R.string.settings_privacy_adult_desc),
+                        checked = isAdult,
+                        onCheckedChange = viewModel::setIsAdult,
+                    )
+                    PrivacyToggle(
+                        title = stringResource(R.string.settings_privacy_crash),
+                        description = stringResource(R.string.settings_privacy_crash_desc),
+                        checked = crashReporting,
+                        onCheckedChange = viewModel::setCrashReporting,
+                    )
+                }
+
                 SettingsSection(title = stringResource(R.string.settings_report_section_title)) {
                     OutlinedButton(
                         onClick = { showReportDialog = true },
@@ -217,6 +243,42 @@ fun AboutSettingsScreen(
                 updateCtx.startActivity(android.content.Intent.createChooser(intent, chooserTitle))
                 showReportDialog = false
             },
+        )
+    }
+}
+
+/**
+ * Radek s prepinacem pro sekci Soukromi.
+ *
+ * Cely radek je klikatelny (`toggleable` + `Role.Switch`), Switch sam ma `onCheckedChange = null` -
+ * jinak by na nem TalkBack ohlasil dva nezavisle ovladatelne prvky nad sebou. Stejny vzor
+ * pouziva prepinac zdroju pro dospele v SourcesSettingsScreen.
+ */
+@Composable
+private fun PrivacyToggle(
+    title: String,
+    description: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .toggleable(value = checked, role = Role.Switch, onValueChange = onCheckedChange)
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(title, color = TextPrimary, fontSize = 14.sp)
+            Text(description, color = TextSecondary, fontSize = 11.sp)
+        }
+        Switch(
+            checked = checked,
+            onCheckedChange = null,
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = GlowViolet,
+                checkedTrackColor = GlowViolet.copy(alpha = 0.5f),
+            ),
         )
     }
 }

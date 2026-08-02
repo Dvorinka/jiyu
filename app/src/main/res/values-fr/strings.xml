@@ -939,4 +939,22 @@
         <item quantity="other">%1$d nouveaux</item>
         <item quantity="many">%1$d nouveaux</item>
     </plurals>
+
+    <!-- Krok onboardingu: vek a soukromi -->
+    <string name="onb_privacy_title">Âge et confidentialité</string>
+    <string name="onb_privacy_subtitle">Deux choses à clarifier avant de commencer.</string>
+    <string name="onb_privacy_birthdate">Date de naissance</string>
+    <string name="onb_privacy_birthdate_hint">Touchez pour choisir — débloque les sources adultes</string>
+    <string name="onb_privacy_data_title">Ce qui quitte votre téléphone</string>
+    <string name="onb_privacy_data_translation">Le texte des bulles part vers le serveur de traduction, puis vers Gemini, Groq ou OpenRouter.</string>
+    <string name="onb_privacy_data_account">Votre e-mail, uniquement si vous vous connectez.</string>
+    <string name="onb_privacy_data_sync">Bibliothèque et historique de lecture, uniquement si la synchronisation est activée.</string>
+    <string name="onb_privacy_crash_title">Envoyer les rapports de plantage</string>
+    <string name="onb_privacy_crash_subtitle">Aide à traquer les bugs. Désactivé tant que vous ne l\'activez pas.</string>
+    <string name="onb_privacy_changeable">Les deux se modifient à tout moment dans les Réglages.</string>
+    <string name="settings_privacy_title">Confidentialité</string>
+    <string name="settings_privacy_adult">J\'ai 18 ans ou plus</string>
+    <string name="settings_privacy_adult_desc">Débloque les sources au contenu adulte.</string>
+    <string name="settings_privacy_crash">Envoyer les rapports de plantage</string>
+    <string name="settings_privacy_crash_desc">Rapports anonymes sur les plantages de l\'application.</string>
 </resources>

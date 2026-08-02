@@ -413,10 +413,29 @@ class SettingsViewModel @Inject constructor(
     fun getCatalog(): List<CatalogSource> = catalogManager.catalog
 
     // ── Adult zdroje (hromadný přepínač) ──────────────────────────────────────
+    // Výchozí hodnota false, ne true - jinak by přepínač po startu na okamžik ukázal "zapnuto",
+    // než dorazí skutečná hodnota z DataStore, a u zdrojů pro dospělé je to špatný směr chyby.
     val showAdultSources: StateFlow<Boolean> = settings.showAdultSources
-        .stateIn(viewModelScope, SharingStarted.Eagerly, true)
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
     fun setShowAdultSources(enabled: Boolean) = viewModelScope.launch { settings.setShowAdultSources(enabled) }
+
+    // ── Soukromí ──────────────────────────────────────────────────────────────
+    /** Potvrzená plnoletost z onboardingu - viz [SettingsKeys.IS_ADULT]. Odemyká přepínač výš. */
+    val isAdult: StateFlow<Boolean> = settings.isAdult
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
+    fun setIsAdult(adult: Boolean) = viewModelScope.launch {
+        settings.setIsAdult(adult)
+        // Odvolání plnoletosti musí zdroje pro dospělé rovnou zase schovat, jinak by přepínač
+        // zůstal zapnutý a potvrzení by nic neznamenalo.
+        if (!adult) settings.setShowAdultSources(false)
+    }
+
+    val crashReporting: StateFlow<Boolean> = settings.crashReporting
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
+    fun setCrashReporting(enabled: Boolean) = viewModelScope.launch { settings.setCrashReporting(enabled) }
 
     /** ID všech aktuálně aktivních zdrojů (vestavěných i vlastních Madara) - detekce duplicit z katalogu. */
     private val activeSourceIds: StateFlow<Set<String>> = sourceManager.observeAll()

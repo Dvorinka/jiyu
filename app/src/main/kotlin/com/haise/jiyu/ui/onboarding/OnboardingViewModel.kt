@@ -8,12 +8,15 @@ import androidx.lifecycle.viewModelScope
 import com.haise.jiyu.settings.ReadingDirection
 import com.haise.jiyu.settings.ReadingMode
 import com.haise.jiyu.settings.SettingsRepository
+import com.haise.jiyu.util.isAdultOn
+import com.haise.jiyu.util.isPlausibleBirthDate
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.time.LocalDate
 import javax.inject.Inject
 
 @HiltViewModel
@@ -38,7 +41,17 @@ class OnboardingViewModel @Inject constructor(
     private val _downloadFolderUri = MutableStateFlow<String?>(null)
     val downloadFolderUri: StateFlow<String?> = _downloadFolderUri.asStateFlow()
 
-    val totalSteps = 4
+    /**
+     * Zadané datum narození. Drží se JEN v paměti po dobu onboardingu - do úložiště jde pouze
+     * odvozený příznak plnoletosti (viz [complete] a [SettingsKeys.IS_ADULT]).
+     */
+    private val _birthDate = MutableStateFlow<LocalDate?>(null)
+    val birthDate: StateFlow<LocalDate?> = _birthDate.asStateFlow()
+
+    private val _crashReporting = MutableStateFlow(false)
+    val crashReporting: StateFlow<Boolean> = _crashReporting.asStateFlow()
+
+    val totalSteps = 5
 
     init {
         // Výchozí jazyk (cs) je v UI hned zaškrtnutý, ale dokud uživatel aktivně
@@ -56,6 +69,15 @@ class OnboardingViewModel @Inject constructor(
     fun setReadingDir(dir: String) { _readingDir.value = dir }
     fun setReadingMode(mode: String) { _readingMode.value = mode }
     fun setDownloadFolderUri(uri: String?) { _downloadFolderUri.value = uri }
+    fun setBirthDate(date: LocalDate?) { _birthDate.value = date }
+    fun setCrashReporting(enabled: Boolean) { _crashReporting.value = enabled }
+
+    /** Dává zadané datum smysl a je mu aspoň 18? Viz [isAdultOn]. */
+    fun isAdultNow(): Boolean {
+        val date = _birthDate.value ?: return false
+        val today = LocalDate.now()
+        return isPlausibleBirthDate(date, today) && isAdultOn(date, today)
+    }
 
     fun nextStep() {
         if (_step.value < totalSteps - 1) _step.value++
@@ -76,6 +98,13 @@ class OnboardingViewModel @Inject constructor(
                 settings.setReadingDirection(_readingDir.value)
                 settings.setReadingMode(_readingMode.value)
                 settings.setDownloadFolderUri(_downloadFolderUri.value)
+                // Do úložiště jde jen odvozený příznak, samotné datum narození se zahodí -
+                // viz [SettingsKeys.IS_ADULT]. Zdroje pro dospělé se odemknou jen tehdy,
+                // když věk opravdu sedí; jinak zůstanou skryté (výchozí stav).
+                val adult = isAdultNow()
+                settings.setIsAdult(adult)
+                settings.setShowAdultSources(adult)
+                settings.setCrashReporting(_crashReporting.value)
                 settings.setOnboardingCompleted()
             }
             onDone()

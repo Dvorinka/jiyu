@@ -918,4 +918,22 @@
         <item quantity="one">%1$d new</item>
         <item quantity="other">%1$d new</item>
     </plurals>
+
+    <!-- Krok onboardingu: vek a soukromi -->
+    <string name="onb_privacy_title">Age and privacy</string>
+    <string name="onb_privacy_subtitle">Two things up front, before we start.</string>
+    <string name="onb_privacy_birthdate">Date of birth</string>
+    <string name="onb_privacy_birthdate_hint">Tap to pick — unlocks adult sources</string>
+    <string name="onb_privacy_data_title">What leaves your phone</string>
+    <string name="onb_privacy_data_translation">Text from speech bubbles goes to the translation server, and on to Gemini, Groq or OpenRouter.</string>
+    <string name="onb_privacy_data_account">Your e-mail, only if you sign in.</string>
+    <string name="onb_privacy_data_sync">Library and reading history, only if sync is on.</string>
+    <string name="onb_privacy_crash_title">Send crash reports</string>
+    <string name="onb_privacy_crash_subtitle">Helps track down bugs. Off until you turn it on.</string>
+    <string name="onb_privacy_changeable">Both can be changed anytime in Settings.</string>
+    <string name="settings_privacy_title">Privacy</string>
+    <string name="settings_privacy_adult">I am 18 or older</string>
+    <string name="settings_privacy_adult_desc">Unlocks sources with adult content.</string>
+    <string name="settings_privacy_crash">Send crash reports</string>
+    <string name="settings_privacy_crash_desc">Anonymous reports about app crashes.</string>
 </resources>

@@ -70,6 +70,25 @@ object SettingsKeys {
     val NOTIFY_DOWNLOADS       = booleanPreferencesKey("notify_downloads")
     val BACKUP_FOLDER_URI      = stringPreferencesKey("backup_folder_uri")
     val CLOUDFLARE_CLEARANCE_CACHE = stringPreferencesKey("cloudflare_clearance_cache")
+
+    /**
+     * Potvrdil uživatel, že je mu aspoň [com.haise.jiyu.util.ADULT_AGE_YEARS] let? Odemyká
+     * zdroje s obsahem pro dospělé (viz [SHOW_ADULT_SOURCES]).
+     *
+     * Ukládá se JEN tenhle boolean, nikdy samotné datum narození. Datum se zeptáme, spočítáme
+     * z něj tuhle hodnotu a zahodíme ho - appka ho k ničemu jinému nepotřebuje a uchovávat
+     * cizí datum narození v kroku, který je o ochraně osobních údajů, by bylo obrácené naruby.
+     */
+    val IS_ADULT = booleanPreferencesKey("is_adult")
+
+    /**
+     * Souhlas s odesíláním hlášení pádů do Firebase Crashlytics.
+     *
+     * Výchozí hodnota je false - do teď se sbíralo v každém release buildu natvrdo, bez ptaní
+     * (viz JiyuApp.initFirebase). Ze všeho, co z appky odchází, je tohle jediná věc, kterou si
+     * uživatel nevyžádal a nic mu nepřináší, takže se na ni ptáme předem a nezaškrtnutě.
+     */
+    val CRASH_REPORTING = booleanPreferencesKey("crash_reporting")
 }
 
 object ReaderTheme {
@@ -326,11 +345,28 @@ class SettingsRepository @Inject constructor(
      * zůstává nefiltrované, takže už přidaná manga/kapitoly z adult zdroje se dál dají číst,
      * i když se zdroj skryje z objevování.
      */
+    // Výchozí hodnota je od 2026-08-02 false, dřív true. Zdroje pro dospělé (nhentai, hitomi)
+    // se tak nabízely rovnou po instalaci, bez jediné otázky. Odemyká je teď potvrzený věk
+    // v onboardingu (viz [isAdult]) a přepínač jde kdykoli vypnout v Nastavení.
     val showAdultSources: Flow<Boolean> =
-        dataStore.data.map { it[SettingsKeys.SHOW_ADULT_SOURCES] ?: true }
+        dataStore.data.map { it[SettingsKeys.SHOW_ADULT_SOURCES] ?: false }
 
     suspend fun setShowAdultSources(enabled: Boolean) =
         dataStore.edit { it[SettingsKeys.SHOW_ADULT_SOURCES] = enabled }
+
+    /** Potvrzená plnoletost - viz [SettingsKeys.IS_ADULT]. Datum narození se neukládá. */
+    val isAdult: Flow<Boolean> =
+        dataStore.data.map { it[SettingsKeys.IS_ADULT] ?: false }
+
+    suspend fun setIsAdult(adult: Boolean) =
+        dataStore.edit { it[SettingsKeys.IS_ADULT] = adult }
+
+    /** Souhlas s hlášením pádů - viz [SettingsKeys.CRASH_REPORTING]. */
+    val crashReporting: Flow<Boolean> =
+        dataStore.data.map { it[SettingsKeys.CRASH_REPORTING] ?: false }
+
+    suspend fun setCrashReporting(enabled: Boolean) =
+        dataStore.edit { it[SettingsKeys.CRASH_REPORTING] = enabled }
 
     val savedSearches: Flow<List<String>> =
         dataStore.data.map { prefs ->

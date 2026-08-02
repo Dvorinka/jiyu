@@ -939,4 +939,22 @@
         <item quantity="other">%1$d nuevos</item>
         <item quantity="many">%1$d nuevos</item>
     </plurals>
+
+    <!-- Krok onboardingu: vek a soukromi -->
+    <string name="onb_privacy_title">Edad y privacidad</string>
+    <string name="onb_privacy_subtitle">Dos cosas claras antes de empezar.</string>
+    <string name="onb_privacy_birthdate">Fecha de nacimiento</string>
+    <string name="onb_privacy_birthdate_hint">Toca para elegir: desbloquea las fuentes para adultos</string>
+    <string name="onb_privacy_data_title">Qué sale de tu teléfono</string>
+    <string name="onb_privacy_data_translation">El texto de los bocadillos va al servidor de traducción y de ahí a Gemini, Groq u OpenRouter.</string>
+    <string name="onb_privacy_data_account">Tu correo, solo si inicias sesión.</string>
+    <string name="onb_privacy_data_sync">Biblioteca e historial de lectura, solo si la sincronización está activada.</string>
+    <string name="onb_privacy_crash_title">Enviar informes de fallos</string>
+    <string name="onb_privacy_crash_subtitle">Ayuda a encontrar errores. Desactivado hasta que lo actives.</string>
+    <string name="onb_privacy_changeable">Ambos se pueden cambiar en cualquier momento en Ajustes.</string>
+    <string name="settings_privacy_title">Privacidad</string>
+    <string name="settings_privacy_adult">Tengo 18 años o más</string>
+    <string name="settings_privacy_adult_desc">Desbloquea las fuentes con contenido para adultos.</string>
+    <string name="settings_privacy_crash">Enviar informes de fallos</string>
+    <string name="settings_privacy_crash_desc">Informes anónimos sobre fallos de la aplicación.</string>
 </resources>
