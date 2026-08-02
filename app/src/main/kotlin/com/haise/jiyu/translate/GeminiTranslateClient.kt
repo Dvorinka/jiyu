@@ -63,6 +63,7 @@ class GeminiTranslateClient @Inject constructor(
         glossary: Map<String, String>,
         provider: String = "gemini",
         mangaContext: String = "",
+        previousLines: List<String> = emptyList(),
     ): GeminiTranslationResponse? = withContext(Dispatchers.IO) {
         val toTranslate = bubbles.filterIndexed { _, b -> !b.isSfx }
         if (!isConfigured || toTranslate.isEmpty()) return@withContext null
@@ -75,7 +76,7 @@ class GeminiTranslateClient @Inject constructor(
             put("provider", provider)
             if (provider == "gemini") put("model", GeminiUltraPrompt.MODEL)
             put("system", GeminiUltraPrompt.buildSystemPrompt(glossary, mangaContext))
-            put("user", GeminiUltraPrompt.buildUserPrompt(bubbles))
+            put("user", GeminiUltraPrompt.buildUserPrompt(bubbles, previousLines))
         }
 
         val request = Request.Builder()

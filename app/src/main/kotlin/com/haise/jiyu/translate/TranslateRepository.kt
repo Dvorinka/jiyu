@@ -44,14 +44,16 @@ class TranslateRepository @Inject constructor(
      * model bez něj nemá tušení, jestli překládá temné fantasy, komedii nebo herní systém,
      * a volí tón/slovník podle toho. Prázdný řetězec, když se manga nenajde nebo nemá
      * vyplněné žánry (starý/ještě nenačtený záznam) - prompt takový řádek prostě vynechá.
+     *
+     * Typ obsahu se přidává DVAKRÁT a je to schválně: jednou jako nálepka v závorce (kvůli
+     * názvu díla) a jednou rozepsaný do pravidel ([GeminiUltraPrompt.mediumRules]). Ze
+     * samotné nálepky si model musel domýšlet, co z ní plyne - a u manhwy si typicky
+     * domyslel japonská oslovení.
      */
     private suspend fun mangaContextFor(mangaId: String): String {
         val manga = mangaDao.getById(mangaId) ?: return ""
         val genres = manga.genres.split(",").map { it.trim() }.filter { it.isNotBlank() }
-        return buildString {
-            append("Název: \"${manga.title}\" (${manga.contentType.lowercase()})")
-            if (genres.isNotEmpty()) append(", žánry: ${genres.joinToString(", ")}")
-        }
+        return GeminiUltraPrompt.buildMangaContext(manga.title, manga.contentType, genres)
     }
 
     /**
@@ -85,6 +87,18 @@ class TranslateRepository @Inject constructor(
         val mangaContext = mangaContextFor(mangaId)
         val classified = BubbleClassifier.classifyPage(rawBlocks, sourceLanguage)
 
+        // Návaznost při čtení stránku po stránce: co zaznělo na té předchozí. Bere se jen
+        // z cache - dohledávat ji překladem by znamenalo přeložit stránku, kterou čtenář
+        // možná vůbec neotevře. Na začátku kapitoly (a při skoku doprostřed) prostě není.
+        val recentLines = if (pageIndex > 0) {
+            val previous = getCachedPage(chapterId, pageIndex - 1, targetLanguage, sourceLanguage, pageUrl = null)
+            GeminiUltraPrompt.recentContextLines(
+                previous.orEmpty().filter { !it.isSfx && !it.isUntranslated }.map { it.translatedText },
+            )
+        } else {
+            emptyList()
+        }
+
         // GeminiUltraPrompt je napsaný natvrdo pro češtinu (znakové limity a kompresní
         // pravidla mají české příklady) - pro jiný cílový jazyk zůstáváme na obecném
         // Groq promptu (translate-proxy mode="manga"), který jazyk dostává jako parametr.
@@ -100,9 +114,9 @@ class TranslateRepository @Inject constructor(
             // 429 na proxy je jen jeho VLASTNÍ limit počtu požadavků (viz komentář u
             // RateLimitedException), ne nutně důkaz, že mají vyčerpáno i ostatní dva.
             translateChain(
-                { translateWithGemini(classified, glossary, mangaContext, provider = "gemini", mangaId, targetLanguage) },
-                { translateWithGemini(classified, glossary, mangaContext, provider = "groq", mangaId, targetLanguage) },
-                { translateWithGemini(classified, glossary, mangaContext, provider = "openrouter", mangaId, targetLanguage) },
+                { translateWithGemini(classified, glossary, mangaContext, provider = "gemini", mangaId, targetLanguage, recentLines) },
+                { translateWithGemini(classified, glossary, mangaContext, provider = "groq", mangaId, targetLanguage, recentLines) },
+                { translateWithGemini(classified, glossary, mangaContext, provider = "openrouter", mangaId, targetLanguage, recentLines) },
                 { translateWithGroq(classified, glossary, targetLanguage, sourceLanguage, provider = "groq") },
                 { translateWithGroq(classified, glossary, targetLanguage, sourceLanguage, provider = "openrouter") },
             )
@@ -228,6 +242,12 @@ class TranslateRepository @Inject constructor(
         }
         if (translatable.isEmpty()) return
 
+        // Ocásek replik z PŘEDCHOZÍ dávky. Uvnitř dávky měl model kontext odjakživa (jde do
+        // jednoho požadavku celá, v pořadí čtení), ale na hranici dávky začínal s čistým
+        // stolem - uprostřed rozhovoru se pak mohlo přehodit tykání/vykání nebo oslovení.
+        // Viz [GeminiUltraPrompt.recentContextLines], kde je i rozpočet.
+        var recentLines = emptyList<String>()
+
         chunkPages(translatable, bubblesByPage).forEachIndexed { chunkIndex, chunk ->
             if (chunkIndex > 0) delay(800L)
             // Zbytek kapitoly by jen rychle "doběhl" s prázdnými výsledky - radši srozumitelná
@@ -242,9 +262,9 @@ class TranslateRepository @Inject constructor(
             // odpovědi zpátky po stránkách podle počtu bublin níž je bezpečné.
             val blocks = if (targetLanguage == "Czech") {
                 translateChain(
-                    { translateWithGemini(flatBubbles, glossary, mangaContext, provider = "gemini", mangaId, targetLanguage) },
-                    { translateWithGemini(flatBubbles, glossary, mangaContext, provider = "groq", mangaId, targetLanguage) },
-                    { translateWithGemini(flatBubbles, glossary, mangaContext, provider = "openrouter", mangaId, targetLanguage) },
+                    { translateWithGemini(flatBubbles, glossary, mangaContext, provider = "gemini", mangaId, targetLanguage, recentLines) },
+                    { translateWithGemini(flatBubbles, glossary, mangaContext, provider = "groq", mangaId, targetLanguage, recentLines) },
+                    { translateWithGemini(flatBubbles, glossary, mangaContext, provider = "openrouter", mangaId, targetLanguage, recentLines) },
                     { translateWithGroq(flatBubbles, glossary, targetLanguage, sourceLanguage, provider = "groq") },
                     { translateWithGroq(flatBubbles, glossary, targetLanguage, sourceLanguage, provider = "openrouter") },
                 )
@@ -262,6 +282,12 @@ class TranslateRepository @Inject constructor(
                 }
                 onPageReady(pageIndex, pageBlocks)
             }
+
+            // Ocásek pro DALŠÍ dávku. Zvukové efekty a bubliny, které model označil za
+            // nečitelné, se vynechávají - jako "co zaznělo" by jen zabíraly rozpočet.
+            recentLines = GeminiUltraPrompt.recentContextLines(
+                blocks.filter { !it.isSfx && !it.isUntranslated }.map { it.translatedText },
+            )
         }
     }
 
@@ -306,9 +332,10 @@ class TranslateRepository @Inject constructor(
         provider: String,
         mangaId: String,
         targetLanguage: String,
+        previousLines: List<String> = emptyList(),
     ): List<TranslatedBlock>? {
         if (!geminiClient.isConfigured) return null
-        val response = geminiClient.translateBubbles(classified, glossary, provider, mangaContext) ?: return null
+        val response = geminiClient.translateBubbles(classified, glossary, provider, mangaContext, previousLines) ?: return null
 
         // Model občas bublinu v odpovědi vynechá nebo pro ni vrátí prázdný řetězec. Doptáme se
         // JEN na ty chybějící (ne na celou dávku znovu) - je jich pár, takže je to jedno krátké
@@ -323,6 +350,7 @@ class TranslateRepository @Inject constructor(
                 glossary = glossary,
                 provider = provider,
                 mangaContext = mangaContext,
+                previousLines = previousLines,
             )
             mergeRetry(response.bubbles.associateBy { it.id }, missing, retryResponse, classified)
         }
@@ -608,8 +636,17 @@ class TranslateRepository @Inject constructor(
          *   (3) Prompt ma nove pet pravidel uplne nahore (zapor se nesmi ztratit, veta si nesmi
          *   odporovat) a zaverecnou kontrolu pred sestavenim JSON; glosar uz neni nadrazeny
          *   smyslu vety.
+         * v14 (2026-08-02): typ dila se modelu posila rozepsany do pravidel, ne jen jako nalepka
+         *   v zavorce (viz [GeminiUltraPrompt.mediumRules]). Ze samotneho "(manhwa)" si model
+         *   musel domyslet, co z toho plyne - a u manhwy si typicky domyslel japonska
+         *   honorifika, prestoze "hyung" a "senpai" nejsou zamenitelne a jmena se prepisuji
+         *   jinak. Meni to prompt, tedy i ulozeny preklad.
+         *   Ve stejne verzi: k davce se pribaluje ocasek uz prelozenych replik (viz
+         *   [GeminiUltraPrompt.recentContextLines]). Uvnitr davky mel model kontext vzdycky,
+         *   na jeji hranici ale zacinal s cistym stolem - uprostred rozhovoru se pak mohlo
+         *   prehodit tykani/vykani nebo osloveni postavy.
          */
-        private const val PIPELINE_VERSION = 13
+        private const val PIPELINE_VERSION = 14
 
         /** Maximální počet znaků originálu na jedno API volání - drží výstup pod limitem max_tokens. */
         private const val NOVEL_CHUNK_CHAR_LIMIT = 2500

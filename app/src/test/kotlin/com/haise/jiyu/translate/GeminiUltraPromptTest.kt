@@ -179,4 +179,113 @@ class GeminiUltraPromptTest {
         assertTrue("musi zakazat presouvani textu", prompt.contains("NIKDY nepřesouvá"))
         assertTrue("musi zakazat slucovani bublin", prompt.contains("nesluč"))
     }
+
+    @Test
+    fun `previously translated lines are passed as context, clearly marked as not for translating`() {
+        // Bez toho varování model tenhle blok bere jako součást zadání a vrátí ho v odpovědi,
+        // což rozhodí párování bublin podle id.
+        val prompt = GeminiUltraPrompt.buildUserPrompt(
+            listOf(bubble("WHERE ARE YOU GOING?", topF = 0.1f, bottomF = 0.2f)),
+            previousLines = listOf("Musíme pryč.", "Počkej na mě."),
+        )
+
+        assertTrue("kontext musí být v promptu", prompt.contains("Musíme pryč."))
+        assertTrue("musí zakázat opětovný překlad", prompt.contains("NEPŘEKLÁDEJ je znovu"))
+        assertTrue("bubliny k překladu musí zůstat oddělené", prompt.contains("=== BUBLINY ==="))
+    }
+
+    @Test
+    fun `without previous lines the prompt has no context section at all`() {
+        // Začátek kapitoly. Prázdná sekce by jen ubírala z rozpočtu znaků.
+        val prompt = GeminiUltraPrompt.buildUserPrompt(listOf(bubble("HELLO", topF = 0.1f, bottomF = 0.2f)))
+
+        assertFalse(prompt.contains("CO UŽ ZAZNĚLO"))
+    }
+
+    @Test
+    fun `the context tail keeps the most recent lines, in their original order`() {
+        val previous = listOf("první", "druhá", "třetí", "čtvrtá")
+
+        val tail = GeminiUltraPrompt.recentContextLines(previous, maxLines = 2, maxChars = 1000)
+
+        assertEquals("musí brát od konce, ale neobracet pořadí", listOf("třetí", "čtvrtá"), tail)
+    }
+
+    @Test
+    fun `a long monologue cannot eat the whole context budget`() {
+        // JÁDRO dvojího rozpočtu: samotný limit počtu řádků by tuhle dávku pustil celou.
+        val previous = listOf("x".repeat(300), "krátká")
+
+        val tail = GeminiUltraPrompt.recentContextLines(previous, maxLines = 6, maxChars = 100)
+
+        assertEquals(listOf("krátká"), tail)
+    }
+
+    @Test
+    fun `blank lines never reach the prompt`() {
+        val tail = GeminiUltraPrompt.recentContextLines(listOf("ahoj", "   ", ""))
+
+        assertEquals(listOf("ahoj"), tail)
+    }
+
+    @Test
+    fun `the medium rules really reach the context block, not just exist`() {
+        // Pojistka proti odpojení: samotná pravidla se testují níž, ale bez tohohle testu by
+        // šlo jejich zapojení do kontextu smazat a nikdo by si toho nevšiml.
+        val context = GeminiUltraPrompt.buildMangaContext("Solo Leveling", "MANHWA", listOf("Akce"))
+
+        assertTrue("název i žánr", context.contains("Solo Leveling") && context.contains("Akce"))
+        assertTrue("a hlavně pravidla pro manhwu", context.contains("Korejské"))
+    }
+
+    @Test
+    fun `a work with an unknown content type still gets its title and genres`() {
+        val context = GeminiUltraPrompt.buildMangaContext("Něco", "NECO_NOVEHO", listOf("Drama"))
+
+        assertTrue(context.contains("Něco"))
+        assertTrue(context.contains("Drama"))
+    }
+
+    @Test
+    fun `manhwa is told it is Korean, not Japanese`() {
+        // JÁDRO: typ díla se posílal jen jako nálepka v závorce a model si musel domyslet,
+        // co z ní plyne. U manhwy si domyslel japonská oslovení - "hyung" není "senpai".
+        val rules = GeminiUltraPrompt.mediumRules("MANHWA")
+
+        assertTrue("musí říct, že jde o korejské dílo", rules.contains("Korejské"))
+        assertTrue("musí korejská oslovení vyjmenovat", rules.contains("hyung"))
+        assertFalse("nesmí manhwě podsouvat japonská honorifika", rules.contains("senpai"))
+    }
+
+    @Test
+    fun `each medium gets rules that name its own tradition`() {
+        assertTrue(GeminiUltraPrompt.mediumRules("MANGA").contains("Japonské"))
+        assertTrue(GeminiUltraPrompt.mediumRules("MANHUA").contains("Čínské"))
+        assertTrue(GeminiUltraPrompt.mediumRules("COMIC").contains("Západní"))
+        assertTrue("u novely nejsou bubliny", GeminiUltraPrompt.mediumRules("NOVEL").contains("Próza"))
+    }
+
+    @Test
+    fun `an unknown content type gets no rules at all`() {
+        // Radši žádné pravidlo než špatné: starý záznam v databázi typ mít nemusí a odhad
+        // "asi manga" by u manhwy uškodil právě tím, co se tu opravuje.
+        assertEquals("", GeminiUltraPrompt.mediumRules(""))
+        assertEquals("", GeminiUltraPrompt.mediumRules("NECO_NOVEHO"))
+    }
+
+    @Test
+    fun `the content type is matched regardless of case and padding`() {
+        // Do databáze se typ dostává z různých zdrojů a nikdo nezaručuje tvar.
+        assertEquals(GeminiUltraPrompt.mediumRules("MANHWA"), GeminiUltraPrompt.mediumRules(" manhwa "))
+    }
+
+    @Test
+    fun `the rules stay short, because they are paid for on every single request`() {
+        // Systémový prompt jde s KAŽDÝM požadavkem a znakový limit je náš skutečný strop.
+        // Bez tyhle hlídky se sem pravidla časem nabalí a ubírají kvótu na vlastní překlad.
+        for (type in listOf("MANGA", "MANHWA", "MANHUA", "COMIC", "NOVEL")) {
+            val length = GeminiUltraPrompt.mediumRules(type).length
+            assertTrue("$type má $length znaků, což je nad rozpočtem", length <= 260)
+        }
+    }
 }

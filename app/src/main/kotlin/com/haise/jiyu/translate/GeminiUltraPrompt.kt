@@ -33,6 +33,59 @@ object GeminiUltraPrompt {
      */
     const val UNTRANSLATED_MARKER = "[UNTRANSLATED]"
 
+    /**
+     * Pravidla plynoucí z toho, ODKUD dílo pochází - podle `MangaEntity.contentType`.
+     *
+     * Typ díla se modelu posílal už dřív, ale jen jako nálepka v závorce ("Solo Leveling"
+     * (manhwa)). Co z ní plyne, si musel domyslet sám, a to je zbytečné hádání: každá
+     * z těch tradic má vlastní oslovení a vlastní přepis jmen. Korejské "hyung" a japonské
+     * "senpai" nejsou zaměnitelné a model, který si myslí, že čte japonskou mangu, přeloží
+     * korejské jméno podle japonského čtení.
+     *
+     * Text je schválně krátký. Jde do systémového promptu při KAŽDÉM požadavku, a limit
+     * znaků je podle živých dat náš skutečný strop - dlouhé poučování by se zaplatilo
+     * ubranou kvótou na skutečný překlad.
+     *
+     * Neznámý nebo prázdný typ vrací prázdný řetězec: radši žádné pravidlo než špatné.
+     * Starý záznam v databázi ho mít nemusí a odhadovat "asi manga" by u manhwy uškodilo.
+     */
+    fun mediumRules(contentType: String): String = when (contentType.trim().uppercase()) {
+        "MANGA" ->
+            "Japonské dílo. Honorifika (-san, -kun, -chan, -senpai, -sensei) v češtině vypusť, " +
+                "pokud nenesou vztah, který jinak zmizí - pak ho vyjádři česky (sensei -> učiteli). " +
+                "Jména přepisuj podle japonské výslovnosti."
+        "MANHWA" ->
+            "Korejské dílo, NE japonské. Oslovení hyung/noona/oppa/unnie/sunbae jsou korejská - " +
+                "přelož je vztahem (bratře, starší), ne japonskými protějšky. Jména přepisuj podle " +
+                "korejské výslovnosti."
+        "MANHUA" ->
+            "Čínské dílo. Oslovení shixiong/shimei/shizun a pojmy kultivace (qi, dao, sekta, " +
+                "říše) drž konzistentně. Jména přepisuj podle čínské výslovnosti."
+        "COMIC" ->
+            "Západní komiks. Žádná honorifika ani asijská oslovení - kdyby se v textu objevila, " +
+                "je to chyba OCR."
+        "NOVEL" ->
+            "Próza, ne bubliny. Limity délky ber jen jako orientační - souvislost vět a plynulost " +
+                "odstavce mají přednost před stručností."
+        else -> ""
+    }
+
+    /**
+     * Složí blok "KONTEXT DÍLA" z toho, co appka o díle ví.
+     *
+     * Je to čistá funkce a ne pár řádků přímo v [TranslateRepository] schválně: bez ní by
+     * nešlo otestovat, že se [mediumRules] do kontextu opravdu DOSTANOU. Samotná pravidla
+     * se testují snadno, ale jejich zapojení by šlo smazat a žádný test by si toho nevšiml.
+     */
+    fun buildMangaContext(title: String, contentType: String, genres: List<String>): String = buildString {
+        append("Název: \"$title\" (${contentType.lowercase()})")
+        if (genres.isNotEmpty()) append(", žánry: ${genres.joinToString(", ")}")
+        mediumRules(contentType).takeIf { it.isNotBlank() }?.let {
+            append("\n")
+            append(it)
+        }
+    }
+
     fun buildSystemPrompt(glossary: Map<String, String>, mangaContext: String = ""): String {
         val glossaryBlock = if (glossary.isEmpty()) {
             "(žádné zatím uložené pojmy pro tuhle mangu)"
@@ -230,12 +283,54 @@ object GeminiUltraPrompt {
         """.trimIndent()
     }
 
-    fun buildUserPrompt(bubbles: List<ClassifiedBubble>): String {
+    /**
+     * Ocásek už přeložených replik, který se přibalí k další dávce, aby na sebe překlad
+     * navazoval i PŘES hranici dávky.
+     *
+     * Uvnitř jedné dávky kontext existoval odjakživa - jde do jednoho požadavku celá dávka
+     * v pořadí čtení. Mezi dávkami ale nebyl žádný: kapitola se posílá po kusech (viz
+     * [TranslateRepository.chunkPages]) a každý kus začínal s čistým stolem, takže se
+     * v půlce rozhovoru mohlo přehodit tykání/vykání nebo oslovení postavy.
+     *
+     * Bere se od KONCE a jsou to jen výsledné české repliky, ne dvojice s originálem -
+     * posílat obojí by cenu zdvojnásobilo a na navázání tónu stačí to, co "zaznělo".
+     * Konzistenci jmen řeší glosář, ne tohle.
+     *
+     * Rozpočet je dvojí (počet řádků i znaků) schválně: samotný počet řádků neochrání před
+     * několika dlouhými monology za sebou, a znakový limit je náš skutečný strop.
+     */
+    fun recentContextLines(
+        previous: List<String>,
+        maxLines: Int = RECENT_CONTEXT_MAX_LINES,
+        maxChars: Int = RECENT_CONTEXT_MAX_CHARS,
+    ): List<String> {
+        val result = ArrayDeque<String>()
+        var chars = 0
+        for (line in previous.asReversed()) {
+            val trimmed = line.trim()
+            if (trimmed.isEmpty()) continue
+            if (result.size >= maxLines || chars + trimmed.length > maxChars) break
+            result.addFirst(trimmed)
+            chars += trimmed.length
+        }
+        return result.toList()
+    }
+
+    fun buildUserPrompt(bubbles: List<ClassifiedBubble>, previousLines: List<String> = emptyList()): String {
         // Návaznost se počítá v kódu (geometrie + interpunkce, viz [detectContinuations]) a modelu
         // se předává jako fakt. Sám by ji z pořadí odvodit nemohl: v jedné dávce jde i několik
         // stránek najednou, takže sousední položky spolu vůbec nemusí souviset.
         val continuations = detectContinuations(bubbles)
-        val sb = StringBuilder("Přelož tyto manga bubliny do češtiny.\n\n=== BUBLINY ===\n")
+        val sb = StringBuilder("Přelož tyto manga bubliny do češtiny.\n")
+        if (previousLines.isNotEmpty()) {
+            // Varování "nepřekládej znovu" tu není pro parádu: bez něj model tyhle repliky
+            // bere jako součást zadání a vrátí je v odpovědi, což rozhodí párování podle id.
+            sb.append("\n=== CO UŽ ZAZNĚLO DŘÍV (jen kontext) ===\n")
+            sb.append("Poslední repliky z týhle kapitoly, v pořadí. Navaž na ně tónem, tykáním/vykáním\n")
+            sb.append("a oslovením postav. NEPŘEKLÁDEJ je znovu a nevracej je v odpovědi.\n")
+            previousLines.forEach { sb.append("- \"${it.replace("\"", "'")}\"\n") }
+        }
+        sb.append("\n=== BUBLINY ===\n")
         bubbles.forEachIndexed { id, bubble ->
             sb.append("\n[BUBBLE $id]\n")
             if (id in continuations) {
@@ -302,4 +397,12 @@ object GeminiUltraPrompt {
 
         return GeminiTranslationResponse(bubbles, newTerms)
     }
+
+    /**
+     * Rozpočet na kontextový ocásek (viz [recentContextLines]). Šest replik zhruba odpovídá
+     * jedné výměně mezi dvěma postavami; 350 znaků je proti dávce (viz
+     * [TranslateRepository] CHUNK_CHAR_LIMIT) přirážka v řádu procent.
+     */
+    private const val RECENT_CONTEXT_MAX_LINES = 6
+    private const val RECENT_CONTEXT_MAX_CHARS = 350
 }
