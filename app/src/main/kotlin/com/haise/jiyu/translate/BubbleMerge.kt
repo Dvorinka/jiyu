@@ -19,6 +19,14 @@ package com.haise.jiyu.translate
  * [hasWallBetween] jako druhá, vizuální pojistka v [mergeNearbyLines].
  */
 internal fun shouldMerge(a: RawTextBlock, b: RawTextBlock): Boolean {
+    // Svisle sázená japonština je jiný svět: ML Kit vrací celý SLOUPEC jako jeden "řádek",
+    // takže vodorovné pravidlo níž by porovnávalo mezeru mezi sloupci s výškou sloupce.
+    // Naměřeno na zařízení (VerticalJapaneseOnDeviceTest): dvě bubliny 350 px od sebe se
+    // slily do jednoho bloku, protože 1,8x výška sloupce je přes půl stránky. Sloupce mají
+    // vlastní, zrcadlově otočené pravidlo.
+    if (a.isVertical != b.isVertical) return false
+    if (a.isVertical) return shouldMergeVerticalColumns(a, b)
+
     val avgHeight = ((a.bottomF - a.topF) + (b.bottomF - b.topF)) / 2f
     if (avgHeight <= 0f) return false
 
@@ -27,6 +35,25 @@ internal fun shouldMerge(a: RawTextBlock, b: RawTextBlock): Boolean {
     val horizontalGap = maxOf(0f, maxOf(a.leftF, b.leftF) - minOf(a.rightF, b.rightF))
 
     return verticalGap < avgHeight * 0.9f && (horizontalOverlap > 0f || horizontalGap < avgHeight * 1.8f)
+}
+
+/**
+ * Totéž co [shouldMerge], ale s prohozenými osami: u sloupce hraje roli měřítka jeho ŠÍŘKA,
+ * ne výška, a sousední sloupce téže bubliny stojí vedle sebe místo pod sebou.
+ *
+ * Ověřeno proti naměřeným boxům (VerticalJapaneseOnDeviceTest, sloupce široké ~50 px):
+ * sousední sloupce jedné bubliny měly mezeru 26-31 px a sloučí se; sloupce dvou různých
+ * bublin měly 350 px a nesloučí se. Dřív se slily všechny čtyři do jednoho bloku.
+ */
+private fun shouldMergeVerticalColumns(a: RawTextBlock, b: RawTextBlock): Boolean {
+    val avgWidth = ((a.rightF - a.leftF) + (b.rightF - b.leftF)) / 2f
+    if (avgWidth <= 0f) return false
+
+    val horizontalGap = maxOf(0f, maxOf(a.leftF, b.leftF) - minOf(a.rightF, b.rightF))
+    val verticalOverlap = minOf(a.bottomF, b.bottomF) - maxOf(a.topF, b.topF)
+    val verticalGap = maxOf(0f, maxOf(a.topF, b.topF) - minOf(a.bottomF, b.bottomF))
+
+    return horizontalGap < avgWidth * 0.9f && (verticalOverlap > 0f || verticalGap < avgWidth * 1.8f)
 }
 
 /**
@@ -61,7 +88,16 @@ internal fun mergeNearbyLines(
     }
 
     return lines.indices.groupBy { find(it) }.map { (_, idxs) ->
-        val group = idxs.map { lines[it] }.sortedWith(compareBy({ it.topF }, { it.leftF }))
+        val members = idxs.map { lines[it] }
+        // Svislé sloupce se řadí ZPRAVA DOLEVA (japonské pořadí čtení), vodorovné řádky
+        // shora dolů jako dosud. Bez toho by se text bubliny složil pozpátku a model by
+        // dostal větu s prohozenými částmi.
+        val vertical = members.all { it.isVertical }
+        val group = if (vertical) {
+            members.sortedWith(compareByDescending<RawTextBlock> { it.rightF }.thenBy { it.topF })
+        } else {
+            members.sortedWith(compareBy({ it.topF }, { it.leftF }))
+        }
         RawTextBlock(
             text = group.joinToString(" ") { it.text },
             leftF = group.minOf { it.leftF },
@@ -69,11 +105,21 @@ internal fun mergeNearbyLines(
             rightF = group.maxOf { it.rightF },
             bottomF = group.maxOf { it.bottomF },
             lineCount = group.size,
+            isVertical = vertical,
             // Prumer vysky JEDNOTLIVYCH puvodnich radku (kazdy prvek "lines" je jeste jeden
             // radek z ML Kit, pred timhle slouceni) - NE vyska cele sloucene bubliny. Zaklad
             // pro "nativni" velikost pisma, kterou se render pokusi napodobit - viz
             // [TranslatedBlock.nativeLineHeightF].
-            nativeLineHeightF = group.map { it.bottomF - it.topF }.average().toFloat(),
+            //
+            // U svislého sloupce je protějškem výšky řádku jeho ŠÍŘKA: velikost písma určuje
+            // to, jak je sloupec široký, kdežto jeho výška říká jen, kolik znaků v něm je.
+            // Bez tohohle rozlišení by render u svislé bubliny odvodil velikost písma z délky
+            // celého sloupce a nasadil obří text.
+            nativeLineHeightF = if (vertical) {
+                group.map { it.rightF - it.leftF }.average().toFloat()
+            } else {
+                group.map { it.bottomF - it.topF }.average().toFloat()
+            },
         )
     }
 }

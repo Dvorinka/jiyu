@@ -645,8 +645,13 @@ class TranslateRepository @Inject constructor(
          *   [GeminiUltraPrompt.recentContextLines]). Uvnitr davky mel model kontext vzdycky,
          *   na jeji hranici ale zacinal s cistym stolem - uprostred rozhovoru se pak mohlo
          *   prehodit tykani/vykani nebo osloveni postavy.
+         * v15 (2026-08-02): svisle sazena japonstina se slucuje vlastnim pravidlem. ML Kit vraci
+         *   cely SLOUPEC jako jeden "radek" a stare pravidlo porovnavalo mezeru mezi sloupci
+         *   s VYSKOU sloupce - 1,8x vyska sloupce je pres pul stranky, takze se slily i bubliny
+         *   350 px od sebe. Namereno sondou na zarizeni: cela stranka se slila do JEDNOHO bloku
+         *   s promichanym textem. Meni to vysledek OCR, tedy i ulozene bloky.
          */
-        private const val PIPELINE_VERSION = 14
+        private const val PIPELINE_VERSION = 15
 
         /** Maximální počet znaků originálu na jedno API volání - drží výstup pod limitem max_tokens. */
         private const val NOVEL_CHUNK_CHAR_LIMIT = 2500

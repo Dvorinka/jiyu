@@ -33,7 +33,28 @@ data class RawTextBlock(
     val bgUniform: Boolean = true,
     /** Průměrná výška JEDNOHO řádku originálu (zlomek výšky stránky) - viz [TranslatedBlock.nativeLineHeightF]. */
     val nativeLineHeightF: Float = 0f,
+    /**
+     * Svisle sázený text (japonština). Bere se z úhlu, který ML Kit u řádku vrací - viz
+     * [isVerticalAngle] - a rozhoduje o tom, jakým pravidlem se blok slučuje ([shouldMerge]).
+     */
+    val isVertical: Boolean = false,
 )
+
+/**
+ * Je řádek s tímhle úhlem svisle sázený sloupec?
+ *
+ * ML Kit u svislé japonštiny vrací `Text.Line.angle` kolem 90° (naměřeno na zařízení:
+ * 89,9 až 90,4) a appka ten údaj do teď vůbec nečetla. Je to spolehlivější signál než
+ * hádat z poměru stran boxu: jednoznakový sloupec je skoro čtvercový, kdežto dlouhé
+ * vodorovné slovo je taky "úzké a dlouhé", jen v druhé ose.
+ *
+ * Tolerance je široká, protože skeny bývají pootočené. 270° je tatáž svislice opačným
+ * směrem - bere se taky, ať se pravidlo nechová jinak podle znaménka.
+ */
+internal fun isVerticalAngle(angle: Float): Boolean {
+    val normalized = ((angle % 360f) + 360f) % 360f
+    return normalized in 60f..120f || normalized in 240f..300f
+}
 
 /** Výsledek [OcrEngine.sampleBackgroundColor] - dvě barvy (gradient) + signál rovnoměrnosti pro [TranslatedBlock.bgUniform]. */
 private data class BgSample(val topArgb: Int, val bottomArgb: Int, val uniform: Boolean)
@@ -275,6 +296,7 @@ class OcrEngine @Inject constructor() {
                 topF = (box.top / h).coerceIn(0f, 1f),
                 rightF = (box.right / w).coerceIn(0f, 1f),
                 bottomF = (box.bottom / h).coerceIn(0f, 1f),
+                isVertical = isVerticalAngle(line.angle),
             )
         }
     }
