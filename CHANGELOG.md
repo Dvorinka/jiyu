@@ -171,6 +171,151 @@ Dve kreslene rekonstrukce te stranky se od skutecnosti rozesly zrovna v tom, co 
 - Knihovna pro šifrované úložiště tracker tokenů povýšena z alpha na stabilní verzi.
 - Přibyly první testy ViewModelů; celkem jich projekt má 578.
 
+<!--
+Verze v0.3.4 az v0.7.9 se v dobe vydani do CHANGELOGu nezapisovaly. Sekce nize jsou
+ZPETNE SESTAVENE z predmetu commitu mezi prislusnymi tagy (2026-08-02) - jsou tedy
+strucnejsi a syrovejsi nez rucne psane zaznamy vys, protoze nic jineho k dispozici
+neni. Cistky verze (chore/Release/ci/merge) jsou vynechane.
+-->
+
+## v0.7.9 (2026-07-31)
+
+- fix: prekladovy prompt varuje pred doslovnymi idiomy a spatnym zvratnym slovesem
+- fix: dlaždicovaný/rozházený vodoznak napříč stránkou už není jako text
+- fix: tenky vodoznak mezi pulkami repliky rozdelil bublinu na dve
+
+## v0.7.8 (2026-07-31)
+
+- feat: preklad zkusi nejdriv velikost pisma puvodniho originalu, ne rovnou maximum
+- fix: model si pod velkou davkou spletl cislovani "id" a preklad skoncil u jine bubliny
+- fix: kaskadova bublina s posunutym druhym radkem ztracela pulku textu
+
+## v0.7.7 (2026-07-31)
+
+- fix: preklad se tvaril jako hotovy i kdyz se nic neprelozilo
+
+## v0.7.6 (2026-07-31)
+
+- fix: jedna zasekla stranka zamrazila ukazatel prekladu na 0/N pro celou kapitolu
+
+## v0.7.5 (2026-07-31)
+
+- fix: appka pri prekladu tvrde padala - Coil hardwarova bitmapa + pixel access
+
+## v0.7.4 (2026-07-31)
+
+- fix: detekce tvaru bubliny zerala stovky MB pameti - appka pri prekladu tise umirala
+
+## v0.7.3 (2026-07-31)
+
+- fix: chybejici preklad uz se nevykresli jako anglicky original + oprava sazby do sirsiho obrysu
+
+## v0.7.2 (2026-07-31)
+
+- fix: preklad kapitoly uz nemarni cas na providerovi, ktery odmita obsluhu
+
+## v0.7.1 (2026-07-28)
+
+- feat: vyvazena sazba textu do tvaru bubliny (kosoctvercovy blok jako profesionalni lettering)
+
+## v0.7.0 (2026-07-27)
+
+- fix: skutecna pricina rozbiteho textu v bublinach - lamani slov po pismenech + prepis sazby
+
+## v0.6.2 (2026-07-27)
+
+- fix: 4 dalsi chyby prekladu bublin (skvrna z watermarku, useknuty text, extremni velikosti)
+
+## v0.6.1 (2026-07-27)
+
+- fix: 3 chyby prekladu bublin nahlasene uzivatelem (mizejici bublina, slita placka, useknuta slova)
+- chore: odebran CLAUDE.md ze sledovani gitem
+
+## v0.6.0 (2026-07-27)
+
+- docs: anglicka verze README + poznamka o cestine jako hlavnim jazyce prekladu
+- fix: citelne jmeno stazenych kapitol pro export na PC + pad stahovani na Androidu 14
+- fix: zvednuty svevolny denni limit prekladove proxy (nasazeno)
+- fix: rate limit u jednoho providera uz nezastavi cely prekladovy retezec
+- feat: 5 vylepseni kvality prekladu (poradi bublin, mene komprese, kontext, ucici se glosar, shape-aware SHOUT)
+- fix: 3 problemy prekladu bublin (UNTRANSLATED leak, shape-aware fit, mene agresivni placka)
+- revert: vraceny 3 sloupce v mrizce zdroju na Prochazet
+- redesign: cistsi karta zdroje na Prochazet (2 sloupce, ikona vedle nazvu)
+- feat: karusel oblibenych zdroju na obrazovce Prochazet
+- feat: rozsireny info blok na detailu mangy (Origination/Demographic/Published) + sipka u popisu
+- fix: overeno a zamitnuto navraceni manhuafast/manhuaus (uzivatelska korekce)
+- fix: odstraneno mangafire - Cloudflare Turnstile token, ne jen chybejici auth
+- docs: zdokumentovano ctvrte kolo auditu zdroju (fix vs. remove)
+- fix: odstraneno 17 zdroju s nereseitelnou ochranou/strukturou (ctvrte kolo)
+- fix: tri dalsi zdroje ze tretiho kola auditu (flamecomics, scanvf, wuxiabox)
+- fix: NovelFire selektor + Japscan zastarala domena (6f)
+- fix: MadaraSource NOVEL zdroje vracely 0 stranek kapitoly (6e)
+- fix: EvilManga archivni URL + zdokumentovano 3. kolo Cloudflare testu (6c)
+- fix: opraveno 7/10 zdroju s chybejicimi hotlink referery (6d)
+- fix: oprava 5 Madara zdroju se zmenenou archivni URL + druhe kolo auditu
+- Fix: odstraneno Bato.to - potvrzeno nefunkcni i v realne appce
+- Fix: odstraneno ComicK - funguje uz jen jako tracker, ne zdroj obrazku
+- Feat: obecny report v Nastaveni, hromadny prepinac adult zdroju + dokonceni auditu zdroju
+
+## v0.5.0 (2026-07-26)
+
+- Feat: menu na kartě zdroje (oblíbené/report) + pripevnena hlavicka Prochazet
+- Feat: chunking fix pro novely + prednacitani prekladu dalsi kapitoly
+- Feat: gradientova vyplin bublin + entrance animace
+- Refactor: OcrEngine bez OkHttpClient, bitmapy přes novy PageBitmapLoader
+- Feat: tap-to-flip bublin (originál/preklad) + obrysovy text pro citelnost
+- Refactor: rozdeleni ReaderScreen.kt do fokusovanych souboru
+- Perf: dávkový překlad kapitoly místo volání API po jedné stránce
+- Feat: OpenRouter (Gemma) jako záložní překladač + skloňování jmen v promptu
+
+## v0.4.2 (2026-07-26)
+
+- fix: audit a oprava rozbitych manga/manhwa/manhua zdroju
+
+## v0.4.1 (2026-07-25)
+
+- (jen zvednuti verze)
+
+## v0.4.0 (2026-07-25)
+
+- (jen zvednuti verze)
+
+## v0.3.9 (2026-07-25)
+
+- (jen zvednuti verze)
+
+## v0.3.8 (2026-07-25)
+
+- Fix: CloudflareInterceptor - overit finalni pokus + presnejsi detekce vyzvy
+- Feat: pridat zdroj ManhuaUS (manhuaus.com)
+- Fix: DemonicScans cerna stranka - rozseknuti obrich obrazku na kousky
+- Feat: Groq muze prekladat stejnym "ultra" promptem jako Gemini (komprese/deleni)
+- Fix: Gemini rate limit padne na Groq misto oznaceni [UNTRANSLATED]
+
+## v0.3.7 (2026-07-24)
+
+- Feat: box pro preklad kopiruje skutecny tvar bubliny (BubbleClipShape)
+- Feat: font podle typu bubliny (tucne na krik, kurziva na myslenku/sepot)
+- Feat: layoutTranslationBlocks pouzije presny tvar bubliny misto heuristiky, kdyz je k dispozici
+- Feat: propagace tvaru bubliny do TranslatedBlock, cache + migrace starych zaznamu
+- Feat: napojit BubbleShapeDetector do OcrEngine.recognize()
+- Feat: BubbleShapeDetector - flood-fill detekce tvaru bubliny (cisty JVM algoritmus)
+- Docs: fix - pouzit .clip() misto jen .background(color, shape), aby se ostrihl i obsah
+- Docs: implementacni plan pro detekci tvaru bubliny a font podle stylu
+- Docs: spec pro detekci tvaru bubliny a font podle stylu
+
+## v0.3.6 (2026-07-24)
+
+- (jen zvednuti verze)
+
+## v0.3.5 (2026-07-24)
+
+- (jen zvednuti verze)
+
+## v0.3.4 (2026-07-20)
+
+- Feat: redesign zdrojů (reálná loga, barevné karty) + spolehlivější překlad
+
 ## v0.3.3
 
 ### Nové funkce
