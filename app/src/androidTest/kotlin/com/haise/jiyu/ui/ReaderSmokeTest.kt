@@ -1,32 +1,27 @@
 package com.haise.jiyu.ui
 
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.rule.GrantPermissionRule
 import com.haise.jiyu.MainActivity
+import com.haise.jiyu.R
 import dagger.hilt.android.testing.HiltAndroidRule
 import dagger.hilt.android.testing.HiltAndroidTest
 import org.junit.Before
-import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
-
 /**
- * POZOR: vetsina testu v teto tride je docasne vypnuta.
+ * Nejzákladnější kouřová zkouška: appka nastartuje a po onboardingu přistane na knihovně.
  *
- * Instrumentovane testy se v projektu roky nespoustely - chybel `testInstrumentationRunner`
- * (viz HiltTestRunner) a soubory se ani nekompilovaly. Po zprovozneni vyslo najevo, ze tyhle
- * testy mlcky predpokladaji urcity stav: dokonceny onboarding A ZAROVEN prazdnou knihovnu.
- * Cerstva instalace ma onboarding nedokonceny (a zobrazi ho misto knihovny), pouzivana appka
- * zase knihovnu prazdnou nema - test tedy neprojde ani v jednom bezne dosazitelnem stavu.
- *
- * Poctiva oprava = necha test pripravit si stav sam (testovaci Hilt modul, ktery podstrci
- * pripravene DataStore/Room). To je samostatny kus prace, ne uprava jednoho radku, proto
- * radeji viditelne @Ignore nez cervene sestaveni nebo tise smazany test.
+ * Druhý test byl dřív vypnutý `@Ignore` s odůvodněním, že vyžaduje prázdnou knihovnu - přitom
+ * jeho jediné tvrzení (`onNodeWithText("Knihovna")`) mířilo na popisek dolní lišty, který je
+ * vidět úplně vždycky, takže o prázdném stavu nic neříkal ani jeho název neseděl. Teď se ptá
+ * na prvek, který je jen na knihovně, a stav si připraví sám (viz [OnboardingCompletedRule]).
  */
 @HiltAndroidTest
 @RunWith(AndroidJUnit4::class)
@@ -44,6 +39,9 @@ class ReaderSmokeTest {
     val hiltRule = HiltAndroidRule(this)
 
     @get:Rule(order = 2)
+    val onboardingRule = OnboardingCompletedRule()
+
+    @get:Rule(order = 3)
     val composeRule = createAndroidComposeRule<MainActivity>()
 
     @Before
@@ -56,9 +54,11 @@ class ReaderSmokeTest {
     }
 
     @Test
-    @Ignore("Vyzaduje konkretni stav appky (dokonceny onboarding + PRAZDNA knihovna), ktery si test sam nepripravuje - viz komentar u tridy.")
-    fun library_emptyState_isDisplayed() {
-        composeRule.waitForIdle()
-        composeRule.onNodeWithText("Knihovna").assertExists()
+    fun library_isTheStartDestination() {
+        // Text ze string resource, ne natvrdo - appka spuštěná bez onboardingu mluví jazykem
+        // zařízení, takže na anglickém emulátoru by česká konstanta nikdy nesedla.
+        val search = composeRule.activity.getString(R.string.library_search_placeholder)
+        composeRule.awaitText(search)
+        composeRule.onNodeWithText(search).assertIsDisplayed()
     }
 }

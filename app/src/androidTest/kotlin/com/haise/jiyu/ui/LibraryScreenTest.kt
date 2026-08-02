@@ -9,27 +9,27 @@ import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.rule.GrantPermissionRule
 import com.haise.jiyu.MainActivity
+import com.haise.jiyu.R
 import dagger.hilt.android.testing.HiltAndroidRule
 import dagger.hilt.android.testing.HiltAndroidTest
 import org.junit.Before
-import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
-
 /**
- * POZOR: vetsina testu v teto tride je docasne vypnuta.
+ * Testy dolní navigace a přechodů mezi hlavními obrazovkami.
  *
- * Instrumentovane testy se v projektu roky nespoustely - chybel `testInstrumentationRunner`
- * (viz HiltTestRunner) a soubory se ani nekompilovaly. Po zprovozneni vyslo najevo, ze tyhle
- * testy mlcky predpokladaji urcity stav: dokonceny onboarding A ZAROVEN prazdnou knihovnu.
- * Cerstva instalace ma onboarding nedokonceny (a zobrazi ho misto knihovny), pouzivana appka
- * zase knihovnu prazdnou nema - test tedy neprojde ani v jednom bezne dosazitelnem stavu.
+ * Dřív byly celé vypnuté `@Ignore` s odůvodněním, že vyžadují dokončený onboarding A ZÁROVEŇ
+ * prázdnou knihovnu, což si samy nepřipraví. Při bližším pohledu platila jen první polovina:
+ * žádné z tvrzení níž na obsahu knihovny nestojí - všechna se ptají na popisky dolní lišty
+ * nebo na prvek, který je jen na cílové obrazovce. Stačí tedy dokončený onboarding, a ten si
+ * test nastaví sám (viz [OnboardingCompletedRule]); databáze se nesahá.
  *
- * Poctiva oprava = necha test pripravit si stav sam (testovaci Hilt modul, ktery podstrci
- * pripravene DataStore/Room). To je samostatny kus prace, ne uprava jednoho radku, proto
- * radeji viditelne @Ignore nez cervene sestaveni nebo tise smazany test.
+ * Texty se berou ze STRING RESOURCES, ne natvrdo. Onboarding si jazyk vybírá sám (a nastaví
+ * ho přes AppCompatDelegate), takže appka spuštěná bez něj mluví jazykem ZAŘÍZENÍ - na
+ * anglickém emulátoru tedy anglicky. Testy s natvrdo napsanou češtinou by tam hledaly text,
+ * který na obrazovce nikdy není.
  */
 @HiltAndroidTest
 @RunWith(AndroidJUnit4::class)
@@ -46,24 +46,34 @@ class LibraryScreenTest {
     @get:Rule(order = 1)
     val hiltRule = HiltAndroidRule(this)
 
+    // Musí být mezi Hiltem (potřebuje hotovou komponentu) a compose rule (ten už spouští
+    // Activity, takže později by bylo pozdě) - viz [OnboardingCompletedRule].
     @get:Rule(order = 2)
+    val onboardingRule = OnboardingCompletedRule()
+
+    @get:Rule(order = 3)
     val composeRule = createAndroidComposeRule<MainActivity>()
 
     @Before
     fun setUp() = hiltRule.inject()
 
+    private fun text(resId: Int): String = composeRule.activity.getString(resId)
+
     @Test
-    @Ignore("Vyzaduje konkretni stav appky (dokonceny onboarding + PRAZDNA knihovna), ktery si test sam nepripravuje - viz komentar u tridy.")
     fun libraryScreen_isDisplayed() {
-        composeRule.onNodeWithText("Knihovna").assertIsDisplayed()
+        // Vyhledávací pole je JEN na knihovně, na rozdíl od popisku v dolní liště, který je
+        // vidět ze všech obrazovek - to je rozdíl mezi "jsme na knihovně" a "appka běží".
+        val search = text(R.string.library_search_placeholder)
+        composeRule.awaitText(search)
+        composeRule.onNodeWithText(search).assertIsDisplayed()
     }
 
     @Test
-    @Ignore("Vyzaduje konkretni stav appky (dokonceny onboarding + PRAZDNA knihovna), ktery si test sam nepripravuje - viz komentar u tridy.")
     fun bottomNavigation_tabsExist() {
-        composeRule.onNodeWithText("Procházet").assertExists()
-        composeRule.onNodeWithText("Historie").assertExists()
-        composeRule.onNodeWithText("Nastavení").assertExists()
+        composeRule.awaitText(text(R.string.library_search_placeholder))
+        composeRule.onAllNodesWithText(text(R.string.main_screen_tab_browse)).onFirst().assertExists()
+        composeRule.onAllNodesWithText(text(R.string.main_screen_tab_history)).onFirst().assertExists()
+        composeRule.onAllNodesWithText(text(R.string.settings_title)).onFirst().assertExists()
     }
 
     // Oba testy níž dřív klikly na položku dolní lišty a pak ověřily, že je vidět text se
@@ -74,18 +84,20 @@ class LibraryScreenTest {
     // Teď se klikne na položku lišty a ověří se prvek, který je JEN na cílové obrazovce.
 
     @Test
-    @Ignore("Vyzaduje konkretni stav appky (dokonceny onboarding + PRAZDNA knihovna), ktery si test sam nepripravuje - viz komentar u tridy.")
     fun navigateToBrowse_works() {
-        composeRule.onAllNodesWithText("Procházet").onFirst().performClick()
-        composeRule.waitForIdle()
-        composeRule.onNodeWithText("Hledat ve všech zdrojích…").assertIsDisplayed()
+        composeRule.awaitText(text(R.string.library_search_placeholder))
+        composeRule.onAllNodesWithText(text(R.string.main_screen_tab_browse)).onFirst().performClick()
+        val browseSearch = text(R.string.browse_search_placeholder)
+        composeRule.awaitText(browseSearch)
+        composeRule.onNodeWithText(browseSearch).assertIsDisplayed()
     }
 
     @Test
-    @Ignore("Vyzaduje konkretni stav appky (dokonceny onboarding + PRAZDNA knihovna), ktery si test sam nepripravuje - viz komentar u tridy.")
     fun navigateToSettings_works() {
-        composeRule.onAllNodesWithText("Nastavení").onFirst().performClick()
-        composeRule.waitForIdle()
-        composeRule.onNodeWithText("Zdroje mang").assertIsDisplayed()
+        composeRule.awaitText(text(R.string.library_search_placeholder))
+        composeRule.onAllNodesWithText(text(R.string.settings_title)).onFirst().performClick()
+        val sources = text(R.string.settings_main_sources_title)
+        composeRule.awaitText(sources)
+        composeRule.onNodeWithText(sources).assertIsDisplayed()
     }
 }
