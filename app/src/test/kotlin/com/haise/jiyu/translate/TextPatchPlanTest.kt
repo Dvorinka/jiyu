@@ -47,13 +47,24 @@ class TextPatchPlanTest {
     }
 
     @Test
-    fun `a bubble with a detected outline gets no patch at all`() {
-        // JÁDRO NÁLEZU: přesně tyhle bubliny uživatel hlásil. Uvnitř nalezeného obrysu je
-        // jedna barva, takže oříznutá výplň je od originálu k nerozeznání - záplata tam nemá
-        // co zlepšit a jen zavlekla roztažené zbytky původního textu.
-        val positioned = layoutTranslationBlocks(listOf(block(shape = circleShape())))
+    fun `a bubble with an outline but a patterned interior still gets a patch`() {
+        // JÁDRO NÁLEZU: dřív tady stálo, že bublina s obrysem záplatu nikdy nechce. Neplatí to
+        // pro balónky s vzorovaným vnitřkem (jemná vlnitá textura). Flood-fill se o texturní
+        // čáry zastaví, takže vyjde obrys menší než balónek, a jednolitá výplň přes něj zakryje
+        // vzorek jen uprostřed - po okrajích prosvítá originál. Uživatel to hlásil jako bílou
+        // nálepku nalepenou přes kresbu. Záplata vzorek zachová, protože zakrývá jen písmena.
+        val positioned = layoutTranslationBlocks(listOf(block(shape = circleShape(), bgUniform = false)))
 
-        assertTrue("bublina s obrysem nesmí chtít záplatu", patchPlan(positioned).isEmpty())
+        assertEquals("bublina s vzorovaným vnitřkem chce záplatu", 1, patchPlan(positioned).size)
+    }
+
+    @Test
+    fun `a bubble with an outline and a genuinely flat interior gets no patch`() {
+        // Druhá strana téhož: u obyčejného bílého balónku je oříznutá výplň od originálu
+        // k nerozeznání, takže záplata nemá co zlepšit a jen riskuje artefakty.
+        val positioned = layoutTranslationBlocks(listOf(block(shape = circleShape(), bgUniform = true)))
+
+        assertTrue("jednolitý balónek nesmí chtít záplatu", patchPlan(positioned).isEmpty())
     }
 
     @Test

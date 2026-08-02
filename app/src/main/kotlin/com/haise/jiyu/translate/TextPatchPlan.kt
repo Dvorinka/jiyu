@@ -36,15 +36,24 @@ fun renderBoxRect(pos: PositionedTranslationBlock): PatchRect =
  * přeložené bubliny. Naměřeno na nahlášené stránce: řádkování zbytku 88 px proti 62 px
  * v originále, tedy zvětšení 1,4x.
  *
- * ## Proč bublina s detekovaným tvarem záplatu nedostává
- * Flood-fill najde obrys jen tam, kde je uvnitř souvislá plocha jedné barvy - to je definice
- * skutečné nakreslené bubliny. Jednolitá výplň oříznutá tvarem je tam od originálu
- * k nerozeznání, takže záplata nemá co zlepšit a jen riskuje artefakty. Záplata vznikla pro
- * text ležící PŘÍMO NA KRESBĚ, kde žádný obrys není (viz [buildTextPatch]).
+ * ## Proč o záplatě rozhoduje jednolitost pozadí, a NE to, jestli se našel obrys
+ * Nejdřív tady stála podmínka `shape == null`: našel-li flood-fill obrys, brala se bublina za
+ * skutečný nakreslený balónek a místo záplaty dostala jednolitou výplň oříznutou tvarem.
+ * Úvaha byla, že uvnitř obrysu je stejně jedna barva, takže je výplň od originálu
+ * k nerozeznání.
  *
- * Že takové bublině vyjde `bgUniform = false`, není spor: prstenec vzorků se bere kolem OCR
- * boxu, a když text vyplňuje balónek skoro celý, prstenec zasáhne černý obrys. Uvnitř obrysu
- * je pak pořád jedna barva.
+ * Neplatí to. Existují bubliny s VZOROVANÝM vnitřkem - třeba jemnou vlnitou texturou. Ty pro
+ * flood-fill nejsou jednolitá plocha: texturní čáry se chovají jako stěna a vylévání se
+ * o ně zastaví. Vyjde z toho obrys, který je menší než balónek, a jednolitá výplň přes něj
+ * pak vzorek zakryje jen uprostřed - po okrajích prosvítá původní textura. Uživatel to
+ * hlásil jako bílou nálepku nalepenou přes kresbu, a je to přesně ono.
+ *
+ * Rozhoduje proto [TranslatedBlock.bgUniform]: ptá se, jestli JE pozadí jedné barvy, kdežto
+ * obrys se ptá jen, jestli se nějaký našel. Když jednolité není, kreslí se záplata - ta
+ * zakryje jen tahy písmen a každý zakrytý pixel dopočítá z okolí, takže vzorek přežije.
+ *
+ * Bez opravy geometrie záplaty (viz odstavec výše) by tohle nešlo: roztažené zbytky tahů
+ * byly původní důvod, proč záplata u bublin s obrysem skončila.
  */
 fun patchPlan(positioned: List<PositionedTranslationBlock>): Map<Int, PatchRect> =
     positioned.withIndex()
@@ -52,4 +61,4 @@ fun patchPlan(positioned: List<PositionedTranslationBlock>): Map<Int, PatchRect>
         .associate { (index, pos) -> index to renderBoxRect(pos) }
 
 private fun TranslatedBlock.needsPatch(): Boolean =
-    !isSfx && !isUntranslated && !bgUniform && shape == null
+    !isSfx && !isUntranslated && !bgUniform

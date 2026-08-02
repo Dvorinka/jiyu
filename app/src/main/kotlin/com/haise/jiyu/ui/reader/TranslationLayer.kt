@@ -335,10 +335,11 @@ fun TranslationOverlay(
                 .width(w)
                 .heightIn(min = minH, max = maxH)
                 .clip(clipShape)
-                // Bublina ležící přímo na kresbě dostane místo jednolité výplně ZÁPLATU:
-                // zakryté jsou jen tahy původního písma, zbytek kresby prosvítá (viz
-                // TextPatchProvider). U skutečné bubliny (jednolité pozadí) žádná záplata
-                // nevzniká a kreslí se gradient jako dosud - tam je k nerozeznání od originálu.
+                // Kde pozadí NENÍ jedné barvy, kreslí se místo výplně ZÁPLATA: zakryté jsou jen
+                // tahy původního písma, zbytek prosvítá (viz TextPatchProvider). Týká se to textu
+                // na kresbě i balónků s vzorovaným vnitřkem - u těch druhých vzorek přežije,
+                // kdežto jednolitá výplň by z nich udělala bílou nálepku (viz [patchPlan]).
+                // Jednolité pozadí kreslí gradient jako dosud, tam je k nerozeznání od originálu.
                 .let { m ->
                     if (patch != null) {
                         m.paint(
