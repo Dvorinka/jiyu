@@ -70,6 +70,27 @@ import kotlin.coroutines.resumeWithException
  * webtoonu má klidně 15 000 px na výšku, kde je čtyřnásobek přímá cesta k OOM (viz
  * PageBitmapLoader.maxDimension). Prokazatelný zisk nula, jistá cena vysoká.
  *
+ * ## Confidence jako varování? Změřeno 2026-08-02, NEPRŮKAZNÉ
+ *
+ * ML Kit vrací u každého řádku `getConfidence()` a appka ji nikdy nečetla. Nabízí se použít
+ * ji jako signál "tady OCR plave" a modelu takovou bublinu označit, ať si nedomýšlí. Měřeno
+ * na stránkách zašuměných tak, aby OCR začalo chybovat (`probe_doesConfidencePredictAWrongRead`):
+ *
+ *     šum    správně přečtené   špatně přečtené
+ *     0        0.794 (11 řádků)   0.730 (1 řádek)
+ *     60       0.773 (11)         0.772 (1)
+ *     90       0.763 (11)         0.687 (1)
+ *     110      0.732 (10)         0.716 (2)
+ *
+ * Špatně přečtený řádek má většinou nižší confidence, ale při šumu 60 vyšla prakticky
+ * shodná se správnými - a celé to stojí na jednom až dvou špatných řádcích z dvanácti.
+ * Z toho práh postavit nejde; vyšel by generátor náhodných poplachů.
+ *
+ * Pozor na správnou interpretaci: tohle hypotézu NEVYVRACÍ, jen ji nepotvrzuje. Dostatek
+ * chybných řádků se na vykresleném písmu vyrobit nepodařilo - ML Kit ho čte správně i pod
+ * šumem, který je pro člověka nepříjemný. Rozhodnout by šlo až na skutečných skenlacích
+ * s ručním letteringem, kde OCR chybuje samo od sebe.
+ *
  * Co tahle sonda odpovědět NEUMÍ: jestli některá z variant pomůže na SKUTEČNÝCH skenlacích
  * s ručně psaným písmem. Vykreslené strojové písmo je pro OCR lehčí a chybovost to ukázala -
  * na stropě nejde poznat rozdíl. K tomu by byla potřeba měření na reálných stránkách, kde
@@ -225,6 +246,71 @@ class OcrPreprocessOnDeviceTest {
         // Noční panel: bílé písmo na černé. Sem míří inverze v BINARIZE.
         val source = page(textSize = 32f, textColor = Color.WHITE, background = Color.BLACK)
         report("svetle pismo na tmavem", runVariants(source))
+    }
+
+    /** Přisype do obrázku náhodný šum - tím se OCR dá spolehlivě dotlačit k chybám. */
+    private fun noisy(source: Bitmap, strength: Int, seed: Long = 42L): Bitmap {
+        val random = java.util.Random(seed)
+        val width = source.width
+        val height = source.height
+        val pixels = IntArray(width * height)
+        source.getPixels(pixels, 0, width, 0, 0, width, height)
+        for (i in pixels.indices) {
+            val delta = random.nextInt(strength * 2 + 1) - strength
+            val r = (((pixels[i] shr 16) and 0xFF) + delta).coerceIn(0, 255)
+            val g = (((pixels[i] shr 8) and 0xFF) + delta).coerceIn(0, 255)
+            val b = ((pixels[i] and 0xFF) + delta).coerceIn(0, 255)
+            pixels[i] = (0xFF shl 24) or (r shl 16) or (g shl 8) or b
+        }
+        val out = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        out.setPixels(pixels, 0, width, 0, 0, width, height)
+        return out
+    }
+
+    @Test
+    fun probe_doesConfidencePredictAWrongRead() {
+        // OTÁZKA: dá se confidence použít jako VAROVÁNÍ, že OCR na daném řádku plave?
+        //
+        // Proč to není samozřejmé: na čisté předloze vychází 0,70-0,85 i u naprosto správně
+        // přečteného řádku (viz tabulka výš). Kdyby stejně vysoká vycházela i u přečteného
+        // špatně, byl by z jakéhokoli prahu jen generátor náhodných poplachů. Bez tohohle
+        // měření nemá smysl na ni v produkci sahat.
+        //
+        // Šum je tu proto, aby OCR vůbec začalo chybovat - na čisté předloze je bezchybné,
+        // takže by nebylo co porovnávat.
+        val expected = groundTruth.map { it.filter { ch -> !ch.isWhitespace() } }.toSet()
+
+        for (strength in listOf(0, 60, 90, 110)) {
+            val source = if (strength == 0) page(textSize = 28f) else noisy(page(textSize = 28f), strength)
+            val (lines, _) = runBlocking { recognize(source) }
+
+            val correct = mutableListOf<Float>()
+            val wrong = mutableListOf<Float>()
+            runBlocking {
+                val image = InputImage.fromBitmap(source, 0)
+                val result = suspendCancellableCoroutine { cont ->
+                    recognizer.process(image)
+                        .addOnSuccessListener { cont.resume(it) }
+                        .addOnFailureListener { cont.resumeWithException(it) }
+                }
+                result.textBlocks.flatMap { it.lines }.forEach { line ->
+                    val normalized = line.text.uppercase().filter { !it.isWhitespace() }
+                    if (normalized in expected) correct += line.confidence else wrong += line.confidence
+                }
+            }
+
+            Log.i(
+                TAG,
+                "sum=%3d  radku=%2d  spravne=%2d (confidence %.3f)  spatne=%2d (confidence %s)".format(
+                    strength,
+                    lines.size,
+                    correct.size,
+                    if (correct.isEmpty()) 0f else correct.average().toFloat(),
+                    wrong.size,
+                    if (wrong.isEmpty()) "-" else "%.3f".format(wrong.average()),
+                ),
+            )
+        }
     }
 
     @Test
