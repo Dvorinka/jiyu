@@ -4,6 +4,27 @@
 > vidět v historii commitů a v popisech jednotlivých vydání na GitHubu; zpětně to sem
 > nedopisuju, abych si nevymýšlel.
 
+## v1.0.4
+
+Na prekladu samotnem se nic nemeni - prelozene stranky zustavaji v cache.
+
+### Preklad kapitol na pozadi
+Preklad se do ted spoustel vyhradne ze ctecky, a to ve viewModelScope - tedy ve scope svazanem se zivotem te obrazovky. Odejdi ze ctecky nebo zavri appku a preklad se zrusil uprostred. Zadne prekladani na pozadi v appce neexistovalo, jen se tak tvarilo.
+
+Nove bezi ve WorkManageru s popredovou notifikaci. Overeno: po spusteni a zavreni appky notifikace zustava, worker vola API a preklad pokracuje. Do cache se behem testu se zavrenou appkou ulozilo 45 prelozenych stranek.
+
+### Prelozit kapitoly dopredu
+V detailu mangy: prekryvne menu kapitol -> "Prelozit dopredu..." -> 1/3/5/10 kapitol. Fronta je zamerne sekvencni: preklad nebrzdi rychlost site jako stahovani, ale znakova kvota, takze pet kapitol najednou by ji vycerpalo petkrat rychleji a stalo by frontu na tentyz upstream.
+
+Bere se od nejnizsiho cisla NEPRECTENYCH kapitol. Seznam na detailu je bezne otoceny (nejnovejsi nahore), takze bez razeni podle cisla by "5 kapitol dopredu" prelozilo pet nejnovejsich - presny opak toho, co chce ctenar.
+
+### Groq obcas odpovedel prozou misto JSONu
+Vynuceny JSON rezim dostavali dva provideri ze tri: Gemini responseMimeType, OpenRouter json_schema, Groq nic. Model tedy smel odpovedet prozou ("Preklady...") a appka celou davku zahodila na vyjimce vcetne znaku, ktere za to volani upstream uz odecetl.
+
+Groq ted dostava response_format json_object (vyzaduje nasazeni edge funkce, uz provedeno) a parseResponse navic vyloupne JSON i z okolniho textu.
+
+768 unit testu (+11), 0 varovani.
+
 ## v1.0.3
 
 Jen ovladani, na prekladu se nic nemeni - prelozene stranky zustavaji v cache.
