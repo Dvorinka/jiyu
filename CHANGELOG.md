@@ -4,6 +4,27 @@
 > vidět v historii commitů a v popisech jednotlivých vydání na GitHubu; zpětně to sem
 > nedopisuju, abych si nevymýšlel.
 
+## v1.0.2
+
+Prelozene stranky se pri prvnim otevreni prelozi znovu (PIPELINE_VERSION 13 -> 15).
+
+### Vzorovane pozadi bubliny uz neprekryje bila nalepka
+Bubliny, ktere maji uvnitr jemnou texturu, dostavaly pres sebe bilou plochu, ktera pokryla jen stred - po okrajich prosvitala puvodni textura a vypadalo to jako nalepka nalepena pres kresbu. Obrys balonku hledame vylevanim barvy a texturni cary se pro nej chovaji jako stena, takze se vylevani zastavi driv, nez dojde k okraji. Nove rozhoduje, jestli JE pozadi jedne barvy, ne jestli se nasel nejaky obrys: kdyz jednolite neni, zakryji se jen tahy pismen a vzorek kolem prezije.
+
+### Preklad vi, odkud dilo je
+Typ obsahu se modelu posilal jen jako nalepka v zavorce a co z ni plyne si musel domyslet sam - u manhwy si typicky domyslel japonska honorifika, prestoze "hyung" a "senpai" nejsou zamenitelne. Kazdy typ ma ted vlastni pravidlo pro osloveni a prepis jmen.
+
+### Preklad navazuje na to, co uz zaznelo
+Uvnitr jedne davky mel model kontext vzdycky, ale na jeji hranici zacinal s cistym stolem, takze se uprostred rozhovoru mohlo prehodit tykani/vykani nebo osloveni postavy. K dalsi davce se ted pribali ocasek uz prelozenych replik. Plati to i pri cteni stranku po strance.
+
+### Svisle sazena japonstina
+Cela stranka se slevala do JEDNOHO bloku s promichanym textem. ML Kit vraci cely sloupec jako jeden "radek" a stare pravidlo porovnavalo mezeru mezi sloupci s vyskou sloupce - to je vzdalenost pres pul stranky, takze se slily i bubliny 350 px od sebe. Sloupce maji ted vlastni pravidlo a skladaji se zprava doleva.
+
+### Zmereno a zamitnuto
+Predzpracovani obrazku pred OCR (binarizace, roztazeni kontrastu, zvetseni) i pouziti OCR confidence jako varovani. Ani jedno nepomohlo natolik, aby stalo za svou cenu - cisla jsou v repozitari u prislusnych sond, aby se to nezkouselo znovu od nuly.
+
+757 unit testu (+32), 0 varovani.
+
 ## v1.0.1
 
 Prelozene stranky se pri prvnim otevreni prelozi znovu (PIPELINE_VERSION 12 -> 13).
