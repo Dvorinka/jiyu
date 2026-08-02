@@ -23,6 +23,8 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -105,6 +107,9 @@ fun ReaderScreen(viewModel: ReaderViewModel = hiltViewModel()) {
     val flippedBubbles       by viewModel.flippedBubbles.collectAsState()
 
     var showSleepTimerDialog by remember { mutableStateOf(false) }
+    // Ručně opravovaná bublina: (index stránky, původní text, aktuální překlad). Původní text
+    // je identita bubliny napříč přepočty - viz manualEditId.
+    var bubbleEdit by remember { mutableStateOf<Triple<Int, String, String>?>(null) }
     val activity = LocalView.current.context as Activity
 
     // Čtečku zavírá až tenhle sběratel, ne lambda předaná do časovače. Ta totiž putovala do
@@ -290,6 +295,21 @@ fun ReaderScreen(viewModel: ReaderViewModel = hiltViewModel()) {
                 onRemoveGlossaryEntry = { viewModel.removeGlossaryEntry(it) },
                 flippedBubbles = flippedBubbles,
                 onToggleBubbleFlip = { pageIndex, bubbleIndex -> viewModel.toggleBubbleFlip(pageIndex, bubbleIndex) },
+                onEditBubble = { pageIndex, originalText, currentText ->
+                    bubbleEdit = Triple(pageIndex, originalText, currentText)
+                },
+            )
+        }
+
+        bubbleEdit?.let { (pageIndex, originalText, currentText) ->
+            BubbleEditDialog(
+                originalText = originalText,
+                currentText = currentText,
+                onDismiss = { bubbleEdit = null },
+                onSave = { newText ->
+                    viewModel.saveBubbleEdit(pageIndex, originalText, newText)
+                    bubbleEdit = null
+                },
             )
         }
 
@@ -352,4 +372,49 @@ fun ReaderScreen(viewModel: ReaderViewModel = hiltViewModel()) {
             }
         }
     }
+}
+
+/**
+ * Rucni oprava prekladu jedne bubliny.
+ *
+ * Puvodni text je vidiet jen pro orientaci a neda se menit - je to identita bubliny napric
+ * prepocty (viz manualEditId), takze zmena by opravu odpojila od bubliny, ke ktere patri.
+ *
+ * Prazdne pole opravu ZRUSI a vrati strojovy preklad - proto tu neni tlacitko "smazat" navic.
+ */
+@Composable
+private fun BubbleEditDialog(
+    originalText: String,
+    currentText: String,
+    onDismiss: () -> Unit,
+    onSave: (String) -> Unit,
+) {
+    var text by remember(originalText) { mutableStateOf(currentText) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.reader_edit_bubble_title)) },
+        text = {
+            Column {
+                Text(
+                    text = originalText,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.height(12.dp))
+                OutlinedTextField(
+                    value = text,
+                    onValueChange = { text = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text(stringResource(R.string.reader_edit_bubble_label)) },
+                    supportingText = { Text(stringResource(R.string.reader_edit_bubble_hint)) },
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onSave(text) }) { Text(stringResource(R.string.common_save)) }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) }
+        },
+    )
 }

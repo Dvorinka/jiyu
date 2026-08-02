@@ -98,6 +98,7 @@ fun ReaderContent(
     onRemoveGlossaryEntry: (GlossaryEntity) -> Unit = {},
     flippedBubbles: Set<String> = emptySet(),
     onToggleBubbleFlip: (pageIndex: Int, bubbleIndex: Int) -> Unit = { _, _ -> },
+    onEditBubble: (pageIndex: Int, originalText: String, currentText: String) -> Unit = { _, _, _ -> },
 ) {
     var showGlossarySheet by remember { mutableStateOf(false) }
 
@@ -158,6 +159,7 @@ fun ReaderContent(
                 volumeKeysNav = volumeKeysNav,
                 flippedBubbles = flippedBubbles,
                 onToggleBubbleFlip = onToggleBubbleFlip,
+                onEditBubble = onEditBubble,
             )
         } else {
             MangaReader(

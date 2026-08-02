@@ -95,6 +95,7 @@ fun MangaReader(
     volumeKeysNav: Boolean = true,
     flippedBubbles: Set<String> = emptySet(),
     onToggleBubbleFlip: (pageIndex: Int, bubbleIndex: Int) -> Unit = { _, _ -> },
+    onEditBubble: (pageIndex: Int, originalText: String, currentText: String) -> Unit = { _, _, _ -> },
 ) {
     // Pinch-to-zoom stav — žije tady (jediný spotřebitel), ne v ReaderContent -
     // rememberSaveable, aby otočení obrazovky (config change) nezahodilo rozostřený zoom.
@@ -368,6 +369,7 @@ fun MangaReader(
                                 pageUrl = pages[indices[0]],
                                 flippedBubbles = flippedBubbles,
                                 onToggleFlip = onToggleBubbleFlip,
+                                onEditBubble = onEditBubble,
                             )
                         }
                     }
@@ -409,6 +411,7 @@ fun MangaReader(
                                             pageUrl = pages[idx],
                                             flippedBubbles = flippedBubbles,
                                             onToggleFlip = onToggleBubbleFlip,
+                                            onEditBubble = onEditBubble,
                                         )
                                     }
                                 }

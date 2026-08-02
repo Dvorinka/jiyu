@@ -2,8 +2,10 @@ package com.haise.jiyu.translate
 
 import com.haise.jiyu.data.db.MangaDao
 import com.haise.jiyu.data.db.TranslatedNovelDao
+import com.haise.jiyu.data.db.ManualTranslationDao
 import com.haise.jiyu.data.db.TranslatedPageDao
 import com.haise.jiyu.data.db.entity.TranslatedNovelEntity
+import com.haise.jiyu.data.db.entity.ManualTranslationEntity
 import com.haise.jiyu.data.db.entity.TranslatedPageEntity
 import com.haise.jiyu.util.report
 import kotlinx.coroutines.Dispatchers
@@ -30,6 +32,7 @@ class TranslateRepository @Inject constructor(
     private val mangaDao: MangaDao,
     private val dao: TranslatedPageDao,
     private val novelDao: TranslatedNovelDao,
+    private val manualDao: ManualTranslationDao,
 ) {
     val isApiKeyConfigured: Boolean get() = groqClient.isConfigured
 
@@ -116,7 +119,39 @@ class TranslateRepository @Inject constructor(
         if (blocks.isEmpty()) return emptyList()
 
         dao.upsert(TranslatedPageEntity(id = cacheId(chapterId, pageIndex, targetLanguage, sourceLanguage), blocksJson = blocks.serialize()))
-        return blocks
+        // Ručně opravené bubliny se napařují AŽ TEĎ, na čerstvý strojový překlad, a do cache
+        // se schválně neukládají - cache se při zvednutí PIPELINE_VERSION zahodí, kdežto oprava
+        // má přežit. Viz [ManualTranslationEntity].
+        return blocks.withManualEdits(chapterId, pageIndex)
+    }
+
+    /** Napařuje uložené ruční opravy - viz [applyManualEdits]. */
+    private suspend fun List<TranslatedBlock>.withManualEdits(chapterId: String, pageIndex: Int): List<TranslatedBlock> {
+        val edits = manualDao.forPage(chapterId, pageIndex)
+        if (edits.isEmpty()) return this
+        return applyManualEdits(this, edits.associate { normalizeOriginal(it.originalText) to it.text })
+    }
+
+    /**
+     * Uloží ruční opravu jedné bubliny. Prázdný text opravu ZRUŠÍ a vrátí strojový překlad -
+     * jinak by nešlo vzít změnu zpět jinak než přeložením celé kapitoly znovu.
+     */
+    suspend fun saveManualEdit(chapterId: String, pageIndex: Int, originalText: String, text: String) {
+        val id = manualEditId(chapterId, pageIndex, originalText)
+        if (text.isBlank()) {
+            manualDao.delete(id)
+            return
+        }
+        manualDao.upsert(
+            ManualTranslationEntity(
+                id = id,
+                chapterId = chapterId,
+                pageIndex = pageIndex,
+                originalText = originalText,
+                text = text.trim(),
+                updatedAt = System.currentTimeMillis(),
+            )
+        )
     }
 
     /**
@@ -454,7 +489,7 @@ class TranslateRepository @Inject constructor(
         pageUrl: String? = null,
     ): List<TranslatedBlock>? {
         val id = cacheId(chapterId, pageIndex, targetLanguage, sourceLanguage)
-        val cached = dao.getById(id)?.deserialize() ?: return null
+        val cached = dao.getById(id)?.deserialize()?.withManualEdits(chapterId, pageIndex) ?: return null
         if (pageUrl == null) return cached
 
         val needsShapeMigration = cached.any { !it.isSfx && it.shape == null }

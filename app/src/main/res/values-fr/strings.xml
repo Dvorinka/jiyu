@@ -957,4 +957,9 @@
     <string name="settings_privacy_adult_desc">Débloque les sources au contenu adulte.</string>
     <string name="settings_privacy_crash">Envoyer les rapports de plantage</string>
     <string name="settings_privacy_crash_desc">Rapports anonymes sur les plantages de l\'application.</string>
+
+    <!-- Rucni oprava prekladu bubliny -->
+    <string name="reader_edit_bubble_title">Modifier la traduction</string>
+    <string name="reader_edit_bubble_label">Texte traduit</string>
+    <string name="reader_edit_bubble_hint">Laissez vide pour rétablir la traduction automatique.</string>
 </resources>

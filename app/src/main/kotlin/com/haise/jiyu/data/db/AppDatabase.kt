@@ -17,6 +17,7 @@ import com.haise.jiyu.data.db.entity.MangaNoteEntity
 import com.haise.jiyu.data.db.entity.MangaTagEntity
 import com.haise.jiyu.data.db.entity.ReadHistoryEntity
 import com.haise.jiyu.data.db.entity.TranslatedNovelEntity
+import com.haise.jiyu.data.db.entity.ManualTranslationEntity
 import com.haise.jiyu.data.db.entity.TranslatedPageEntity
 
 class Converters {
@@ -40,8 +41,9 @@ class Converters {
         MangaTagEntity::class,
         TranslatedNovelEntity::class,
         GlossaryEntity::class,
+        ManualTranslationEntity::class,
     ],
-    version = 28,
+    version = 29,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -56,6 +58,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun mangaNoteDao(): MangaNoteDao
     abstract fun mangaTagDao(): MangaTagDao
     abstract fun glossaryDao(): GlossaryDao
+    abstract fun manualTranslationDao(): ManualTranslationDao
 
     companion object {
         val MIGRATION_3_4 = object : Migration(3, 4) {
@@ -276,6 +279,22 @@ abstract class AppDatabase : RoomDatabase() {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE manga ADD COLUMN isFavorite INTEGER NOT NULL DEFAULT 0")
                 db.execSQL("CREATE INDEX IF NOT EXISTS `index_manga_isFavorite` ON `manga` (`isFavorite`)")
+            }
+        }
+        val MIGRATION_28_29 = object : Migration(28, 29) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """CREATE TABLE IF NOT EXISTS `manual_translation` (
+                        `id` TEXT NOT NULL,
+                        `chapterId` TEXT NOT NULL,
+                        `pageIndex` INTEGER NOT NULL,
+                        `originalText` TEXT NOT NULL,
+                        `text` TEXT NOT NULL,
+                        `updatedAt` INTEGER NOT NULL,
+                        PRIMARY KEY(`id`)
+                    )"""
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_manual_translation_chapterId_pageIndex` ON `manual_translation` (`chapterId`, `pageIndex`)")
             }
         }
     }

@@ -150,6 +150,7 @@ fun BubbleOverlayLayer(
     pageUrl: String? = null,
     flippedBubbles: Set<String> = emptySet(),
     onToggleFlip: (pageIndex: Int, bubbleIndex: Int) -> Unit = { _, _ -> },
+    onEditBubble: (pageIndex: Int, originalText: String, currentText: String) -> Unit = { _, _, _ -> },
 ) {
     val positioned = remember(blocks) { layoutTranslationBlocks(blocks) }
 
@@ -184,6 +185,9 @@ fun BubbleOverlayLayer(
                 // jsou si podle data class rovny a druhý z nich pak dostal cizí záplatu.
                 patch = patches[bubbleIndex],
                 onTap = { onToggleFlip(pageIndex, bubbleIndex) },
+                onLongPress = {
+                    onEditBubble(pageIndex, pos.block.originalText, pos.block.translatedText)
+                },
             )
         }
     }
@@ -232,6 +236,8 @@ fun TranslationOverlay(
     /** Záplata pozadí pro bublinu na kresbě; null = kreslí se jednolitá výplň jako dosud. */
     patch: android.graphics.Bitmap? = null,
     onTap: () -> Unit = {},
+    /** Dlouhy stisk = rucni oprava prekladu teto bubliny. */
+    onLongPress: () -> Unit = {},
 ) {
     // OCR bounding box je v zásadě vždy leftF<=rightF/topF<=bottomF, ale nejde o zaručený
     // invariant (různé OCR modely, rotace/mirror snímků atd.) - záporná šířka/výška předaná
@@ -364,7 +370,11 @@ fun TranslationOverlay(
                 // dřív, než se dostane k page-level gestům (tap-zóny/double-tap zoom/long-press
                 // sdílení v MangaReaderu) - vědomý kompromis, přesně nad bublinou chceme flip,
                 // ne zoom/navigaci.
-                .pointerInput(onTap) { detectTapGestures(onTap = { onTap() }) }
+                // Dlouhy stisk NAD BUBLINOU stini sdileni stranky z MangaReaderu - stejny
+                // vedomy kompromis jako u tapu vys: presne nad bublinou chceme jeji akce.
+                .pointerInput(onTap, onLongPress) {
+                    detectTapGestures(onTap = { onTap() }, onLongPress = { onLongPress() })
+                }
                 .padding(horizontal = TRANSLATION_TEXT_HORIZONTAL_PADDING, vertical = 2.dp),
             contentAlignment = Alignment.Center,
         ) {

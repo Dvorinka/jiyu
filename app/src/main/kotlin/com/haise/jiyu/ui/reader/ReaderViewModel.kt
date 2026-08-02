@@ -23,6 +23,7 @@ import com.haise.jiyu.settings.ReadingDirection
 import com.haise.jiyu.settings.ReadingMode
 import com.haise.jiyu.settings.SettingsRepository
 import com.haise.jiyu.translate.TranslateRepository
+import com.haise.jiyu.translate.normalizeOriginal
 import com.haise.jiyu.translate.TranslatedBlock
 import com.haise.jiyu.util.ChapterStorage
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -405,6 +406,35 @@ class ReaderViewModel @Inject constructor(
         val key = "$pageIndex:$bubbleIndex"
         _flippedBubbles.value = _flippedBubbles.value.let { current ->
             if (key in current) current - key else current + key
+        }
+    }
+
+    /**
+     * Uloží ruční opravu textu jedné bubliny a rovnou ji promitne do zobrazených bloků.
+     *
+     * Do stavu se zápis nepromitá znovu-načtením z databáze - stránka je už v paměti a opětovný
+     * dotaz by jen zablikal. Mění se přesně ten jeden blok, podle stejné identity, jakou používá
+     * napařování po přepočtu (původní text, viz [manualEditId]).
+     *
+     * Prázdný text opravu zruší, ale strojový překlad se vrátí až po znovunačtení stránky -
+     * původní strojový text už v paměti není a tahat ho z cache kvůli tomu zvlášť nestojí za to.
+     */
+    fun saveBubbleEdit(pageIndex: Int, originalText: String, text: String) {
+        val chapterId = currentChapter?.id ?: return
+        viewModelScope.launch {
+            translateRepository.saveManualEdit(chapterId, pageIndex, originalText, text)
+            val blocks = _translatedPages.value[pageIndex] ?: return@launch
+            val trimmed = text.trim()
+            if (trimmed.isBlank()) return@launch
+            _translatedPages.value = _translatedPages.value + (
+                pageIndex to blocks.map { block ->
+                    if (normalizeOriginal(block.originalText) == normalizeOriginal(originalText)) {
+                        block.copy(translatedText = trimmed, displayText = trimmed, isUntranslated = false)
+                    } else {
+                        block
+                    }
+                }
+                )
         }
     }
 

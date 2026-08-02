@@ -27,6 +27,7 @@ class NovelCacheKeyTest {
         mangaDao = mockk(relaxed = true),
         dao = mockk(relaxed = true),
         novelDao = mockk(relaxed = true),
+        manualDao = mockk(relaxed = true),
     )
 
     @Test

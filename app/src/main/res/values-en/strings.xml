@@ -936,4 +936,9 @@
     <string name="settings_privacy_adult_desc">Unlocks sources with adult content.</string>
     <string name="settings_privacy_crash">Send crash reports</string>
     <string name="settings_privacy_crash_desc">Anonymous reports about app crashes.</string>
+
+    <!-- Rucni oprava prekladu bubliny -->
+    <string name="reader_edit_bubble_title">Edit translation</string>
+    <string name="reader_edit_bubble_label">Translated text</string>
+    <string name="reader_edit_bubble_hint">Leave empty to restore the machine translation.</string>
 </resources>

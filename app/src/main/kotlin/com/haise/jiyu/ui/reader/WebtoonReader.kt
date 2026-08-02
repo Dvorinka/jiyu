@@ -61,6 +61,7 @@ fun WebtoonReader(
     volumeKeysNav: Boolean = true,
     flippedBubbles: Set<String> = emptySet(),
     onToggleBubbleFlip: (pageIndex: Int, bubbleIndex: Int) -> Unit = { _, _ -> },
+    onEditBubble: (pageIndex: Int, originalText: String, currentText: String) -> Unit = { _, _, _ -> },
 ) {
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
@@ -171,6 +172,7 @@ fun WebtoonReader(
                 cropBorders = cropBorders,
                 flippedBubbles = flippedBubbles,
                 onToggleBubbleFlip = onToggleBubbleFlip,
+                onEditBubble = onEditBubble,
             )
         }
     }
@@ -186,6 +188,7 @@ private fun WebtoonPage(
     cropBorders: Boolean = false,
     flippedBubbles: Set<String> = emptySet(),
     onToggleBubbleFlip: (pageIndex: Int, bubbleIndex: Int) -> Unit = { _, _ -> },
+    onEditBubble: (pageIndex: Int, originalText: String, currentText: String) -> Unit = { _, _, _ -> },
 ) {
     var size by remember { mutableStateOf(IntSize.Zero) }
     val density = LocalDensity.current
@@ -218,6 +221,7 @@ private fun WebtoonPage(
                 pageUrl = pageUrl,
                 flippedBubbles = flippedBubbles,
                 onToggleFlip = onToggleBubbleFlip,
+                onEditBubble = onEditBubble,
             )
         }
     }

@@ -222,6 +222,7 @@ object AppModule {
                 AppDatabase.MIGRATION_25_26,
                 AppDatabase.MIGRATION_26_27,
                 AppDatabase.MIGRATION_27_28,
+                AppDatabase.MIGRATION_28_29,
             )
             .build()
 
@@ -235,6 +236,7 @@ object AppModule {
     @Provides fun provideTranslatedPageDao(db: AppDatabase): TranslatedPageDao = db.translatedPageDao()
     @Provides fun provideTranslatedNovelDao(db: AppDatabase): TranslatedNovelDao = db.translatedNovelDao()
     @Provides fun provideGlossaryDao(db: AppDatabase): GlossaryDao = db.glossaryDao()
+    @Provides fun provideManualTranslationDao(db: AppDatabase): com.haise.jiyu.data.db.ManualTranslationDao = db.manualTranslationDao()
     @Provides fun provideCategoryDao(db: AppDatabase): CategoryDao = db.categoryDao()
     @Provides fun provideCustomSourceDao(db: AppDatabase): CustomSourceDao = db.customSourceDao()
     @Provides fun provideReadHistoryDao(db: AppDatabase): ReadHistoryDao = db.readHistoryDao()
