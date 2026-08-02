@@ -42,12 +42,19 @@ import compose.icons.tablericons.ArrowBack
 
 /** Sdílená hlavička podstránek Nastavení - zpět + gradientní titulek, stejný styl jako hlavní obrazovka. */
 @Composable
-internal fun SettingsSubScreenHeader(title: String, onBack: () -> Unit) {
+internal fun SettingsSubScreenHeader(
+    title: String,
+    onBack: () -> Unit,
+    // false pouzije obrazovka, ktera si odsazeni stavove listy resi na obalu, protoze
+    // hlavicku vklada DOVNITR scrollu - tam by odsazeni odscrolovalo pryc s hlavickou
+    // a obsah by vjel pod listu (viz SettingsScreen).
+    applyStatusBarPadding: Boolean = true,
+) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxWidth()
-            .statusBarsPadding()
+            .then(if (applyStatusBarPadding) Modifier.statusBarsPadding() else Modifier)
             .padding(horizontal = 8.dp, vertical = 8.dp),
     ) {
         IconButton(onClick = onBack) {

@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
@@ -83,15 +84,21 @@ fun SettingsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .background(screenGradient)
-                .padding(innerPadding),
+                .padding(innerPadding)
+                // Hlavicka je uvnitr scrollu, takze odsazeni stavove listy musi drzet obal -
+                // jinak s ni odscroluje pryc a obsah vjede pod listu.
+                .statusBarsPadding(),
         ) {
-            SettingsSubScreenHeader(title = stringResource(R.string.settings_title), onBack = onBack)
-
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState()),
             ) {
+                // Hlavička je UVNITŘ scrollu, takže odjede s obsahem místo aby zůstala viset
+                // nahoře. Odsazení stavové lišty si SettingsSubScreenHeader řeší sám a je ve
+                // scrollu první, takže se chová stejně jako dřív - jen se dá odscrolovat.
+                SettingsSubScreenHeader(title = stringResource(R.string.settings_title), onBack = onBack, applyStatusBarPadding = false)
+
                 categories.forEach { category ->
                     Row(
                         modifier = Modifier

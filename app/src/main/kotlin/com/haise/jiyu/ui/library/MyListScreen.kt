@@ -46,6 +46,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
@@ -197,14 +198,20 @@ fun MyListScreen(
     BackHandler(enabled = selectionMode) { viewModel.clearSelection() }
 
     Box(modifier = Modifier.fillMaxSize()) {
-    Column(modifier = Modifier.fillMaxSize().background(screenGradient)) {
+    Column(modifier = Modifier.fillMaxSize().background(screenGradient).statusBarsPadding()) {
 
         // ── Header ───────────────────────────────────────────────────────────
+        val navBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+
+        // Hlavicka je lambda, protoze se vklada DOVNITR scrollovaneho obsahu - v kazde vetvi
+        // jineho typu kontejneru. Driv stala mimo scroll a zustavala viset nahore, takze
+        // obsah jezdil pod ni. statusBarsPadding je proto na obalu vys: na hlavicce by
+        // odscrolovalo pryc s ni a obsah by vjel pod stavovou listu.
+        val header: @Composable () -> Unit = {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(Brush.verticalGradient(listOf(NightBlue, DeepSpace.copy(alpha = 0f))))
-                .statusBarsPadding()
                 .padding(horizontal = 12.dp)
                 .padding(top = 10.dp, bottom = 8.dp),
         ) {
@@ -390,7 +397,8 @@ fun MyListScreen(
         }
 
         // ── Grid / empty + pull-to-refresh ───────────────────────────────────
-        val navBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+
+        }
 
         PullToRefreshBox(
             isRefreshing = isRefreshing,
@@ -399,10 +407,13 @@ fun MyListScreen(
             state = pullToRefreshState,
         ) {
             if (library.isEmpty()) {
-                LibraryEmptyState(
-                    hasSearch = searchQuery.isNotEmpty(),
-                    onOpenBrowse = onOpenBrowse,
-                )
+                Column {
+                    header()
+                    LibraryEmptyState(
+                        hasSearch = searchQuery.isNotEmpty(),
+                        onOpenBrowse = onOpenBrowse,
+                    )
+                }
             } else if (gridMode) {
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(gridColumns),
@@ -411,6 +422,7 @@ fun MyListScreen(
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                     modifier = Modifier.fillMaxSize(),
                 ) {
+                    item(span = { GridItemSpan(maxLineSpan) }) { header() }
                     items(library, key = { it.id }) { manga ->
                         val isSelected = manga.id in selectedIds
                         var dropdownExpanded by remember { mutableStateOf(false) }
@@ -462,6 +474,7 @@ fun MyListScreen(
                     contentPadding = PaddingValues(top = 8.dp, bottom = 96.dp + navBottom),
                     modifier = Modifier.fillMaxSize(),
                 ) {
+                    item { header() }
                     items(library, key = { it.id }) { manga ->
                         var dropdownExpanded by remember { mutableStateOf(false) }
                         Box {

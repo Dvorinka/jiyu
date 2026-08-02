@@ -75,15 +75,20 @@ fun HistoryScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(screenGradient),
+            .background(screenGradient)
+            .statusBarsPadding(),
     ) {
+        // Hlavicka je lambda, protoze se vklada DOVNITR scrollovaneho obsahu - jinak zustava
+        // viset nahore a obsah jezdi pod ni. statusBarsPadding je proto na obalu vys: na
+        // hlavicce by odscrolovalo pryc s ni a obsah by vjel pod stavovou listu.
+        val header: @Composable () -> Unit = {
+        Column {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(
                     Brush.verticalGradient(listOf(NightBlue, Color.Transparent))
                 )
-                .statusBarsPadding()
                 .padding(horizontal = 20.dp, vertical = 16.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -135,7 +140,11 @@ fun HistoryScreen(
             }
         }
 
+        }
+        }
+
         if (groups.isEmpty()) {
+            header()
             Box(modifier = Modifier.fillMaxSize().navigationBarsPadding(), contentAlignment = Alignment.Center) {
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
@@ -165,6 +174,7 @@ fun HistoryScreen(
             }
         } else {
             LazyColumn(modifier = Modifier.fillMaxSize()) {
+                item { header() }
                 groups.forEach { group ->
                     item {
                         Text(
