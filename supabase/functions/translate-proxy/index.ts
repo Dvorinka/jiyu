@@ -277,6 +277,14 @@ async function handleGroqApi(system: string, user: string): Promise<Response> {
         { role: "system", content: system },
         { role: "user", content: user },
       ],
+      // Groq byl JEDINÝ provider, kterému se neřeklo, že se čeká JSON - Gemini dostává
+      // responseMimeType a OpenRouter json_schema. Model pak občas odpověděl prózou
+      // ("Překlady…") a appka celou odpověď zahodila na JSONException. Volání se tím
+      // promarnilo včetně znaků, které za něj upstream odečetl.
+      //
+      // json_object, ne json_schema: podmínkou režimu je, aby se slovo "JSON" objevilo
+      // v promptu - splněno, viz sekce VÝSTUPNÍ FORMÁT v GeminiUltraPrompt.
+      response_format: { type: "json_object" },
     }),
   });
 

@@ -108,6 +108,42 @@ class GeminiUltraPromptTest {
     }
 
     @Test
+    fun `a response that starts with prose still parses`() {
+        // JÁDRO NÁLEZU: naměřeno na zařízení. Groq vrátil odpověď zacinajici textem
+        // "Překlady…" a appka celou dávku zahodila na JSONException - včetně znaků,
+        // které za to volání upstream odečetl.
+        val json = """
+            Překlady bublin do češtiny:
+
+            {"bubbles": [{"id": 0, "original": "Hi", "translated": "Ahoj", "bubble_size_tag": "TINY", "is_sfx": false, "syllable_breaks": "Ahoj"}]}
+        """.trimIndent()
+
+        val response = GeminiUltraPrompt.parseResponse(json)
+
+        assertEquals("Ahoj", response.bubbles.single().translated)
+    }
+
+    @Test
+    fun `a response wrapped in a markdown fence still parses`() {
+        val json = "```json\n{\"bubbles\": [{\"id\": 0, \"original\": \"Hi\", \"translated\": \"Ahoj\", \"bubble_size_tag\": \"TINY\", \"is_sfx\": false, \"syllable_breaks\": \"Ahoj\"}]}\n```"
+
+        assertEquals("Ahoj", GeminiUltraPrompt.parseResponse(json).bubbles.single().translated)
+    }
+
+    @Test
+    fun `trailing commentary after the JSON is ignored`() {
+        val json = "{\"bubbles\": []}\n\nDoufám, že překlad pomůže!"
+
+        assertTrue(GeminiUltraPrompt.parseResponse(json).bubbles.isEmpty())
+    }
+
+    @Test
+    fun `a response with no JSON at all keeps its text for the error message`() {
+        // Prázdný řetězec by z výjimky udělal hádanku - takhle je v ní vidět, co model poslal.
+        assertEquals("Omlouvám se, nemohu pomoci.", GeminiUltraPrompt.extractJsonObject("  Omlouvám se, nemohu pomoci.  "))
+    }
+
+    @Test
     fun `missing new_terms field parses as empty list, not a crash`() {
         val json = """{"bubbles": [{"id": 0, "original": "Hi", "translated": "Ahoj", "bubble_size_tag": "TINY", "is_sfx": false, "syllable_breaks": "Ahoj"}]}"""
         val response = GeminiUltraPrompt.parseResponse(json)

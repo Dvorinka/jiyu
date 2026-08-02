@@ -357,16 +357,31 @@ object GeminiUltraPrompt {
     }
 
     /**
-     * Gemini občas zabalí JSON do ```json ... ``` bloku i přes instrukci v system promptu -
-     * ořízneme markdown fence, než parsujeme, místo abychom na to tvrdě spadli.
+     * Vyloupne samotný JSON objekt z odpovědi modelu.
+     *
+     * Dřív se jen ořezávaly markdown fence přes `removePrefix`, což zvládlo jedinou podobu
+     * odchylky: ```json na ÚPLNÉM začátku. Naměřeno na zařízení, že to nestačí - Groq vrátil
+     * odpověď začínající prózou ("Překlady…") a appka celou dávku zahodila na JSONException,
+     * včetně znaků, které za to volání upstream odečetl.
+     *
+     * Bere se proto od první `{` po poslední `}`. Zvládne to fence, úvodní omluvu i závěrečný
+     * komentář za JSONem, a je to kratší než původní řetěz `removePrefix`/`removeSuffix`.
+     *
+     * Když v textu žádný objekt není, vrací se vstup nedotčený - ať chybová hláška z parsování
+     * pořád ukazuje, co model doopravdy poslal, místo prázdného řetězce.
+     *
+     * Tohle je záchranná síť, ne řešení. Aby k tomu vůbec nedocházelo, dostávají všichni tři
+     * provideři v proxy vynucený JSON režim (viz supabase/functions/translate-proxy).
      */
-    fun parseResponse(rawText: String): GeminiTranslationResponse {
-        val cleaned = rawText.trim()
-            .removePrefix("```json").removePrefix("```")
-            .removeSuffix("```")
-            .trim()
+    internal fun extractJsonObject(rawText: String): String {
+        val start = rawText.indexOf('{')
+        val end = rawText.lastIndexOf('}')
+        if (start < 0 || end <= start) return rawText.trim()
+        return rawText.substring(start, end + 1)
+    }
 
-        val root = JSONObject(cleaned)
+    fun parseResponse(rawText: String): GeminiTranslationResponse {
+        val root = JSONObject(extractJsonObject(rawText))
         val arr: JSONArray = root.getJSONArray("bubbles")
         val bubbles = List(arr.length()) { i ->
             val o = arr.getJSONObject(i)
