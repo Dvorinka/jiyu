@@ -66,6 +66,7 @@ import com.haise.jiyu.translate.TranslatedBlock
 import com.haise.jiyu.translate.averageArgb
 import com.haise.jiyu.translate.estimateNativeFontPx
 import com.haise.jiyu.translate.fitFontSizeToBox
+import com.haise.jiyu.translate.hasTranslatableLetters
 import com.haise.jiyu.translate.fitTextToShape
 import com.haise.jiyu.translate.largestInscribedRect
 import com.haise.jiyu.translate.layoutTranslationBlocks
@@ -74,6 +75,7 @@ import com.haise.jiyu.translate.minTranslationFontSp
 import com.haise.jiyu.translate.renderBoxRect
 import dagger.hilt.android.EntryPointAccessors
 import com.haise.jiyu.translate.snapBubbleBg
+import com.haise.jiyu.translate.tidyStrandedPunctuation
 
 // ── Translation overlay - sdíleno mezi MangaReader (ReaderPager.kt) a WebtoonReader.kt ──
 //
@@ -175,7 +177,10 @@ fun BubbleOverlayLayer(
         // isUntranslated = model vrátil UNTRANSLATED_MARKER (nečitelné OCR) - stejně jako u
         // SFX bublin appka radši nic nekreslí a nechá prosvítat originál, než aby ukázala
         // doslovný anglický placeholder tam, kde měl být český text (viz TranslateRepository).
-        if (!pos.block.isSfx && !pos.block.isUntranslated) {
+        // Blok bez jediného písmene (samotná tečka/uvozovka) nemá co překládat a vykreslit ho jde
+        // jen špatně - viz [hasTranslatableLetters]. Originál prosvítá, interpunkce tedy zůstane
+        // přesně tam, kam ji nakreslil autor.
+        if (!pos.block.isSfx && !pos.block.isUntranslated && hasTranslatableLetters(pos.block.displayText)) {
             TranslationOverlay(
                 pos = pos,
                 imageRect = imageRect,
@@ -278,7 +283,11 @@ fun TranslationOverlay(
     // u barevných/stínovaných bublin, kde má reálný podklad.
     val snappedBgTop = snapBubbleBg(pos.block.bgColorArgb)
     val snappedBgBottom = snapBubbleBg(pos.block.bgColorBottomArgb)
-    val displayText = matchOriginalCase(pos.block.displayText, pos.block.originalText)
+    // tidyStrandedPunctuation: mezera před koncovou tečkou nabízí zalamovači zlom, po kterém
+    // tečka zůstane sama na řádku - viz [tidyStrandedPunctuation] a nahlášené "ODLÉTÁME" + tečka.
+    val displayText = tidyStrandedPunctuation(
+        matchOriginalCase(pos.block.displayText, pos.block.originalText),
+    )
 
     // Bezpečná plocha pro text uvnitř tvaru bubliny (viz [largestInscribedRect]) - největší
     // obdélník, který se celý vejde dovnitř obrysu. Text se sází do NĚJ, ne do celého

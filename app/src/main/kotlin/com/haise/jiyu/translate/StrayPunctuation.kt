@@ -1,0 +1,51 @@
+package com.haise.jiyu.translate
+
+/**
+ * Interpunkce, která se odtrhla od svého textu - úklid těsně před vykreslením.
+ *
+ * ## Co se dělo
+ * Nahlášeno se srovnávací dvojicí snímků (originál vs. překlad) ze stránky Vagabonda:
+ * balónek „WE'RE TAKING OFF." se vykreslil jako „ODLÉTÁME" a pod tím OSAMOCENÁ TEČKA na
+ * vlastním řádku. Stejný podpis měla i dřív hlášená tečka pod „MATAHACHI" a „TAKEZO." bez
+ * tečky.
+ *
+ * Že jde o zalomení a ne o bludný OCR blok, prozradila poloha: tečka seděla přesně na svislé
+ * ose textu, tedy vycentrovaná jako druhý řádek TÉHOŽ bloku. Samostatný blok by ležel tam, kde
+ * tečka doopravdy je v kresbě - vpravo od středu.
+ *
+ * Příčina je mezera (nebo zlom řádku) před koncovou tečkou v přeloženém textu. Zalamovač pak
+ * úplně korektně nabídne zlom v té mezeře, „ODLÉTÁME" se na řádek vejde a „." už ne - a tečka
+ * skončí sama. Uživateli to čte jako „bublina přišla o text".
+ *
+ * ## Proč se to řeší až při vykreslení
+ * Úklid je čistě kosmetický a nic neukládá, takže se nemusela zvedat `PIPELINE_VERSION` a
+ * spraví to i stránky, které už v cache leží. Stejná úvaha jako u záplat pozadí.
+ */
+
+/**
+ * Odstraní mezeru/zlom řádku, kterou od textu odtrhly koncové interpunkční znaky.
+ *
+ * Záměrně NEsahá na interpunkci uvnitř věty ani na úvodní výpustku: „TAK\n...KONEC" je běžná
+ * komiksová sazba (věta pokračující z předchozí bubliny) a slepit ji na „TAK...KONEC" by změnilo
+ * zalomení, které tam autor chtěl. Sáhne se proto jen na skupinu interpunkce, za kterou už nic
+ * dalšího není - tedy přesně na ten osamocený konec věty.
+ */
+fun tidyStrandedPunctuation(text: String): String = SPACE_BEFORE_TRAILING_PUNCTUATION.replace(text, "")
+
+/**
+ * Nese blok vůbec nějaké písmeno?
+ *
+ * Blok bez jediného písmene (samotná tečka, uvozovka, hvězdička z rastru) nemá co překládat -
+ * ať už vznikl jakkoliv. Vykreslit ho jde jen špatně: appka přes originál položí výplň a do ní
+ * nakreslí tentýž znak o kus jinam, takže z čisté stránky vznikne bludná skvrnka. Nechat
+ * prosvítat originál je vždycky lepší - interpunkce zůstane přesně tam, kam ji nakreslil autor.
+ */
+fun hasTranslatableLetters(text: String): Boolean = text.any { it.isLetter() }
+
+/**
+ * Mezery/zlomy před koncovou interpunkcí. Podmínka „a za ní už jen mezery nebo konec" je to
+ * podstatné - bez ní by pravidlo slepilo i úvodní výpustku dalšího slova (viz
+ * [tidyStrandedPunctuation]).
+ */
+private val SPACE_BEFORE_TRAILING_PUNCTUATION =
+    Regex("[ \\t\\n\\r\\u00A0]+(?=[.,!?:;\\u2026]+[ \\t\\n\\r\\u00A0]*$)")
