@@ -374,24 +374,11 @@ class OcrEngine @Inject constructor() {
         var y = ringTop
         while (y <= ringBottom) { sample(ringLeft, y); sample(ringRight, y); y += stepY }
 
-        val uniform = isColorUniform(topSamples + bottomSamples)
+        // Rozhodování o jednolitosti žije v [isBackgroundUniform] - je to čistá funkce, aby
+        // šla testovat bez Bitmapy, a hlavně aby snesla pár vzorků spadlých na tah písma
+        // (viz tam; měřeno sondou, kde bílá bublina vycházela jako pestrá kresba).
+        val uniform = isBackgroundUniform(topSamples + bottomSamples)
         return BgSample(colorFor(topSamples, uniform), colorFor(bottomSamples, uniform), uniform)
-    }
-
-    /**
-     * Vzorky pozadí jsou "rovnoměrné", když se navzájem barevně moc neliší - to je skutečná
-     * nakreslená bublina s jednolitou/lehce stínovanou výplní. Text napsaný přímo přes
-     * členitou kresbu (žádná bublina) má v prstenci kolem sebe mnohem větší rozptyl barev -
-     * tenhle signál pak [layoutHeuristic] použije, aby box kolem takového textu neroztahoval
-     * stejně štědře jako u skutečné bubliny (viz [TranslatedBlock.bgUniform]).
-     */
-    private fun isColorUniform(samples: List<IntArray>): Boolean {
-        if (samples.size < 2) return true
-        val avgR = samples.sumOf { it[0] } / samples.size
-        val avgG = samples.sumOf { it[1] } / samples.size
-        val avgB = samples.sumOf { it[2] } / samples.size
-        val maxDeviation = samples.maxOf { s -> maxOf(Math.abs(s[0] - avgR), Math.abs(s[1] - avgG), Math.abs(s[2] - avgB)) }
-        return maxDeviation <= UNIFORM_COLOR_THRESHOLD
     }
 
     /**
@@ -419,7 +406,6 @@ class OcrEngine @Inject constructor() {
     }
 
     private companion object {
-        private const val UNIFORM_COLOR_THRESHOLD = 45
         private const val COLOR_BUCKET_SIZE = 32
     }
 }

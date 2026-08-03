@@ -665,6 +665,16 @@ class TranslateRepository @Inject constructor(
          *   (3) Zalozni cesta (Groq/OpenRouter) dostava kontext dila a ocasek predchozich
          *   replik, ktere do teto chvile mela jen cesta pres Gemini - bez nich prekladala
          *   izolovane vety naslepo ("JUST LEAVE ME HERE." -> "ZUSTANTE ME TADY").
+         *   (4) Jednolitost pozadi uz neurcuje NEJVETSI odchylka vzorku (viz
+         *   [isBackgroundUniform]). Prstenec se vzorkuje par pixelu od OCR boxu a ten obcas
+         *   kraj pismene orizne, takze jediny vzorek spadly na tah pisma prehodil i ciste
+         *   bilou bublinu na "pestra kresba" - a ta pak dostala zaplatu misto plne vyplne.
+         *   Zaplata z principu nedocisti vsechno, odtud zbytky originalu pod prekladem.
+         *   Zmereno sondou na zarizeni: "SURVIVOR..." uprostred bile bubliny vychazelo
+         *   bgUniform=false. Meni to ulozeny priznak bgUniform, tedy i vzhled bubliny.
+         *
+         *   Body (1)-(4) jsou jedna nevydana verze - v16 se do zadneho releasu nedostala,
+         *   takze se sem smely pribalit, aniz by to znamenalo druhe preinstalovani cache.
          */
         private const val PIPELINE_VERSION = 16
 
