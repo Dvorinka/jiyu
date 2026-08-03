@@ -79,15 +79,17 @@ internal fun buildTextPatch(
     dilate(isText, w, h, MASK_DILATION)
     // Až PO dilataci - jinak by lem rozšířený z písma u kraje textové oblasti zůstal viset
     // venku a dopočítal by se z něj kus kresby.
+    val hasTextRegion = textLeft >= 0 && textTop >= 0 && textRight > textLeft && textBottom > textTop
+    val pad = if (hasTextRegion) textRegionPadding(textBottom - textTop) else 0
     restrictToTextRegion(
         mask = isText,
         w = w,
         h = h,
-        left = textLeft - x0,
-        top = textTop - y0,
-        right = textRight - x0,
-        bottom = textBottom - y0,
-        enabled = textLeft >= 0 && textTop >= 0 && textRight > textLeft && textBottom > textTop,
+        left = textLeft - x0 - pad,
+        top = textTop - y0 - pad,
+        right = textRight - x0 + pad,
+        bottom = textBottom - y0 + pad,
+        enabled = hasTextRegion,
     )
 
     // Nemá se z čeho počítat (celá oblast vyšla jako text) - vrátí se navzorkované pozadí.
@@ -136,6 +138,22 @@ private fun markTextPixels(luminance: IntArray, w: Int, h: Int): BooleanArray {
     }
     return isText
 }
+
+/**
+ * O kolik pixelů se textová oblast rozšíří, než se jí ořeže maska.
+ *
+ * OCR box je jen aproximace otisku písma, ne jeho přesná obálka - ML Kit ho běžně vede o kus
+ * uvnitř skutečných tahů (naměřeno sondou na zařízení: u repliky kreslené od x=180 vrátil levý
+ * okraj až na 190). Bez rezervy zůstane všechno, co přesáhne, v obraze nedotčené: lem kolem
+ * písmen, spodky dotahů, tečky na hranici boxu. Přesně tak vypadal nahlášený caption
+ * "...HAS ENDED.", který po překladu zůstal čitelný.
+ *
+ * Rezerva se odvozuje z VÝŠKY textové oblasti, protože ta odpovídá velikosti písma - přesah je
+ * úměrný jemu, ne rozměrům stránky. Strop i podlaha jsou tam proto, aby u obřího nadpisu
+ * nezasáhla rezerva půl kresby a u drobného textu nebyla nulová.
+ */
+private fun textRegionPadding(textHeight: Int): Int =
+    (textHeight / TEXT_PAD_DIVISOR).coerceIn(MIN_TEXT_PAD, MAX_TEXT_PAD)
 
 /**
  * Vymaže z masky všechno mimo zadaný obdélník - viz komentář u [buildTextPatch] k textové
@@ -235,6 +253,11 @@ private const val MIN_WINDOW = 7
 private const val WINDOW_DIVISOR = 6
 
 private const val MASK_DILATION = 2
+
+/** Rezerva kolem textové oblasti jako podíl její výšky - viz [textRegionPadding]. */
+private const val TEXT_PAD_DIVISOR = 4
+private const val MIN_TEXT_PAD = 2
+private const val MAX_TEXT_PAD = 12
 
 /** Pojistka proti nekonečné smyčce; při ~2px za kolo pokryje i velmi tlusté tahy. */
 private const val MAX_FILL_ROUNDS = 64

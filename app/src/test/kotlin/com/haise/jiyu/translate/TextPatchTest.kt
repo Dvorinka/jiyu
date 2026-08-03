@@ -181,4 +181,134 @@ class TextPatchTest {
         val w = 16
         assertEquals("tah na (12,12) obrázku leží v záplatě na (8,8)", white, patch[8 * w + 8])
     }
+
+    // -- Tlusté komiksové písmo přes kresbu (nahlášené "...HAS ENDED.") -------------------
+
+    /**
+     * Kus caption pásu tak, jak vypadá na barevné stránce: nízký a široký, přes pestrou kresbu,
+     * a písmo je BÍLÉ JÁDRO S TMAVÝM OBRYSEM - takhle se sází text ležící rovnou v obrázku,
+     * aby byl čitelný přes cokoli pod sebou.
+     */
+    private fun captionOnArtwork(w: Int, h: Int, strokeWidth: Int): List<List<Int>> {
+        val coreStart = w / 2 - strokeWidth / 2
+        val coreEnd = coreStart + strokeWidth - 1
+        return (0 until h).map { y ->
+            (0 until w).map { x ->
+                when {
+                    x in coreStart..coreEnd -> white // jádro písmene
+                    x == coreStart - 1 || x == coreEnd + 1 -> black // obrys kolem něj
+                    // Pestrá kresba pod textem - žádná souvislá barva.
+                    (x / 5 + y / 5) % 2 == 0 -> red
+                    else -> blue
+                }
+            }
+        }
+    }
+
+    /** Kolik pixelů jádra tahu zůstalo po záplatě pořád bílých, tedy nezakrytých. */
+    private fun leftoverCorePixels(patch: IntArray, w: Int, h: Int, strokeWidth: Int): Int {
+        val coreStart = w / 2 - strokeWidth / 2
+        var leftover = 0
+        for (y in 0 until h) {
+            for (x in coreStart until coreStart + strokeWidth) {
+                if (patch[y * w + x] == white) leftover++
+            }
+        }
+        return leftover
+    }
+
+    @Test
+    fun `a thick outlined caption stroke is covered, not left showing`() {
+        // Ověřená DOMNĚNKA, která se nepotvrdila, a proto tu zůstává jako regresní test.
+        //
+        // Nabízelo se, že za nedočištěný caption "...HAS ENDED." může okno adaptivního
+        // prahování: odvozuje se z rozměrů záplaty (min(w,h)/6) a caption pás je nízký, takže
+        // u tlustého tahu by okno skončilo celé uvnitř písma - průměr okolí by vyšel jako barva
+        // tahu a pixel by se za text neoznačil. Změřeno: nestává se to, protože označené okraje
+        // tahu se ještě dilatují (MASK_DILATION), a to vnitřek devítipixelového tahu uzavře.
+        val w = 240
+        val h = 36
+        val strokeWidth = 9
+        val rows = captionOnArtwork(w, h, strokeWidth)
+        val patch = buildTextPatch(sourceOf(rows), w, h, 0, 0, w, h, bgArgb = red)
+
+        val leftover = leftoverCorePixels(patch, w, h, strokeWidth)
+        assertEquals("z tahu zůstalo $leftover bílých pixelů - písmo prosvítá dál", 0, leftover)
+    }
+
+    @Test
+    fun `a thin stroke in the same low strip still works`() {
+        // Protipól: tenký tah ve stejně nízkém pásu fungoval i dřív a musí fungovat dál.
+        val w = 240
+        val h = 36
+        val rows = captionOnArtwork(w, h, strokeWidth = 3)
+        val patch = buildTextPatch(sourceOf(rows), w, h, 0, 0, w, h, bgArgb = red)
+
+        assertEquals(0, leftoverCorePixels(patch, w, h, 3))
+    }
+
+    @Test
+    fun `the artwork around a covered caption is not smeared away`() {
+        // Pojistka proti přestřelení: větší okno nesmí začít označovat za text i samotnou
+        // kresbu, jinak by se z opravy stala ta placka, kvůli které záplata vznikla.
+        val w = 240
+        val h = 36
+        val rows = captionOnArtwork(w, h, strokeWidth = 9)
+        val patch = buildTextPatch(sourceOf(rows), w, h, 0, 0, w, h, bgArgb = red)
+
+        val farX = 20
+        val farY = 18
+        assertEquals("kresba mimo písmo se nesmí dopočítávat", rows[farY][farX], patch[farY * w + farX])
+    }
+
+    @Test
+    fun `letters reaching a hair outside the OCR box are still covered`() {
+        // JÁDRO NÁLEZU. Maska se ořezává přesně na OCR box, jenže ten box je jen aproximace -
+        // ML Kit ho běžně vede o pár pixelů uvnitř skutečného otisku písma (naměřeno sondou na
+        // zařízení: u repliky kreslené od x=180 vrátil levý okraj až na 190). Co přesáhne,
+        // zůstane v obraze nedotčené: lem kolem písmen, spodek dotahů, tečky na hranici.
+        //
+        // Přesně tak vypadal nahlášený caption "...HAS ENDED." - po překladu pořád čitelný.
+        val w = 60
+        val h = 40
+        // Svislý bílý tah přes celou výšku, na pestré kresbě.
+        val rows = (0 until h).map { y ->
+            (0 until w).map { x ->
+                when {
+                    x in 28..33 -> white
+                    (x / 5 + y / 5) % 2 == 0 -> red
+                    else -> blue
+                }
+            }
+        }
+        // OCR box tah TĚSNĚ míjí po obou stranách - hlásí 30..31 místo skutečných 28..33.
+        val patch = buildTextPatch(
+            sourceOf(rows), w, h, 0, 0, w, h, bgArgb = red,
+            textLeft = 30, textTop = 0, textRight = 32, textBottom = h,
+        )
+
+        val leftover = (0 until h).sumOf { y ->
+            (28..33).count { x -> patch[y * w + x] == white }
+        }
+        assertEquals("z tahu zůstalo $leftover bílých pixelů mimo hlášený OCR box", 0, leftover)
+    }
+
+    @Test
+    fun `the tolerance around the OCR box does not reach into unrelated artwork`() {
+        // Pojistka: lem kolem textové oblasti se počítá z její VELIKOSTI, takže u malého boxu
+        // zůstane malý. Kresba dál od textu se nesmí začít prahovat ani dopočítávat.
+        val w = 200
+        val h = 40
+        val rows = (0 until h).map { y ->
+            (0 until w).map { x -> if ((x / 5 + y / 5) % 2 == 0) red else blue }
+        }
+        val patch = buildTextPatch(
+            sourceOf(rows), w, h, 0, 0, w, h, bgArgb = red,
+            textLeft = 95, textTop = 15, textRight = 105, textBottom = 25,
+        )
+
+        listOf(10 to 5, 190 to 35, 10 to 35).forEach { (x, y) ->
+            assertEquals("kresba na ($x,$y) je daleko od textu", rows[y][x], patch[y * w + x])
+        }
+    }
 }
