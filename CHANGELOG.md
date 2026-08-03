@@ -4,6 +4,33 @@
 > vidět v historii commitů a v popisech jednotlivých vydání na GitHubu; zpětně to sem
 > nedopisuju, abych si nevymýšlel.
 
+## v1.0.7
+
+Oprava regrese z v1.0.6. **Pipeline se mění (16 → 17), stránky se přeloží znovu** — chybný
+příznak se ukládá do cache, takže bez toho by placky na už přeložených stránkách zůstaly.
+
+### Plná výplň se rozlila přes kresbu
+Popisek „BITVA U SEKIGAHARY" dostal přes vodovkovou bitevní scénu modrou placku, panely
+„DUP"/„TROMP" růžovou. Do v1.0.5 se tam kresba dopočítávala a bylo to bez poznání.
+
+Způsobila to změna z v1.0.6, kterou jsem zavedl kvůli zbytkům originálu v bublinách:
+jednolitost pozadí přestala hlídat největší odchylku vzorku a začala brát 85. percentil.
+Jenže ta bitevní scéna je barevně *docela* jednotná — většina prstence padne do tolerance
+a mimo ni je jen menšina (kmen stromu, tmavý terén pod popiskem). Prošla tedy jako
+„jednolité pozadí" a dostala plnou výplň místo záplaty.
+
+Rozhoduje zase největší odchylka, tedy stav z v1.0.5.
+
+Podstatné je, proč to nešlo jen doladit jinou mezí: z pouhých vzorků je „pár odlehlých
+tmavých hodnot" **nerozlišitelné** mezi tahem písmene a tmavým detailem kresby. Percentil
+tedy nemůže být ten mechanismus, ať dostane jakýkoliv práh.
+
+**Vrací se tím i ústupek z v1.0.5:** v bublině může pod překladem zůstat drobný zbytek
+originálu. Placka přes kresbu je horší, takže to je vědomá volba, ne přehlédnutí. Řešit se
+to bude tím, kde se vzorkuje prstenec kolem textu — ne tolerancí.
+
+808 unit testů, 0 varování.
+
 ## v1.0.6
 
 Samé opravy překladu, všechny z nahlášených stránek Vagabonda. **Pipeline se mění

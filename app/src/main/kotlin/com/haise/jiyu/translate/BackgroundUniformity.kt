@@ -13,20 +13,32 @@ import kotlin.math.abs
  * Extrahováno z [OcrEngine] do čisté funkce, aby to šlo testovat bez Bitmapy a Androidu -
  * stejný důvod jako u [mergeNearbyLines] nebo [ReadingOrder].
  *
- * ## Proč se odlehlé vzorky ignorují
- * Původní verze brala NEJVĚTŠÍ odchylku od průměru: stačil jediný vzorek mimo, a celá bublina
- * se přeřadila z výplně na záplatu. A takový vzorek vzniká úplně běžně, protože prstenec se
- * vzorkuje jen [OcrEngine] pár pixelů od OCR boxu a ten box občas kraj písmene ořízne - vzorek
- * pak padne rovnou na tah písma.
+ * ## Rozhoduje NEJVĚTŠÍ odchylka - a odlehlé vzorky se ZÁMĚRNĚ neignorují
+ * Tohle už jednou ustoupilo percentilu a byla to chyba, kterou je potřeba mít zapsanou, aby
+ * ji nikdo neudělal podruhé.
  *
- * Změřeno na zařízení (PunctuationBlockProbeTest): replika "SURVIVOR..." uprostřed čistě BÍLÉ
- * bubliny vyšla jako `bgUniform=false`, přestože kolem ní žádná kresba není. Dostala tedy
- * záplatu, ta z principu nedočistí všechno - a přesně tak vypadaly nahlášené snímky, kde pod
- * přeloženým textem zůstávaly zbytky originálu.
+ * Motiv byl rozumný: prstenec se vzorkuje jen pár pixelů od OCR boxu (viz [OcrEngine]) a ten
+ * box občas kraj písmene ořízne, takže vzorek padne rovnou na tah písma. Změřeno na zařízení
+ * (PunctuationBlockProbeTest): replika "SURVIVOR..." uprostřed čistě BÍLÉ bubliny vyšla jako
+ * `bgUniform=false` a dostala záplatu, která z principu nedočistí všechno - odtud hlášené
+ * zbytky originálu pod přeloženým textem. Podmínka proto začala brát 85. percentil odchylek,
+ * aby hrst vzorků na písmenu verdikt nepřehodila.
  *
- * Proto se místo maxima bere [UNIFORM_PERCENTILE] percentil odchylek: hrst vzorků, které
- * spadly na písmeno, verdikt neovlivní, ale skutečně pestré okolí (kde je mimo tolerancí
- * většina vzorků) se pozná dál.
+ * Rozbilo to přesně to, kvůli čemu celá záplata vznikla. Vodovková bitevní scéna z Vagabonda
+ * je barevně DOCELA jednotná: většina prstence padne do tolerance a mimo ni je jen menšina
+ * (kmen stromu, tmavý terén pod popiskem). S percentilem tedy prošla jako "jednolité pozadí",
+ * dostala plnou výplň - a přes kresbu se rozlila placka. Uživatel to hlásil okamžitě a
+ * doslova: původní vykreslení bylo o dost lepší.
+ *
+ * Podstatné je, PROČ to nejde doladit jinou mezí: z pouhých vzorků je "pár odlehlých tmavých
+ * hodnot" **nerozlišitelné** mezi tahem písmene a tmavým detailem kresby. Percentil tedy
+ * nemůže být ten mechanismus, ať dostane jakýkoliv práh. Kdo bude chtít zbytky originálu
+ * v bublině dořešit, musí sáhnout jinam - typicky na to, KDE se prstenec vzorkuje, aby na
+ * písmeno nesahal vůbec (OCR box je jen aproximace otisku, viz [buildTextPatch]) - a musí to
+ * změřit na skutečné stránce, ne na syntetické replice.
+ *
+ * Cena, kterou tahle přísnost stojí, je známá a vědomě přijatá: v bublině může pod překladem
+ * zůstat drobný zbytek originálu. Placka přes kresbu je horší.
  */
 internal fun isBackgroundUniform(
     samples: List<IntArray>,
@@ -38,22 +50,12 @@ internal fun isBackgroundUniform(
     val avgG = samples.sumOf { it[1] } / samples.size
     val avgB = samples.sumOf { it[2] } / samples.size
 
-    val deviations = samples
-        .map { s -> maxOf(abs(s[0] - avgR), abs(s[1] - avgG), abs(s[2] - avgB)) }
-        .sorted()
-
-    // Index percentilu; u velmi malých sad spadne na poslední prvek, tedy na dřívější chování -
-    // z pěti vzorků se nedá nic "odlehlého" spolehlivě vyloučit.
-    val index = ((deviations.size - 1) * UNIFORM_PERCENTILE / 100).coerceIn(0, deviations.size - 1)
-    return deviations[index] <= threshold
+    // Stačí JEDINÝ vzorek mimo toleranci - viz komentář výše k tomu, proč se odlehlé hodnoty
+    // nesmí odfiltrovat.
+    return samples.all { s ->
+        maxOf(abs(s[0] - avgR), abs(s[1] - avgG), abs(s[2] - avgB)) <= threshold
+    }
 }
-
-/**
- * Kolik procent vzorků musí být uvnitř tolerance. Zbylých 15 % je rozpočet právě na ty vzorky,
- * které padly na tah písma kvůli těsnému OCR boxu - prstenec má kolem 80 vzorků rozdělených na
- * čtyři strany, takže i celý zasažený kus jedné strany se do rozpočtu vejde.
- */
-private const val UNIFORM_PERCENTILE = 85
 
 /** Kolik smí být rozdíl mezi vzorkem a průměrem, aby ještě šlo o tutéž barvu pozadí. */
 internal const val UNIFORM_COLOR_THRESHOLD = 45

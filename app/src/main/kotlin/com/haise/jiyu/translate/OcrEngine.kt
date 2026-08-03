@@ -374,9 +374,9 @@ class OcrEngine @Inject constructor() {
         var y = ringTop
         while (y <= ringBottom) { sample(ringLeft, y); sample(ringRight, y); y += stepY }
 
-        // Rozhodování o jednolitosti žije v [isBackgroundUniform] - je to čistá funkce, aby
-        // šla testovat bez Bitmapy, a hlavně aby snesla pár vzorků spadlých na tah písma
-        // (viz tam; měřeno sondou, kde bílá bublina vycházela jako pestrá kresba).
+        // Rozhodování o jednolitosti žije v [isBackgroundUniform] - je to čistá funkce, aby šla
+        // testovat bez Bitmapy. Je ZÁMĚRNĚ přísná (stačí jediný vzorek mimo toleranci); pokus
+        // odlehlé vzorky odfiltrovat rozlil plnou výplň přes kresbu, podrobnosti viz tam.
         val uniform = isBackgroundUniform(topSamples + bottomSamples)
         return BgSample(colorFor(topSamples, uniform), colorFor(bottomSamples, uniform), uniform)
     }

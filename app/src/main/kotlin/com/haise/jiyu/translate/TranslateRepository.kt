@@ -673,10 +673,19 @@ class TranslateRepository @Inject constructor(
          *   Zmereno sondou na zarizeni: "SURVIVOR..." uprostred bile bubliny vychazelo
          *   bgUniform=false. Meni to ulozeny priznak bgUniform, tedy i vzhled bubliny.
          *
-         *   Body (1)-(4) jsou jedna nevydana verze - v16 se do zadneho releasu nedostala,
-         *   takze se sem smely pribalit, aniz by to znamenalo druhe preinstalovani cache.
+         *   Body (1)-(4) sly ven najednou ve v1.0.6.
+         * v17 (2026-08-03): bod (4) z v16 se VRACI zpet - percentil byl chyba a v1.0.6 ji
+         *   vydal. Vodovkova bitevni scena z Vagabonda je barevne docela jednotna: vetsina
+         *   prstence padne do tolerance a mimo ni je jen MENSINA vzorku (kmen stromu, tmavy
+         *   teren pod popiskem). S percentilem tedy prosla jako "jednolite pozadi", dostala
+         *   plnou vypln a pres kresbu se rozlila placka - nahlaseno okamzite, popisek "BITVA U
+         *   SEKIGAHARY" a panely "DUP"/"TROMP". Rozhoduje zase NEJVETSI odchylka; proc to
+         *   nejde zachranit jinou mezi, je zapsane u [isBackgroundUniform]. Vraci se tim i
+         *   znamy ustupek: v bubline muze pod prekladem zustat drobny zbytek originalu.
+         *   Priznak bgUniform je ULOZENY, takze bez zvednuti verze by placky na uz prelozenych
+         *   strankach zustaly viset.
          */
-        private const val PIPELINE_VERSION = 16
+        private const val PIPELINE_VERSION = 17
 
         /** Maximální počet znaků originálu na jedno API volání - drží výstup pod limitem max_tokens. */
         private const val NOVEL_CHUNK_CHAR_LIMIT = 2500
