@@ -4,6 +4,53 @@
 > vidět v historii commitů a v popisech jednotlivých vydání na GitHubu; zpětně to sem
 > nedopisuju, abych si nevymýšlel.
 
+## v1.0.6
+
+Samé opravy překladu, všechny z nahlášených stránek Vagabonda. **Pipeline se mění
+(PIPELINE_VERSION 15 → 16), takže se už přeložené stránky přeloží znovu** — jinak by
+nová pravidla na staré cache nebyla vidět.
+
+### Klasifikace zvuků polykala dialogy
+Věty jako „POSLEDNÍ" nebo „SKONČILA." se braly za kreslený zvuk (SFX) a nechávaly se
+nepřeložené. Vinou toho bylo pravidlo „vše velkými písmeny je zvuk" plus ruční seznam
+výjimek, který nešlo doplnit tak, aby pokryl každé krátké slovo v jazyce.
+
+Rozhoduje teď uzavřený seznam skutečných zvuků a dva signály, které žádný seznam
+nepotřebují: latinské slovo bez jediné samohlásky, a krátký text nakreslený přímo na
+kresbě (mimo bublinu). Seznam zvuků navíc snese protažené varianty — „KRAAASH"
+i „KRASH" se spárují se stejnou položkou.
+
+### Rozdělená slova s jedním písmenem na řádku
+„POSLEDN" / „Í" — model směl dělící místa navrhovat kamkoliv a appka je přebírala bez
+kontroly. Nově se každý úsek mezi dělítky počítá na písmena a s méně než dvěma se
+dělení zahodí.
+
+### Náhradní překladač psal bez kontextu
+Když hlavní poskytovatel odpadl, záložní dostal holé věty bez názvu díla i bez
+předchozích replik — odtud nesouvislé a doslovné překlady uprostřed dialogu. Kontext
+se teď posílá i tudy.
+
+> Vyžaduje nasazení edge funkce, jinak ji appka posílá a proxy zahazuje.
+
+### Bílá bublina se brala za pestrou kresbu
+Pod přeloženým textem zůstávaly zbytky originálu — osamocená tečka, drobné artefakty.
+Prstenec kolem textu se vzorkuje kousek od OCR boxu a ten občas ořízne kraj písmene,
+takže pár vzorků padlo rovnou na černý tah. Podmínka přitom brala největší odchylku,
+takže jediný takový vzorek přehodil celou bublinu na „pestrá kresba" a ta pak dostala
+záplatu místo plné výplně.
+
+Rozhoduje teď 85. percentil: hrst vzorků na písmenu verdikt neovlivní. Ověřeno na
+zařízení, že text na SKUTEČNĚ pestré kresbě dál vychází správně — tolerance neoslabila
+rozpoznání, kvůli kterému záplata vznikla.
+
+### Popisky na kresbě zůstávaly čitelné i po překladu
+Maska záplaty se ořezávala přesně na OCR box, jenže ten je jen aproximace otisku písma —
+ML Kit ho běžně vede kus uvnitř skutečných tahů. Co přesáhlo, zůstalo nedotčené: lem
+kolem písmen, spodky dotahů, tečky na hranici. Oblast se teď před ořezáním rozšíří
+o rezervu odvozenou z výšky písma.
+
+808 unit testů, 0 varování.
+
 ## v1.0.5
 
 Na prekladu se nic nemeni - prelozene stranky zustavaji v cache.
