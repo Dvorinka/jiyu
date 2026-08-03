@@ -85,7 +85,7 @@ class TranslateRepository @Inject constructor(
 
         val glossary = glossaryFor(mangaId, targetLanguage)
         val mangaContext = mangaContextFor(mangaId)
-        val classified = BubbleClassifier.classifyPage(rawBlocks, sourceLanguage)
+        val classified = BubbleClassifier.classifyPage(rawBlocks)
 
         // Návaznost při čtení stránku po stránce: co zaznělo na té předchozí. Bere se jen
         // z cache - dohledávat ji překladem by znamenalo přeložit stránku, kterou čtenář
@@ -117,8 +117,8 @@ class TranslateRepository @Inject constructor(
                 { translateWithGemini(classified, glossary, mangaContext, provider = "gemini", mangaId, targetLanguage, recentLines) },
                 { translateWithGemini(classified, glossary, mangaContext, provider = "groq", mangaId, targetLanguage, recentLines) },
                 { translateWithGemini(classified, glossary, mangaContext, provider = "openrouter", mangaId, targetLanguage, recentLines) },
-                { translateWithGroq(classified, glossary, targetLanguage, sourceLanguage, provider = "groq") },
-                { translateWithGroq(classified, glossary, targetLanguage, sourceLanguage, provider = "openrouter") },
+                { translateWithGroq(classified, glossary, targetLanguage, sourceLanguage, "groq", mangaContext, recentLines) },
+                { translateWithGroq(classified, glossary, targetLanguage, sourceLanguage, "openrouter", mangaContext, recentLines) },
             )
         } else {
             // GeminiUltraPrompt je psaný natvrdo pro češtinu, takže pro jiné cílové jazyky
@@ -126,8 +126,8 @@ class TranslateRepository @Inject constructor(
             // zálohy. Teď zkusí Groq a při selhání OpenRouter (stejný obecný "manga"/"novel"
             // prompt parametrizovaný cílovým jazykem, viz translate-proxy systemPromptFor).
             translateChain(
-                { translateWithGroq(classified, glossary, targetLanguage, sourceLanguage, provider = "groq") },
-                { translateWithGroq(classified, glossary, targetLanguage, sourceLanguage, provider = "openrouter") },
+                { translateWithGroq(classified, glossary, targetLanguage, sourceLanguage, "groq", mangaContext, recentLines) },
+                { translateWithGroq(classified, glossary, targetLanguage, sourceLanguage, "openrouter", mangaContext, recentLines) },
             )
         }
         if (blocks.isEmpty()) return emptyList()
@@ -231,7 +231,7 @@ class TranslateRepository @Inject constructor(
                         val bitmap = bitmapLoadSemaphore.withPermit { pageBitmapLoader.load(pages[pageIndex]) }
                         bitmap?.let { bmp -> ocrSemaphore.withPermit { ocrEngine.recognize(bmp, sourceLanguage) } } ?: emptyList()
                     } ?: emptyList()
-                    pageIndex to BubbleClassifier.classifyPage(raw, sourceLanguage)
+                    pageIndex to BubbleClassifier.classifyPage(raw)
                 }
             }.awaitAll()
         }.toMap()
@@ -265,13 +265,13 @@ class TranslateRepository @Inject constructor(
                     { translateWithGemini(flatBubbles, glossary, mangaContext, provider = "gemini", mangaId, targetLanguage, recentLines) },
                     { translateWithGemini(flatBubbles, glossary, mangaContext, provider = "groq", mangaId, targetLanguage, recentLines) },
                     { translateWithGemini(flatBubbles, glossary, mangaContext, provider = "openrouter", mangaId, targetLanguage, recentLines) },
-                    { translateWithGroq(flatBubbles, glossary, targetLanguage, sourceLanguage, provider = "groq") },
-                    { translateWithGroq(flatBubbles, glossary, targetLanguage, sourceLanguage, provider = "openrouter") },
+                    { translateWithGroq(flatBubbles, glossary, targetLanguage, sourceLanguage, "groq", mangaContext, recentLines) },
+                    { translateWithGroq(flatBubbles, glossary, targetLanguage, sourceLanguage, "openrouter", mangaContext, recentLines) },
                 )
             } else {
                 translateChain(
-                    { translateWithGroq(flatBubbles, glossary, targetLanguage, sourceLanguage, provider = "groq") },
-                    { translateWithGroq(flatBubbles, glossary, targetLanguage, sourceLanguage, provider = "openrouter") },
+                    { translateWithGroq(flatBubbles, glossary, targetLanguage, sourceLanguage, "groq", mangaContext, recentLines) },
+                    { translateWithGroq(flatBubbles, glossary, targetLanguage, sourceLanguage, "openrouter", mangaContext, recentLines) },
                 )
             }
 
@@ -435,6 +435,8 @@ class TranslateRepository @Inject constructor(
         targetLanguage: String,
         sourceLanguage: String,
         provider: String = "groq",
+        mangaContext: String = "",
+        previousLines: List<String> = emptyList(),
     ): List<TranslatedBlock>? {
         val toTranslate = classified.filter { !it.isSfx }
         val translations = if (toTranslate.isEmpty()) emptyList() else groqClient.translateBatch(
@@ -443,6 +445,8 @@ class TranslateRepository @Inject constructor(
             sourceLanguage = sourceLanguage,
             glossary = glossary,
             provider = provider,
+            mangaContext = mangaContext,
+            previousLines = previousLines,
         )
         if (toTranslate.isNotEmpty() && translations.isEmpty()) return null
 
@@ -650,8 +654,19 @@ class TranslateRepository @Inject constructor(
          *   s VYSKOU sloupce - 1,8x vyska sloupce je pres pul stranky, takze se slily i bubliny
          *   350 px od sebe. Namereno sondou na zarizeni: cela stranka se slila do JEDNOHO bloku
          *   s promichanym textem. Meni to vysledek OCR, tedy i ulozene bloky.
+         * v16 (2026-08-03): tri opravy z nahlasene stranky Vagabonda, vsechny meni ulozena data.
+         *   (1) Zrusene pravidlo "kratky text velkymi pismeny bez mezer = zvuk" (viz
+         *   [BubbleClassifier]) - v komiksu je verzalkami VSECHNO, takze nerozlisovalo nic a
+         *   polykalo bezne repliky ("I", "TOO...", "TAKEZO."). Meni to, ktere bloky jsou SFX,
+         *   tedy i ktere se vubec prelozi.
+         *   (2) Rozdelovnik od modelu se overuje i na to, KAM padne, ne jen jestli po jeho
+         *   odstraneni sedi text (viz [isValidSyllableBreaks]) - odtud "POSLEDN" + osamocene
+         *   "I" na dalsim radku. Meni to ulozeny displayText.
+         *   (3) Zalozni cesta (Groq/OpenRouter) dostava kontext dila a ocasek predchozich
+         *   replik, ktere do teto chvile mela jen cesta pres Gemini - bez nich prekladala
+         *   izolovane vety naslepo ("JUST LEAVE ME HERE." -> "ZUSTANTE ME TADY").
          */
-        private const val PIPELINE_VERSION = 15
+        private const val PIPELINE_VERSION = 16
 
         /** Maximální počet znaků originálu na jedno API volání - drží výstup pod limitem max_tokens. */
         private const val NOVEL_CHUNK_CHAR_LIMIT = 2500

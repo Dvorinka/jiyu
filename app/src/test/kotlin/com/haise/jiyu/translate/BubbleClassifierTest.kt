@@ -15,6 +15,7 @@ class BubbleClassifierTest {
         rightF: Float = 0.2f,
         bottomF: Float = 0.15f,
         lineCount: Int = 1,
+        bgUniform: Boolean = true,
     ) = RawTextBlock(
         text = text,
         leftF = leftF,
@@ -23,6 +24,7 @@ class BubbleClassifierTest {
         bottomF = bottomF,
         shape = shape,
         lineCount = lineCount,
+        bgUniform = bgUniform,
     )
 
     /** Trsovitý/hvězdicovitý obrys (24 vzorků, hroty/prohlubně střídající se každý vzorek) - viz [isJaggedShape]. */
@@ -278,29 +280,25 @@ class BubbleClassifierTest {
 
     @Test
     fun `a short spanish word is not swallowed as a sound effect`() {
-        // NALEZ Z AUDITU: pravidlo "kratky text velkymi pismeny bez mezer = zvuk" ma jako
-        // jedinou pojistku ANGLICKY seznam beznych slov. U spanelskeho/francouzskeho/
-        // indoneskeho komiksu tedy platilo bez site a bezna kratka replika se oznacila za
-        // SFX - takova bublina se nikdy neprelozi ani nevykresli, takze na strance zustal
-        // original.
-        val result = BubbleClassifier.classify(rawBlock("VAMOS"), lineCount = 1, sourceLanguage = "Spanish")
-        assertFalse("spanelska replika nesmi propadnout jako zvuk", result.isSfx)
+        // NALEZ Z AUDITU: pravidlo "kratky text velkymi pismeny bez mezer = zvuk" melo jako
+        // jedinou pojistku ANGLICKY seznam beznych slov, takze u spanelskeho/francouzskeho
+        // komiksu platilo bez site. Pravidlo uz neexistuje a klasifikace na zdrojovem jazyce
+        // vubec nezavisi - drzi to samo od sebe, ne kvuli vyjimce.
+        assertFalse("spanelska replika nesmi propadnout jako zvuk", BubbleClassifier.classify(rawBlock("VAMOS"), 1).isSfx)
+        assertFalse(BubbleClassifier.classify(rawBlock("ALORS"), 1).isSfx)
     }
 
     @Test
     fun `english short words keep their existing protection`() {
-        val stop = BubbleClassifier.classify(rawBlock("STOP"), lineCount = 1, sourceLanguage = "English")
+        val stop = BubbleClassifier.classify(rawBlock("STOP"), lineCount = 1)
         assertFalse(stop.isSfx)
     }
 
     @Test
-    fun `a real sound effect is still caught in every language`() {
-        // sfxWords je vyslovny seznam, ten plati porad - vypnuti se tyka jen toho
-        // nebezpecneho "kratke velke pismenka" pravidla.
-        listOf("English", "Spanish", "French", "Auto").forEach { language ->
-            val result = BubbleClassifier.classify(rawBlock("BOOM"), lineCount = 1, sourceLanguage = language)
-            assertTrue("BOOM ma zustat zvukem i pro $language", result.isSfx)
-        }
+    fun `a real sound effect is still caught whatever the source language`() {
+        // sfxWords je vyslovny seznam - ten plati porad a na jazyce nezavisi.
+        assertTrue(BubbleClassifier.classify(rawBlock("BOOM"), 1).isSfx)
+        assertTrue(BubbleClassifier.classify(rawBlock("CRASH"), 1).isSfx)
     }
 
     @Test
@@ -345,5 +343,90 @@ class BubbleClassifierTest {
         // ze classifyPage normalni klasifikaci vubec nerozbije.
         assertTrue(classified[3].isSfx)
         assertEquals(BubbleType.SFX, classified[3].bubbleType)
+    }
+
+    // ── replika polknutá pravidlem "krátké velké písmo = zvuk" (nález z Vagabonda) ──
+
+    @Test
+    fun `reproduces the reported bubble - only the middle line came back translated`() {
+        // JÁDRO NÁLEZU. Jedna bublina "I / SURVIVED, / TOO..." se rozpadla na tři bloky a
+        // v překladu vyšla jako "I / PŘEŽÍT, / TOO..." - prostřední kus byl dost dlouhý na to,
+        // aby prošel, krajní dva propadly jako "zvuk", takže se ani neposlaly na překlad, ani
+        // nevykreslily. Anglický lettering v nich zůstal.
+        listOf("I", "TOO...", "SURVIVED,").forEach { text ->
+            assertFalse("„$text\" je replika, ne zvuk", BubbleClassifier.classify(rawBlock(text), 1).isSfx)
+        }
+    }
+
+    @Test
+    fun `a name is dialogue even though it is short and has no vowel-free giveaway`() {
+        // "TAKEZŌ." - vlastní jméno v samostatné bublině, tedy případ, kde slučování řádků
+        // nehraje roli vůbec. Šest písmen bez mezery: staré pravidlo ho spolklo.
+        assertFalse(BubbleClassifier.classify(rawBlock("TAKEZŌ."), 1).isSfx)
+    }
+
+    @Test
+    fun `the safety list is no longer what decides - unlisted short words survive too`() {
+        // Tohle je ten podstatný rozdíl proti dřívějším opravám. Dvakrát se to řešilo tak, že
+        // se do seznamu chráněných slov dopsalo další slovo ("DAMN", pak "SAY"). Seznam běžných
+        // slov je ale nekonečná množina, takže třetí nález byl jen otázkou času. Žádné z těchhle
+        // slov v seznamu nikdy nebylo.
+        listOf("TOO", "BOTH", "MINE", "OURS", "THEIRS", "ALIVE", "DEAD", "GONE").forEach { text ->
+            assertFalse("„$text\" nikdy nebyl v seznamu a přesto musí projít", BubbleClassifier.classify(rawBlock(text), 1).isSfx)
+        }
+    }
+
+    @Test
+    fun `a sound effect without a single vowel is still caught without any word list`() {
+        // Náhrada za zrušené pravidlo o velkých písmenech: skutečné slovo (v jakémkoli jazyce
+        // psaném latinkou) má samohlásku, mechanický zvuk často ne. Na rozdíl od velikosti
+        // písmen tohle v komiksu, kde je VŠECHNO verzálkami, opravdu něco rozlišuje.
+        listOf("KRRR", "SHNK!!", "TSK", "GRR", "PSST", "HMPH").forEach { text ->
+            assertTrue("„$text\" nemá samohlásku, je to zvuk", BubbleClassifier.classify(rawBlock(text), 1).isSfx)
+        }
+    }
+
+    @Test
+    fun `the vowel rule only applies to latin script - CJK dialogue must not be swallowed`() {
+        // Japonská/korejská replika nemá latinskou samohlásku ŽÁDNOU, takže bez tohohle omezení
+        // by pravidlo výš spolklo úplně obyčejný dialog.
+        listOf("はい", "そうか", "네", "알았어").forEach { text ->
+            assertFalse("„$text\" je dialog, ne zvuk", BubbleClassifier.classify(rawBlock(text), 1).isSfx)
+        }
+    }
+
+    @Test
+    fun `a stretched sound effect is recognised as the sound it stretches`() {
+        // Lettering zvuky protahuje ("SOBB", "BOOOM") - porovnání na přesnou shodu je proto
+        // míjelo a chytalo je až zrušené pravidlo o verzálkách.
+        listOf("SOBB", "BOOOM", "CRASHH", "HUFF").forEach { text ->
+            assertTrue("protažené „$text\" je pořád zvuk", BubbleClassifier.classify(rawBlock(text), 1).isSfx)
+        }
+    }
+
+    @Test
+    fun `common comic sounds that used to rely on the all-caps rule are named explicitly now`() {
+        listOf("SOB", "SNIF", "HUF", "HAK", "PANT", "ARGH").forEach { text ->
+            assertTrue("„$text\" je zvuk", BubbleClassifier.classify(rawBlock(text), 1).isSfx)
+        }
+    }
+
+    @Test
+    fun `a short word drawn straight onto the artwork is a sound effect`() {
+        // Druhý nezávislý signál zvuku: zvuk se sází PŘES KRESBU, replika do bubliny. Tohle
+        // chytá i zvuky, které v seznamu nejsou a samohlásku mají.
+        val onArtwork = BubbleClassifier.classify(rawBlock("ZWISH", bgUniform = false), 1)
+        assertTrue("krátký text na kresbě je zvuk", onArtwork.isSfx)
+
+        val inBubble = BubbleClassifier.classify(rawBlock("ZWISH", bgUniform = true), 1)
+        assertFalse("stejný text v bublině zvuk není", inBubble.isSfx)
+    }
+
+    @Test
+    fun `a whole sentence on the artwork stays dialogue`() {
+        // Pojistka proti přestřelení pravidla výš: caption bez bubliny je běžná, a dlouhý text
+        // zvuk nikdy není.
+        val result = BubbleClassifier.classify(rawBlock("MĚLI JSME JEN TRÁVU K JÍDLU.", bgUniform = false), 1)
+        assertFalse(result.isSfx)
     }
 }

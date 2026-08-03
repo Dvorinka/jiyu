@@ -74,6 +74,31 @@ const MANGA_BREVITY_INSTRUCTION =
   "in a comic speech bubble - avoid overly formal, literal, or wordy phrasing that would feel " +
   "stiff or unnatural spoken aloud. ";
 
+/**
+ * Blok, ktery rekne modelu, CO vlastne preklada a co uz zaznelo.
+ *
+ * NALEZ: zalozni cesta (tahle) posilala jen holy seznam vet - zadny nazev dila, zadny typ
+ * (manga/manhwa/novela), zadna navaznost na predchozi bubliny - prestoze appka obojí zna a
+ * Gemini ceste to posila. Jakmile Gemini vypadl na kvote, kvalita spadla na doslovny preklad
+ * izolovanych vet ("JUST LEAVE ME HERE." -> "ZUSTANTE ME TADY").
+ *
+ * Kontext jde do SYSTEMOVEHO promptu, ne do uzivatelske zpravy: ta musi zustat cistym JSON
+ * polem, jinak model snadno zamicha poradi nebo prida do odpovedi neco navic.
+ */
+function contextClauseFor(context: string, recent: string[]): string {
+  let clause = "";
+  if (context) {
+    clause += "\n\nYou are translating this work: " + context +
+      ". Let its medium, genre and tone guide word choice and register.";
+  }
+  if (recent.length > 0) {
+    clause += "\n\nFor continuity only, these lines were said just before this batch " +
+      "(already translated - do NOT translate or repeat them, they are not part of the " +
+      "input):\n" + recent.map((line) => "- " + line).join("\n");
+  }
+  return clause;
+}
+
 function systemPromptFor(mode: string, fromClause: string, target: string): string {
   const nameHandling = target.trim().toLowerCase() === "czech"
     ? NAME_HANDLING_INSTRUCTION + CZECH_DECLENSION_INSTRUCTION
@@ -485,15 +510,24 @@ async function handleGroq(payload: Record<string, unknown>, mode: "manga" | "nov
   const targetLanguage: string = (payload.targetLanguage as string) ?? "Czech";
   const sourceLanguage: string = (payload.sourceLanguage as string) ?? "Auto";
   const glossary: Record<string, string> = (payload.glossary as Record<string, string>) ?? {};
+  // Volitelné - starší verze appky je neposílají, takže se musí snést i jejich nepřítomnost.
+  const context: string = typeof payload.context === "string" ? payload.context : "";
+  const recent: string[] = Array.isArray(payload.recent)
+    ? (payload.recent as unknown[]).filter((l): l is string => typeof l === "string")
+    : [];
 
   if (!Array.isArray(texts) || texts.length === 0) {
     return json({ translations: [] }, 200);
   }
 
+  const contextClause = contextClauseFor(context, recent);
+
+  // Kontext se do kvóty počítá - je to znaky poslané upstreamu jako každé jiné, a Gemini
+  // cesta si je taky započítává (viz handleGemini, charCount = system.length + user.length).
   const charCount = texts.reduce(
     (sum: number, t: unknown) => sum + (typeof t === "string" ? t.length : 0),
     0,
-  );
+  ) + contextClause.length;
 
   const { allowed, errored } = await checkQuota(charCount);
   if (errored) return json({ translations: [] }, 500);
@@ -506,7 +540,7 @@ async function handleGroq(payload: Record<string, unknown>, mode: "manga" | "nov
       Object.entries(glossary).map(([k, v]) => `- "${k}" → "${v}"`).join("\n")
     : "";
 
-  const systemPrompt = systemPromptFor(mode, fromClause, targetLanguage) + glossaryClause;
+  const systemPrompt = systemPromptFor(mode, fromClause, targetLanguage) + glossaryClause + contextClause;
 
   // Status 200 i při selhání upstreamu (dřív se u Groqu vracelo 500) - jinak by appka
   // odpověď zahodila jako "server chyba, zkus znovu" a k poli "error", ve kterém stojí

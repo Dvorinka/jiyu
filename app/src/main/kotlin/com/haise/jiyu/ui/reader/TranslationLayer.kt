@@ -612,7 +612,11 @@ private fun AutoFitTranslatedText(
                 // trochu místa navíc kolem glyphů. Bez rezervy by fitter vybral velikost, co
                 // se vejde jen do samotné výplně (Fill), a obrys by pak u okrajů bubliny přetekl.
                 val strokeReservePx = with(density) { maxOf(2.dp.toPx(), fontSp.sp.toPx() * STROKE_WIDTH_FACTOR) }
-                val style = TextStyle(fontSize = fontSp.sp, lineHeight = (fontSp * 1.25f).sp, fontFamily = fontFamily)
+                val style = TextStyle(
+                    fontSize = fontSp.sp,
+                    lineHeight = (fontSp * 1.25f).sp,
+                    fontFamily = fontFamily,
+                )
                 val constraintWidth = (maxWidthPx - strokeReservePx).toInt().coerceAtLeast(1)
                 val measured = textMeasurer.measure(text = text, style = style, constraints = Constraints(maxWidth = constraintWidth))
                 val lines = (0 until measured.lineCount).map { i ->
@@ -657,6 +661,13 @@ private fun AutoFitTranslatedText(
 
 /** Podíl velikosti písma použitý jako šířka obrysu (viz [StrokedTranslatedText]), s dolní hranicí 2.dp pro malá písmena, kde by procentuální obrys byl neviditelně tenký. */
 private const val STROKE_WIDTH_FACTOR = 0.12f
+
+// Poznámka pro budoucí ladění: NENASTAVOVAT tady TextStyle.hyphens. Nabízí se to - výchozí
+// hodnota je Hyphens.None, což zní jako "měkké rozdělovníky se ignorují", a vysvětlovalo by to
+// slova zlomená uprostřed. Změřeno na zařízení (SoftHyphenRenderingOnDeviceTest): Android
+// respektuje U+00AD při zalamování i s Hyphens.None, takže Hyphens.Auto je no-op, který navíc
+// zapne automatické dělení podle jazykových vzorů. Zlomy uprostřed slova mají jinou příčinu -
+// špatně umístěný rozdělovník od modelu, viz [com.haise.jiyu.translate.isValidSyllableBreaks].
 
 /**
  * Vykreslí text DVAKRÁT přes sebe - nejdřív obrysovou vrstvu (opačná barva než výplň podle

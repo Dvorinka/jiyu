@@ -66,4 +66,50 @@ class SoftHyphenationTest {
         val lastPart = result.substringAfterLast(SH)
         assertTrue("last fragment '$lastPart' must be at least 2 chars", lastPart.length >= 2)
     }
+
+    // ── rozdělovník OD MODELU na nesmyslném místě (nález z Vagabonda) ──
+
+    @Test
+    fun `a break that leaves a single letter dangling is rejected`() {
+        // JÁDRO NÁLEZU: v bublině vyšlo "POSLEDN" a na dalším řádku osamocené "Í". Vlastní
+        // slabikování appky by tohle nikdy neudělalo (hlídá si, že za zlomem zbydou aspoň dva
+        // znaky), jenže rozdělovník OD MODELU se do teď kontroloval jen na to, jestli po
+        // odstranění rozdělovníků sedí text - kam ten zlom padne, nekontroloval nikdo.
+        assertFalse(isValidSyllableBreaks("poslední", "posledn${SH}í"))
+    }
+
+    @Test
+    fun `the same word broken sensibly is still accepted`() {
+        // Protipól: oprava nesmí zahodit rozdělovníky, které jsou v pořádku - jinak by se
+        // model přestal používat úplně.
+        assertTrue(isValidSyllableBreaks("poslední", "posle${SH}dní"))
+    }
+
+    @Test
+    fun `a break glued to the start of a word is rejected too`() {
+        assertFalse(isValidSyllableBreaks("poslední", "p${SH}oslední"))
+    }
+
+    @Test
+    fun `only the offending word matters, not the rest of the sentence`() {
+        // Rozdělovník na dobrém místě jinde ve větě nesmí vadit, špatný ve stejné větě ano.
+        assertTrue(isValidSyllableBreaks("tyto poslední dny", "tyto posle${SH}dní dny"))
+        assertFalse(isValidSyllableBreaks("tyto poslední dny", "tyto posledn${SH}í dny"))
+    }
+
+    @Test
+    fun `trailing punctuation does not count as a syllable`() {
+        // "DNY." má sice čtyři znaky, ale jen tři písmena; kdyby se počítaly znaky, prošel by
+        // i zlom, po kterém zbyde jediné písmeno a tečka.
+        assertFalse(isValidSyllableBreaks("poslední.", "posledn${SH}í."))
+    }
+
+    @Test
+    fun `a rejected break falls back to the app's own hyphenation, not to nothing`() {
+        // Tohle je ta část, kvůli které oprava vůbec dává smysl: zahodit model neznamená zůstat
+        // bez rozdělovníku - ensureFallbackHyphens doplní vlastní, rozumně umístěný.
+        val fallback = ensureFallbackHyphens("poslední")
+        assertTrue("appka si musí poradit sama, dostala „$fallback\"", fallback.contains(SH))
+        assertTrue(isValidSyllableBreaks("poslední", fallback))
+    }
 }

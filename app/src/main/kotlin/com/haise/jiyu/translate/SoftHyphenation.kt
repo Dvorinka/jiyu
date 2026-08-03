@@ -11,16 +11,47 @@ private val SOFT_HYPHEN: Char = 173.toChar()
 private val CZECH_VOWELS = "aeiouyáéíóúůýěAEIOUYÁÉÍÓÚŮÝĚ".toSet()
 
 /**
- * True, když [syllableBreaks] (model výstup s měkkými rozdělovníky, viz GeminiUltraPrompt
- * "DĚLENÍ SLOV") odpovídá [translated] po odstranění všech měkkých rozdělovníků. Model občas
- * vrátí syllable_breaks, který se od translated liší (jiná slova, chybějící/navíc znaky,
- * poškozený JSON) - použití takového textu přímo by potichu nahradilo správný překlad
- * viditelně poškozeným textem (viz uživatelská zpětná vazba - "OKAMŽITĚ" vyšlo jako "OKAM"
- * a zbytek nesmyslně rozbitý). Volající (TranslateRepository) při selhání validace fallbackne
- * na obyčejný [translated] bez rozdělovníků, ne na podezřelý text od modelu.
+ * Nejmenší počet PÍSMEN, který smí zbýt na kterékoli straně zlomu.
+ *
+ * Stejné pravidlo, jaké si už dodržuje vlastní slabikování appky (viz [hyphenateWord] -
+ * `word.length - c >= 2`). Písmena, ne znaky: "DNY." má čtyři znaky, ale jen tři písmena, a
+ * zlom, po kterém zbyde jediné písmeno a tečka, je stejně ošklivý jako zlom před samotným "Í".
  */
-fun isValidSyllableBreaks(translated: String, syllableBreaks: String): Boolean =
-    syllableBreaks.replace(SOFT_HYPHEN.toString(), "") == translated
+private const val MIN_HYPHEN_CHUNK_LETTERS = 2
+
+/**
+ * True, když se [syllableBreaks] (model výstup s měkkými rozdělovníky, viz GeminiUltraPrompt
+ * "DĚLENÍ SLOV") dá použít místo [translated].
+ *
+ * Kontroluje se dvojí:
+ *
+ * 1. Že po odstranění všech rozdělovníků vyjde přesně [translated]. Model občas vrátí
+ *    syllable_breaks, který se od translated liší (jiná slova, chybějící/navíc znaky,
+ *    poškozený JSON) - použití takového textu přímo by potichu nahradilo správný překlad
+ *    viditelně poškozeným (viz uživatelská zpětná vazba - "OKAMŽITĚ" vyšlo jako "OKAM").
+ *
+ * 2. Že zlomy vůbec dávají smysl, tedy nenechávají osamocené písmeno. Tahle půlka dlouho
+ *    chyběla, a je to přesně ta chyba, kterou nahlásil uživatel: v bublině vyšlo "POSLEDN"
+ *    a pod tím osamocené "Í". Text po odstranění rozdělovníku seděl, takže první kontrola ho
+ *    pustila dál - a KAM ten zlom padne, nekontroloval nikdo. Vlastní slabikování appky by
+ *    takový zlom nikdy nevyrobilo, jen se na model spoléhalo víc, než si zasloužil.
+ *
+ * Volající (TranslateRepository) při neúspěchu spadne na [ensureFallbackHyphens] nad prostým
+ * [translated], takže odmítnutí modelu neznamená text bez rozdělovníků - jen rozdělovníky
+ * spočítané appkou.
+ */
+fun isValidSyllableBreaks(translated: String, syllableBreaks: String): Boolean {
+    if (syllableBreaks.replace(SOFT_HYPHEN.toString(), "") != translated) return false
+    return syllableBreaks.split(' ', '\n').none { token -> hasUnusableBreak(token) }
+}
+
+/** Rozpadá se [token] rozdělovníky na kus, ve kterém zbyde míň než [MIN_HYPHEN_CHUNK_LETTERS] písmen? */
+private fun hasUnusableBreak(token: String): Boolean {
+    if (SOFT_HYPHEN !in token) return false
+    return token.split(SOFT_HYPHEN).any { chunk ->
+        chunk.count { it.isLetter() } < MIN_HYPHEN_CHUNK_LETTERS
+    }
+}
 
 /**
  * Vloží záložní měkké rozdělovníky do slov dlouhých aspoň [minWordLength] znaků, která JEŠTĚ

@@ -23,6 +23,42 @@ import javax.inject.Singleton
 class RateLimitedException : Exception("Translation rate limit exceeded")
 
 /**
+ * Tělo požadavku na translate-proxy. Čistá funkce (a ne pár řádků uvnitř
+ * [GroqTranslateClient.translateViaProxy]) proto, aby šlo otestovat, co se na proxy
+ * doopravdy posílá - bez HTTP a bez Androidu.
+ *
+ * [mangaContext] a [previousLines] jsou tu od chvíle, kdy se ukázalo, že záložní cesta
+ * překládá naslepo: posílala jen holý seznam vět, přestože appka zná i dílo (název, typ,
+ * žánry - viz [GeminiUltraPrompt.buildMangaContext]) i to, co padlo v předchozích bublinách.
+ * Gemini cesta obojí dostávala, tahle ne, takže jakmile Gemini vypadl na kvótě, kvalita
+ * spadla na doslovný překlad izolovaných vět (viz uživatelská zpětná vazba -
+ * "JUST LEAVE ME HERE." přeložené jako "ZŮSTAŇTE MĚ TADY").
+ *
+ * Prázdný kontext se do těla nepřidává vůbec - proxy pak staví prompt jako dřív.
+ */
+internal fun buildProxyRequestBody(
+    texts: List<String>,
+    targetLanguage: String,
+    sourceLanguage: String,
+    glossary: Map<String, String>,
+    mode: String,
+    provider: String,
+    mangaContext: String,
+    previousLines: List<String>,
+): String = JSONObject().apply {
+    put("mode", mode)
+    put("texts", JSONArray(texts))
+    put("targetLanguage", targetLanguage)
+    put("sourceLanguage", sourceLanguage)
+    put("glossary", JSONObject(glossary))
+    put("provider", provider)
+    mangaContext.trim().takeIf { it.isNotEmpty() }?.let { put("context", it) }
+    // Stejný rozpočet jako u Gemini cesty - kontext je krátký ocásek, ne druhá dávka.
+    GeminiUltraPrompt.recentContextLines(previousLines).takeIf { it.isNotEmpty() }
+        ?.let { put("recent", JSONArray(it)) }
+}.toString()
+
+/**
  * Volá Supabase Edge Function "translate-proxy", která teprve server-side volá Groq.
  * Groq API klíč NENÍ nikdy součástí appky (dřív byl v BuildConfig a šel triviálně
  * vytáhnout z veřejně distribuovaného APK) - žije jen jako Supabase secret.
@@ -53,6 +89,8 @@ class GroqTranslateClient @Inject constructor(
         sourceLanguage: String = "Auto",
         glossary: Map<String, String> = emptyMap(),
         provider: String = "groq",
+        mangaContext: String = "",
+        previousLines: List<String> = emptyList(),
     ): List<String> = translateViaProxy(
         texts = texts,
         targetLanguage = targetLanguage,
@@ -60,6 +98,8 @@ class GroqTranslateClient @Inject constructor(
         glossary = glossary,
         mode = "manga",
         provider = provider,
+        mangaContext = mangaContext,
+        previousLines = previousLines,
     )
 
     /**
@@ -90,26 +130,30 @@ class GroqTranslateClient @Inject constructor(
         glossary: Map<String, String>,
         mode: String,
         provider: String = "groq",
+        mangaContext: String = "",
+        previousLines: List<String> = emptyList(),
     ): List<String> = withContext(Dispatchers.IO) {
         if (!isConfigured || texts.isEmpty()) return@withContext emptyList()
         // Provider odstavený z předchozí dávky se přeskočí bez requestu - viz [ProviderHealth].
         if (!providerHealth.isAvailable(provider)) return@withContext emptyList()
 
-        val body = JSONObject().apply {
-            put("mode", mode)
-            put("texts", JSONArray(texts))
-            put("targetLanguage", targetLanguage)
-            put("sourceLanguage", sourceLanguage)
-            put("glossary", JSONObject(glossary))
-            put("provider", provider)
-        }
+        val body = buildProxyRequestBody(
+            texts = texts,
+            targetLanguage = targetLanguage,
+            sourceLanguage = sourceLanguage,
+            glossary = glossary,
+            mode = mode,
+            provider = provider,
+            mangaContext = mangaContext,
+            previousLines = previousLines,
+        )
 
         val request = Request.Builder()
             .url("${BuildConfig.SUPABASE_URL}/functions/v1/translate-proxy")
             .header("Authorization", "Bearer ${BuildConfig.SUPABASE_ANON_KEY}")
             .header("apikey", BuildConfig.SUPABASE_ANON_KEY)
             .header("Content-Type", "application/json")
-            .post(body.toString().toRequestBody("application/json".toMediaType()))
+            .post(body.toRequestBody("application/json".toMediaType()))
             .build()
 
         // Jednotlivé stránky/dávky občas selžou na přechodné síťové chybě nebo timeoutu

@@ -12,33 +12,53 @@ package com.haise.jiyu.translate
  */
 object BubbleClassifier {
 
+    /**
+     * Výslovný seznam zvuků. Je to UZAVŘENÁ množina - onomatopoií je konečně mnoho a dají se
+     * vyjmenovat - na rozdíl od dřívějšího seznamu "běžných slov, která nejsou zvuk", který
+     * byl otevřený, a proto vždycky neúplný (viz [detectSfx]).
+     *
+     * Druhá půlka seznamu je doplněná právě při zrušení toho pravidla: tyhle zvuky se do té
+     * doby chytaly jen jako vedlejší efekt "krátký text verzálkami = zvuk", takže by po jeho
+     * odstranění propadly na překlad.
+     */
     private val sfxWords = setOf(
         "PING", "BOOM", "BAM", "CLICK", "TAP", "KNOCK", "SLAM", "BANG", "CRASH", "POP",
         "SNAP", "ZIP", "POW", "THUD", "CLANG", "DING", "GASP", "SIGH", "COUGH", "SNEEZE",
         "HICCUP", "GULP", "CHOMP", "WHAM", "CRACK", "SPLASH", "BUZZ", "RING", "HONK",
         "SWOOSH", "WHOOSH", "THUMP", "CREAK", "RATTLE", "ZAP", "BOING", "DOKIDOKI",
-    )
-
-    private val systemKeywords = listOf(
-        "LEVEL UP", "SKILL", "STATUS", " HP", " MP", " EXP", "QUEST", "ACHIEVEMENT", "DUNGEON",
+        "SOB", "SNIF", "SNIFF", "HUF", "HUFF", "HAK", "PANT", "ARGH", "AARGH", "UGH",
+        "PSST", "SHH", "GRR", "WHACK", "SMACK", "SPLAT", "CLINK", "HISS", "SIZZLE",
+        "VROOM", "BEEP", "PLOP", "THWACK", "TWANG", "CLANK", "WHEEZE", "BONK", "POOF",
+        "SWISH", "FWOOSH", "RUMBLE", "WHIRR", "SCREECH", "SLURP", "MUNCH", "GRUNT",
     )
 
     /**
-     * Běžná krátká anglická citoslovce/replika bez mezery, co by jinak spadla do stejného
-     * "krátký ALL CAPS bez mezery" pravidla jako opravdové zvukové efekty (viz [detectSfx]) -
-     * a protože SFX bublina se nikdy nepřekládá ani nevykresluje (originál zůstává), takhle
-     * zůstávala anglicky i naprosto běžná replika typu "DAMN..." (viz uživatelská zpětná
-     * vazba - bublina zůstala nepřeložená). Seznam NENÍ o rozpoznání smyslu, jen o vyloučení
-     * nejčastějších skutečných slov z falešně pozitivního zásahu.
+     * [sfxWords] se stlačenými zdvojenými písmeny - lettering zvuky protahuje ("SOBB",
+     * "BOOOM", "CRASHH") a porovnání na přesnou shodu je proto míjelo. Skutečné slovo
+     * zdvojením písmene svůj význam nemění, takže tímhle nic nepřibude, co by tam nepatřilo.
      */
-    private val shortWordsNotSfx = setOf(
-        "DAMN", "WAIT", "STOP", "NO", "YES", "HEY", "WHAT", "WHY", "HELP", "RUN", "GO",
-        "OK", "OKAY", "HUH", "WHO", "NOW", "LOOK", "COME", "MOVE", "OUT", "HERE", "THERE",
-        "WHOA", "OH", "AH", "HA", "UGH", "NOPE", "YEAH", "SURE", "FINE", "GOOD", "BAD",
-        "NEVER", "ALWAYS", "PLEASE", "SORRY", "THANKS", "WOW", "DAMMIT", "SHIT", "HELL",
-        // Doplněno po nálezu s "...SAY," - běžná jednoslovná replika, kterou seznam neznal.
-        "SAY", "WELL", "THEN", "TRUE", "RIGHT", "READY", "AGAIN", "MAYBE", "REALLY",
-        "SEE", "KNOW", "TELL", "HOLD", "TRY", "LET", "SOON", "ENOUGH", "ALMOST",
+    private val collapsedSfxWords = sfxWords.map { collapseRepeats(it) }.toSet()
+
+    /** "SOBB" -> "SOB", "BOOOM" -> "BOM" - viz [collapsedSfxWords]. */
+    private fun collapseRepeats(text: String): String = buildString {
+        for (c in text) if (lastOrNull() != c) append(c)
+    }
+
+    /**
+     * Samohlásky latinky včetně diakritiky (čeština, polština, španělština, vietnamština...) -
+     * viz pravidlo "zvuk nemá samohlásku" v [detectSfx].
+     */
+    private const val LATIN_VOWELS = "AEIOUYÁÄÀÂÃÅÆÉËÈÊÍÏÌÎÓÖÒÔÕØŌÚÜÙÛŮÝŸĚĘĄŁ"
+
+    /**
+     * Nejvyšší kód písmene, které ještě považujeme za latinku (Latin Extended-B končí 0x024F).
+     * Nad tím začíná řečtina, cyrilice a dál CJK - tam pravidlo o samohláskách neplatí, protože
+     * ta písma latinské samohlásky nemají vůbec a spolklo by úplně obyčejný dialog.
+     */
+    private const val MAX_LATIN_CODE = 0x024F
+
+    private val systemKeywords = listOf(
+        "LEVEL UP", "SKILL", "STATUS", " HP", " MP", " EXP", "QUEST", "ACHIEVEMENT", "DUNGEON",
     )
 
     /**
@@ -49,10 +69,10 @@ object BubbleClassifier {
      * smysl volat [detectTiledWatermarkIndices], protože potřebuje vidět VŠECHNY bloky
      * stránky najednou, ne jeden po druhém.
      */
-    fun classifyPage(rawBlocks: List<RawTextBlock>, sourceLanguage: String = AUTO_LANGUAGE): List<ClassifiedBubble> {
+    fun classifyPage(rawBlocks: List<RawTextBlock>): List<ClassifiedBubble> {
         val watermarkIndices = detectTiledWatermarkIndices(rawBlocks)
         return rawBlocks.mapIndexed { i, raw ->
-            val classified = classify(raw, raw.lineCount, sourceLanguage)
+            val classified = classify(raw, raw.lineCount)
             if (i in watermarkIndices && !classified.isSfx) {
                 classified.copy(isSfx = true, sizeTag = SizeTag.SFX, bubbleType = BubbleType.SFX)
             } else {
@@ -61,10 +81,10 @@ object BubbleClassifier {
         }
     }
 
-    fun classify(raw: RawTextBlock, lineCount: Int, sourceLanguage: String = AUTO_LANGUAGE): ClassifiedBubble {
+    fun classify(raw: RawTextBlock, lineCount: Int): ClassifiedBubble {
         val trimmed = raw.text.trim()
         val letters = trimmed.filter { it.isLetter() }
-        val isSfx = detectSfx(raw, trimmed, letters, sourceLanguage)
+        val isSfx = detectSfx(raw, trimmed, letters)
 
         val sizeTag = when {
             isSfx -> SizeTag.SFX
@@ -122,10 +142,7 @@ object BubbleClassifier {
      * model, viz [AUTO_CANDIDATE_LANGUAGES]), takže tam zůstává anglické chování. Rozhoduje
      * to, co má uživatel NASTAVENÉ.
      */
-    private fun canVetShortAllCaps(sourceLanguage: String): Boolean =
-        sourceLanguage == AUTO_LANGUAGE || sourceLanguage == "English"
-
-    private fun detectSfx(raw: RawTextBlock, trimmed: String, letters: String, sourceLanguage: String): Boolean {
+    private fun detectSfx(raw: RawTextBlock, trimmed: String, letters: String): Boolean {
         if (trimmed.isEmpty()) return false
 
         // Čistě symboly/interpunkce - "!!!", "???", "*gasp*" bez písmen kolem
@@ -149,16 +166,33 @@ object BubbleClassifier {
         // často "uteče" do sousední skutečné bubliny a vytvoří tvar mimo obě.
         if (letters.isEmpty() && core.all { it.isDigit() }) return true
 
-        // Krátký ALL CAPS text bez mezer (typicky zvuk, ne věta) - "BOOM!!!" ale ne "NO WAY".
-        // Vyjímka pro běžná krátká slova (viz shortWordsNotSfx) - ta stejné pravidlo splňují,
-        // ale jsou to skutečné repliky, ne zvukové efekty.
-        if (canVetShortAllCaps(sourceLanguage) &&
-            letters.length in 1..6 && letters.all { it.isUpperCase() } && !core.contains(' ') &&
-            core.uppercase() !in shortWordsNotSfx &&
-            !continuesSentence(trimmed)
+        // Zvuk psaný latinkou často NEMÁ SAMOHLÁSKU ("KRRR", "SHNK", "TSK", "GRR") - skutečné
+        // slovo v jakémkoli jazyce psaném latinkou ji má vždycky. Tohle nahradilo dřívější
+        // pravidlo "krátký text velkými písmeny bez mezer = zvuk", které v komiksu nerozlišovalo
+        // vůbec nic: lettering sází VŠECHNO verzálkami, takže se z něj fakticky stalo "krátké
+        // slovo = zvuk" a jedinou pojistkou byl ruční seznam běžných slov. Ten seznam je ale
+        // otevřená množina a třikrát po sobě neúplný - polkl "DAMN", pak "...SAY," a nakonec
+        // "I"/"TOO..."/"TAKEZŌ." z nahlášené stránky. SFX bublina se nepřekládá ani nekreslí,
+        // takže každý takový omyl nechá na stránce anglický originál.
+        //
+        // Omezení na latinku je podstatné: japonská ani korejská replika latinskou samohlásku
+        // nemá vůbec, takže bez něj by pravidlo spolklo běžný dialog.
+        if (letters.isNotEmpty() && letters.length <= 6 && !core.contains(' ') &&
+            letters.all { it.code <= MAX_LATIN_CODE } &&
+            letters.none { it.uppercaseChar() in LATIN_VOWELS }
         ) return true
 
-        if (sfxWords.contains(core.uppercase())) return true
+        // Zvuk se sází PŘES KRESBU, replika do bubliny (viz [RawTextBlock.bgUniform]) - druhý
+        // nezávislý signál, který nestojí na žádném seznamu. Chytá i protažené/vymyšlené zvuky,
+        // které samohlásku mají a v seznamu nejsou. Na dlouhý text se schválně neuplatní: caption
+        // vysázená rovnou do kresby je běžná a věta zvuk nikdy není.
+        if (!raw.bgUniform && letters.isNotEmpty() && letters.length <= 6 && !core.contains(' ')) return true
+
+        // Stlačení zdvojených písmen kvůli protaženému letteringu - "SOBB"/"BOOOM" je pořád
+        // tentýž zvuk (viz [collapsedSfxWords]).
+        val upperCore = core.uppercase()
+        if (sfxWords.contains(upperCore)) return true
+        if (collapsedSfxWords.contains(collapseRepeats(upperCore))) return true
 
         // CJK zvuky bývají krátký text složený z opakující se znakové sekvence (např. "ドドド"),
         // na rozdíl od běžné repliky, kde se znaky neopakují takhle mechanicky.
@@ -172,31 +206,6 @@ object BubbleClassifier {
         '*', '!', '?', '.', ' ', ',', ';', ':', '~', '-', '\n', '"', '\'', '…',
         '，', '、', '；', '：', '。', '」', '』', '”', '’',
     )
-
-    /**
-     * Pokračuje text ve větě - buď navazuje na předchozí bublinu, nebo bude pokračovat v té
-     * další? Zvukový efekt nikdy nedělá ani jedno: je to výkřik, ne kus souvětí.
-     *
-     * Proč to existuje: pravidlo "krátký ALL CAPS text bez mezer = zvuk" stálo jen na ručním
-     * seznamu [shortWordsNotSfx], tedy na tom, že někdo to slovo předem napsal. Horní lalok
-     * kaskádové bubliny přitom obsahuje přesně takový text - krátký útržek, který teprve
-     * pokračuje ve spodním laloku. Nahlášený případ: "...SAY," se označilo za zvuk, nikdy se
-     * neposlalo na překlad a v bublině zůstala angličtina, zatímco spodní lalok byl česky.
-     *
-     * Čárka na konci ani výpustka na začátku ale nejsou otázka slovní zásoby - jsou to
-     * gramatické značky pokračování a platí v jakémkoli jazyce. Skutečné zvuky ze
-     * [sfxWords] tímhle neprojdou, ty se poznají dřív podle slova samotného.
-     */
-    private fun continuesSentence(trimmed: String): Boolean {
-        val text = trimmed.trim('*', ' ', '"', '\'', '”', '’', '\n')
-        if (text.isEmpty()) return false
-        if (text.startsWith("...") || text.startsWith("…")) return true
-        val last = text.trimEnd('~', ' ').lastOrNull() ?: return false
-        return last in MID_SENTENCE_CHARS
-    }
-
-    /** Interpunkce, po které věta ještě pokračuje - včetně CJK protějšků. */
-    private val MID_SENTENCE_CHARS = setOf(',', ';', ':', '，', '、', '；', '：')
 
     /**
      * Vodoznak/tag scanlation skupiny přes kresbu (např. "SirenScans.com" diagonálně přes
