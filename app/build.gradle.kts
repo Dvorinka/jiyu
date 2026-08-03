@@ -36,8 +36,8 @@ android {
         applicationId = "com.haise.jiyu"
         minSdk = 26
         targetSdk = 36
-        versionCode = 51
-        versionName = "1.0.7"
+        versionCode = 52
+        versionName = "1.0.8"
         buildConfigField("String", "SUPABASE_URL", "\"${localProps["SUPABASE_URL"] ?: "https://placeholder.supabase.co"}\"")
         buildConfigField("String", "SUPABASE_ANON_KEY", "\"${localProps["SUPABASE_ANON_KEY"] ?: "placeholder-anon-key"}\"")
         buildConfigField("String", "GOOGLE_CLIENT_ID", "\"${localProps["GOOGLE_CLIENT_ID"] ?: "placeholder.apps.googleusercontent.com"}\"")

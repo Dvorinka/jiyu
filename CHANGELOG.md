@@ -4,6 +4,47 @@
 > vidět v historii commitů a v popisech jednotlivých vydání na GitHubu; zpětně to sem
 > nedopisuju, abych si nevymýšlel.
 
+## v1.0.8
+
+Dvě opravy sazby textu v bublině. **Nic se nepřekládá znovu** — obojí se počítá až při
+zobrazení, do cache nejde nic, takže se to projeví i na stránkách, které tam už leží.
+
+### Příliš velký text se do bubliny zmenší místo toho, aby se ořízl
+Box s překladem se ořezává obrysem bubliny a má strop výšky. Co se nevejde, se nevykreslí —
+zmizí. Jako pojistka proti přetékání do sousedního panelu to bylo myšleno dobře, ale znamenalo
+to, že kdykoliv sazba neuspěje, text se ztratí místo aby byl malý.
+
+A neuspět musela: podlaha velikosti písma se počítala jako `6 × textScale`, přičemž posuvník
+velikosti textu ve čtečce má rozsah 0,7–1,6. Na maximu tedy podlaha vycházela na 9,6 sp a do
+drobné bubliny se takové písmo nevejde ani teoreticky.
+
+Důsledek, který stojí za vyslovení: **čím větší písmo sis nastavil, tím víc textu z malých
+bublin zmizelo** — přesně opačně, než co jsi tím nastavením chtěl.
+
+Podlaha se teď smí posunout už jen dolů (kdo si písmo zmenšuje, chce menší text); nahoru ji
+nastavení nezvedne, to ovlivňuje dál jen strop a preferovanou velikost. Drobné písmo je vědomě
+lepší než uříznutý text — nečitelnou bublinu jde pořád klepnutím přepnout na originál a dlouhým
+stiskem ručně opravit.
+
+### Koncová tečka nezůstává sama na řádku pod textem
+Rozhodla srovnávací dvojice snímků: originál „WE'RE TAKING OFF." se vykreslil jako „ODLÉTÁME"
+a pod tím osamocená tečka na vlastním řádku. Nechybělo tam tedy nic, překlad byl celý — rozbitá
+byla jen ta tečka. Stejný podpis měla i „TAKEZO." vykreslená bez tečky a dřív hlášená osamocená
+tečka pod „MATAHACHI".
+
+Příčinou je mezera (nebo zlom řádku) před koncovou tečkou. Zalamovač v ní zcela korektně nabídne
+zlom, „ODLÉTÁME" se na řádek vejde a „." už ne.
+
+Pravidlo sahá záměrně jen na interpunkci, za kterou už nic není: „…KONEC" na začátku bubliny je
+běžná komiksová sazba (věta pokračující z předchozí bubliny) a slepit ji na předchozí slovo by
+změnilo zalomení, které tam autor chtěl.
+
+Druhá, nezávislá pojistka: blok bez jediného písmene se nevykresluje vůbec. Nemá co překládat
+a nechat prosvítat originál je vždycky lepší — interpunkce zůstane přesně tam, kam ji nakreslil
+autor.
+
+820 unit testů, 0 varování.
+
 ## v1.0.7
 
 Oprava regrese z v1.0.6. **Pipeline se mění (16 → 17), stránky se přeloží znovu** — chybný
