@@ -105,6 +105,37 @@ fun largestInscribedRect(shape: List<BubbleShapePoint>): InscribedRect? {
     return best
 }
 
+/**
+ * Nejmenší velikost písma, pod kterou sazba překladu nikdy nesmí klesnout.
+ *
+ * Je to podlaha POSLEDNÍ ZÁCHRANY, ne běžná velikost - fitter vždycky vybírá největší písmo,
+ * které se do bubliny vejde, takže sem dosáhne jen text, co se jinam nevejde vůbec.
+ */
+const val ABSOLUTE_MIN_FONT_SP = 4f
+
+/**
+ * Dolní mez velikosti písma pro sazbu překladu, odvozená z uživatelova nastavení velikosti
+ * textu ve čtečce (0,7-1,6).
+ *
+ * ## Proč se podlaha NIKDY nezvedá nahoru
+ * Dřív se počítala prostě jako `6 * textScale`, takže při nastavení 1,6 vycházela na 9,6 sp.
+ * Do malé bubliny (drobná myšlenková bublinka, popisek v rohu panelu) se takové písmo nevejde
+ * ani teoreticky - jenže fitter nemá kam ustoupit, vrátí podlahu, a přebytek pak OŘÍZNE obrys
+ * bubliny při vykreslení (`Modifier.clip` v TranslationLayer). Výsledek: text z malých bublin
+ * mizí, a mizí tím víc, čím větší písmo si uživatel nastavil. Přesně opačně, než co si přál.
+ *
+ * Nastavení velikosti textu má tedy vliv jen na strop (`36 * textScale`) a na preferovanou
+ * velikost. Podlaha se smí posunout jen DOLŮ, u kdo si písmo zmenšuje - tam je menší text
+ * vyslovené přání, ne nouzové řešení.
+ *
+ * ## Proč radši drobné písmo než ořezaný text
+ * Nahlášeno uživatelem se snímkem: "když je ten text moc velký a nevleze se do bubliny, tak ho
+ * udelej proste menší". Nečitelně malý text jde pořád klepnutím přepnout na originál a dlouhým
+ * stiskem ručně opravit; z chybějícího textu se uživatel nedozví ani to, že tam něco bylo.
+ */
+fun minTranslationFontSp(textScale: Float): Float =
+    (ABSOLUTE_MIN_FONT_SP * textScale).coerceAtMost(ABSOLUTE_MIN_FONT_SP)
+
 /** Hrubý krok prvního sestupu z [ShapeFitResult] hledání (viz [fitFontSizeToBox]). */
 private const val COARSE_STEP_SP = 2f
 

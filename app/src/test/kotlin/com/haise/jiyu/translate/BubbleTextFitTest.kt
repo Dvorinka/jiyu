@@ -313,4 +313,58 @@ class BubbleTextFitTest {
         )
         assertTrue("expected the old maximize behavior when preferredFontSp is null, got ${result.fontSp}", result.fontSp > 20f)
     }
+
+    // ── minTranslationFontSp: podlaha velikosti písma ──
+
+    @Test
+    fun `a bigger reader text setting never raises the font floor`() {
+        // JÁDRO NÁLEZU. Podlaha se dřív počítala jako 6 * textScale, takže na maximu posuvníku
+        // (1,6) vycházela na 9,6 sp. Do drobné bubliny se takové písmo nevejde ani teoreticky,
+        // fitter nemá kam ustoupit, vrátí podlahu - a přebytek OŘÍZNE obrys bubliny při
+        // vykreslení. Zvětšení textu v nastavení tedy text z malých bublin mazalo.
+        val atDefault = minTranslationFontSp(1.0f)
+        assertEquals("největší nastavení nesmí podlahu zvednout", atDefault, minTranslationFontSp(1.6f), 0.001f)
+        assertEquals("ani mírné zvětšení", atDefault, minTranslationFontSp(1.2f), 0.001f)
+    }
+
+    @Test
+    fun `a smaller reader text setting is allowed to lower the floor`() {
+        // Opačný směr je legitimní: kdo si písmo zmenšuje, chce menší text, ne nouzové řešení.
+        assertTrue(minTranslationFontSp(0.7f) < minTranslationFontSp(1.0f))
+    }
+
+    @Test
+    fun `the floor stays low enough for a tiny bubble to fit`() {
+        // Drobná myšlenková bublinka z nahlášené stránky: text se vejde jen pod 6 sp, což byla
+        // stará podlaha. S ní fitter vracel velikost, která se NEVEJDE (a ořízla se) - test
+        // proto neověřuje konkrétní číslo, ale to, co na tom uživateli doopravdy záleží:
+        // vrácená velikost se musí vejít.
+        val text = "V POSLEDNICH DNECH."
+        val boxWidthPx = 46f
+        val maxHeightPx = 60f
+        val result = fitFontSizeToBox(
+            minFontSp = minTranslationFontSp(1.6f),
+            maxFontSp = 36f * 1.6f,
+            boxWidthPx = boxWidthPx,
+            maxHeightPx = maxHeightPx,
+            measure = { fontSp, maxW -> fakeMeasure(text, fontSp, maxW) },
+        )
+        val measured = fakeMeasure(text, result.fontSp, boxWidthPx)
+        assertTrue(
+            "text musí zůstat uvnitř bubliny, jinak ho obrys ořízne (${measured.totalHeightPx}px vs $maxHeightPx při ${result.fontSp}sp)",
+            measured.totalHeightPx <= maxHeightPx,
+        )
+        assertTrue(
+            "nejdelší slovo se musí vejít vcelku (${measured.longestWordWidthPx}px vs $boxWidthPx)",
+            measured.longestWordWidthPx <= boxWidthPx + 0.5f,
+        )
+    }
+
+    @Test
+    fun `the floor never goes below the absolute minimum`() {
+        // Pojistka proti přestřelení druhým směrem: pod tuhle mez už je text nečitelný a menší
+        // písmo by problém neřešilo, jen přesunulo.
+        assertTrue(minTranslationFontSp(0.1f) >= ABSOLUTE_MIN_FONT_SP * 0.1f)
+        assertTrue(minTranslationFontSp(1.6f) <= ABSOLUTE_MIN_FONT_SP)
+    }
 }

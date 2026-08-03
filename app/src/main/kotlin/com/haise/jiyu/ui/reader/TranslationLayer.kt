@@ -70,6 +70,7 @@ import com.haise.jiyu.translate.fitTextToShape
 import com.haise.jiyu.translate.largestInscribedRect
 import com.haise.jiyu.translate.layoutTranslationBlocks
 import com.haise.jiyu.translate.matchOriginalCase
+import com.haise.jiyu.translate.minTranslationFontSp
 import com.haise.jiyu.translate.renderBoxRect
 import dagger.hilt.android.EntryPointAccessors
 import com.haise.jiyu.translate.snapBubbleBg
@@ -480,7 +481,9 @@ private fun AutoFitTranslatedText(
     val textMeasurer = rememberTextMeasurer()
     val fontFamily = fontFamilyFor(bubbleType)
     val maxFontSp = 36f * textScale
-    val minFontSp = 6f * textScale
+    // Podlaha se ZÁMĚRNĚ nenásobí textScale nahoru - viz [minTranslationFontSp]. Zvětšené písmo
+    // v nastavení jinak text z malých bublin mazalo, protože přebytek ořízne .clip(clipShape) níž.
+    val minFontSp = minTranslationFontSp(textScale)
 
     // Velikost, jakou mělo písmo v ORIGINÁLU, převedená na sp - viz [fitFontSizeToBox]/
     // [fitTextToShape] parametr preferredFontSp. Řádek o výšce nativeLineHeightF (zlomek výšky
