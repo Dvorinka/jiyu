@@ -23,6 +23,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -72,6 +75,8 @@ fun LibrarySectionScreen(
     val continueReading by viewModel.continueReading.collectAsState()
     val recentlyAdded   by viewModel.recentlyAdded.collectAsState()
     val completed       by viewModel.completed.collectAsState()
+
+    var pendingRemoval by remember { mutableStateOf<Pair<String, String>?>(null) }
 
     val items: List<MangaEntity> = when (section) {
         LibrarySection.CONTINUE_READING -> continueReading.map { it.manga }
@@ -135,9 +140,21 @@ fun LibrarySectionScreen(
                 modifier = Modifier.fillMaxSize(),
             ) {
                 items(items, key = { it.id }) { manga ->
-                    SearchResultCard(manga = manga, onClick = { openItem(manga) })
+                    SearchResultCard(
+                        manga = manga,
+                        onClick = { openItem(manga) },
+                        onLongPress = { pendingRemoval = manga.id to manga.title },
+                    )
                 }
             }
         }
+    }
+
+    pendingRemoval?.let { (mangaId, mangaTitle) ->
+        RemoveFromLibraryDialog(
+            mangaTitle = mangaTitle,
+            onConfirm = { viewModel.removeFromLibrary(mangaId) },
+            onDismiss = { pendingRemoval = null },
+        )
     }
 }

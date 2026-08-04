@@ -279,6 +279,19 @@ internal fun StatsDialog(stats: ReadingStats, onDismiss: () -> Unit, onOpenExten
     )
 }
 
+/** Potvrzení dlouhého stisku na kartu v Knihovně - viz [LibraryScreen] a [LibrarySectionScreen]. */
+@Composable
+internal fun RemoveFromLibraryDialog(mangaTitle: String, onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = Color(0xFF111B35),
+        title = { Text(stringResource(R.string.library_remove_confirm_title, mangaTitle), color = Color.White, fontWeight = FontWeight.Bold) },
+        text = { Text(stringResource(R.string.library_remove_confirm_body), color = Color(0xFFB0BEC5)) },
+        confirmButton = { TextButton(onClick = { onConfirm(); onDismiss() }) { Text(stringResource(R.string.mylist_remove_from_library), color = Danger) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel), color = Color(0xFFB0BEC5)) } },
+    )
+}
+
 @Composable
 private fun StatRow(label: String, value: String) {
     Row(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {

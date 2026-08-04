@@ -4,6 +4,15 @@
 > vidět v historii commitů a v popisech jednotlivých vydání na GitHubu; zpětně to sem
 > nedopisuju, abych si nevymýšlel.
 
+## Nevydáno
+
+### Odebrání z knihovny dlouhým podržením
+Na kartě mangy/novely v Knihovně (rozečtené, nedávno přidané, dokončené i výsledky
+hledání a jejich "Zobrazit vše" mřížky) teď jde dlouze podržet prst a odebrat titul přímo
+odtud — dřív to šlo jen ze seznamu Seznam přes tři tečky. Protože akce smaže i stažené
+kapitoly a celý postup čtení a nejde vzít zpět, dlouhý stisk nejdřív ukáže potvrzovací
+dialog se jménem titulu.
+
 ## v1.0.8
 
 Dvě opravy sazby textu v bublině. **Nic se nepřekládá znovu** — obojí se počítá až při

@@ -524,6 +524,8 @@
     <string name="mylist_add_fab">+ Přidat</string>
     <string name="mylist_mark_all_read_title">Označit celou knihovnu jako přečtenou?</string>
     <string name="mylist_mark_all">Označit vše</string>
+    <string name="library_remove_confirm_title">Odebrat „%1$s“ z knihovny?</string>
+    <string name="library_remove_confirm_body">Smažou se i stažené kapitoly a celý postup čtení. Tuhle akci nejde vzít zpět.</string>
     <string name="mylist_try_different_term_or_search">Zkus jiný výraz nebo vyhledej autora / žánr</string>
     <string name="mylist_no_titles_match_filter">Žádné tituly neodpovídají filtru</string>
     <string name="mylist_add_from_browse_or_change_filter">Přidej mangu z Procházet, nebo změň filtr</string>

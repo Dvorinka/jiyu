@@ -492,6 +492,8 @@
     <string name="mylist_add_fab">+ Add</string>
     <string name="mylist_mark_all_read_title">Mark the whole library as read?</string>
     <string name="mylist_mark_all">Mark all</string>
+    <string name="library_remove_confirm_title">Remove \"%1$s\" from your library?</string>
+    <string name="library_remove_confirm_body">This also deletes any downloaded chapters and all reading progress. This can\'t be undone.</string>
     <string name="mylist_try_different_term_or_search">Try a different term or search by author / genre</string>
     <string name="mylist_no_titles_match_filter">No titles match the filter</string>
     <string name="mylist_add_from_browse_or_change_filter">Add manga from Browse, or change the filter</string>

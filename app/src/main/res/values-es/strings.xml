@@ -489,6 +489,8 @@
     <string name="mylist_add_fab">+ Añadir</string>
     <string name="mylist_mark_all_read_title">¿Marcar toda la biblioteca como leída?</string>
     <string name="mylist_mark_all">Marcar todo</string>
+    <string name="library_remove_confirm_title">¿Quitar «%1$s» de tu biblioteca?</string>
+    <string name="library_remove_confirm_body">También se borrarán los capítulos descargados y todo el progreso de lectura. Esta acción no se puede deshacer.</string>
     <string name="mylist_try_different_term_or_search">Prueba otro término o busca por autor / género</string>
     <string name="mylist_no_titles_match_filter">Ningún título coincide con el filtro</string>
     <string name="mylist_add_from_browse_or_change_filter">Añade manga desde Explorar, o cambia el filtro</string>

@@ -55,6 +55,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -107,6 +108,9 @@ fun LibraryScreen(
     val favoriteCount             by viewModel.favoriteCount.collectAsState()
     val todayReadingMinutes        by viewModel.todayReadingMinutes.collectAsState()
     val contentTypeFilter            by viewModel.contentTypeFilter.collectAsState()
+
+    // Dlouhý stisk na kartu nabídne odebrání z knihovny - viz RemoveFromLibraryDialog níž.
+    var pendingRemoval by remember { mutableStateOf<Pair<String, String>?>(null) }
 
     Column(modifier = Modifier.fillMaxSize().background(screenGradient).statusBarsPadding()) {
         // ── Header ───────────────────────────────────────────────────────────
@@ -196,7 +200,11 @@ fun LibraryScreen(
                 ) {
                     item(span = { GridItemSpan(maxLineSpan) }) { header() }
                     items(library, key = { it.id }) { manga ->
-                        SearchResultCard(manga = manga, onClick = { onOpenManga(manga.id) })
+                        SearchResultCard(
+                            manga = manga,
+                            onClick = { onOpenManga(manga.id) },
+                            onLongPress = { pendingRemoval = manga.id to manga.title },
+                        )
                     }
                 }
             }
@@ -272,6 +280,7 @@ fun LibraryScreen(
                                         val chapterId = item.manga.lastReadChapterId
                                         if (chapterId != null) onOpenChapter(chapterId) else onOpenManga(item.manga.id)
                                     },
+                                    onLongPress = { pendingRemoval = item.manga.id to item.manga.title },
                                 )
                             }
                         }
@@ -285,7 +294,12 @@ fun LibraryScreen(
                     ) {
                         LazyRow(contentPadding = PaddingValues(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                             items(recentlyAdded, key = { it.id }) { manga ->
-                                SimpleMangaCard(manga = manga, showNewBadge = true, onClick = { onOpenManga(manga.id) })
+                                SimpleMangaCard(
+                                    manga = manga,
+                                    showNewBadge = true,
+                                    onClick = { onOpenManga(manga.id) },
+                                    onLongPress = { pendingRemoval = manga.id to manga.title },
+                                )
                             }
                         }
                     }
@@ -298,13 +312,26 @@ fun LibraryScreen(
                     ) {
                         LazyRow(contentPadding = PaddingValues(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                             items(completed, key = { it.id }) { manga ->
-                                SimpleMangaCard(manga = manga, showNewBadge = false, onClick = { onOpenManga(manga.id) })
+                                SimpleMangaCard(
+                                    manga = manga,
+                                    showNewBadge = false,
+                                    onClick = { onOpenManga(manga.id) },
+                                    onLongPress = { pendingRemoval = manga.id to manga.title },
+                                )
                             }
                         }
                     }
                 }
             }
         }
+    }
+
+    pendingRemoval?.let { (mangaId, mangaTitle) ->
+        RemoveFromLibraryDialog(
+            mangaTitle = mangaTitle,
+            onConfirm = { viewModel.removeFromLibrary(mangaId) },
+            onDismiss = { pendingRemoval = null },
+        )
     }
 }
 
@@ -565,12 +592,12 @@ private fun CarouselSection(title: String, count: Int, onShowAll: () -> Unit, co
 }
 
 @Composable
-private fun ContinueReadingCard(item: ContinueReadingItem, progressPercent: Int, onClick: () -> Unit) {
+private fun ContinueReadingCard(item: ContinueReadingItem, progressPercent: Int, onClick: () -> Unit, onLongPress: () -> Unit) {
     Column(
         modifier = Modifier
             .width(130.dp)
             .clip(RoundedCornerShape(12.dp))
-            .clickable(onClick = onClick),
+            .pointerInput(Unit) { detectTapGestures(onTap = { onClick() }, onLongPress = { onLongPress() }) },
     ) {
         Box(
             modifier = Modifier
@@ -643,8 +670,12 @@ private fun formatChapterNumber(number: Float?): String {
 }
 
 @Composable
-private fun SimpleMangaCard(manga: MangaEntity, showNewBadge: Boolean, onClick: () -> Unit) {
-    Column(modifier = Modifier.width(96.dp).clickable(onClick = onClick)) {
+private fun SimpleMangaCard(manga: MangaEntity, showNewBadge: Boolean, onClick: () -> Unit, onLongPress: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .width(96.dp)
+            .pointerInput(Unit) { detectTapGestures(onTap = { onClick() }, onLongPress = { onLongPress() }) },
+    ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -685,14 +716,14 @@ private fun SimpleMangaCard(manga: MangaEntity, showNewBadge: Boolean, onClick: 
 }
 
 @Composable
-internal fun SearchResultCard(manga: MangaEntity, onClick: () -> Unit) {
+internal fun SearchResultCard(manga: MangaEntity, onClick: () -> Unit, onLongPress: () -> Unit) {
     Box(
         modifier = Modifier
             .aspectRatio(0.68f)
             .violetGlow(radius = 12f, alpha = 0.12f)
             .clip(RoundedCornerShape(12.dp))
             .border(1.dp, GlowViolet.copy(alpha = 0.3f), RoundedCornerShape(12.dp))
-            .clickable(onClick = onClick),
+            .pointerInput(Unit) { detectTapGestures(onTap = { onClick() }, onLongPress = { onLongPress() }) },
     ) {
         AsyncImage(model = manga.coverUrl, contentDescription = manga.title, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
         Box(
