@@ -13,6 +13,19 @@ odtud — dřív to šlo jen ze seznamu Seznam přes tři tečky. Protože akce 
 kapitoly a celý postup čtení a nejde vzít zpět, dlouhý stisk nejdřív ukáže potvrzovací
 dialog se jménem titulu.
 
+### Špatné štítky MANGA/MANHWA/MANHUA u titulů ze smíchaných webů
+Weby jako mangaread.org hostí manga, manhwa i manhua dohromady, takže appka měla pro
+celý web jeden pevný odhad typu — u titulu, který do většinového typu webu nezapadal
+(např. "Return of The Unrivaled Spear Knight" nebo "The Former Supreme", obojí manhwa
+na webu tagovaném jako MANGA), to vyšlo špatně. Standardní Madara šablona přitom u
+každého titulu sama uvádí přesný typ v poli "Type" na stránce detailu — appka ho jen
+nikdy nečetla. Teď se čte a má přednost před odhadem za celý web.
+
+Netýká se automatické kontroly nových kapitol na pozadí (běží dál beze změny) — oprava
+se spustí až při ručním refreshi (potáhnutí v Knihovně dolů, nebo tlačítko refresh na
+detailu titulu), protože stahovat navíc celou stránku jen kvůli kosmetickému štítku by
+se do tichého denního běhu nehodilo.
+
 ## v1.0.8
 
 Dvě opravy sazby textu v bublině. **Nic se nepřekládá znovu** — obojí se počítá až při

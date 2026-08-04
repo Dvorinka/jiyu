@@ -50,7 +50,7 @@ class UpdatesViewModel @Inject constructor(
             val errors = mutableListOf<String>()
             repository.getAllLibraryManga().forEach { manga ->
                 try {
-                    val sManga = SManga(manga.sourceId, manga.url, manga.title, manga.coverUrl, manga.description, manga.status)
+                    val sManga = SManga(manga.sourceId, manga.url, manga.title, manga.coverUrl, manga.description, manga.status, contentType = manga.contentType)
                     repository.refreshChapters(manga.id, sManga)
                 } catch (_: Exception) {
                     errors += manga.title

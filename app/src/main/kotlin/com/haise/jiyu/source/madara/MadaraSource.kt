@@ -111,8 +111,18 @@ class MadaraSource(
                 ?.text()?.ifBlank { null }
             val status = doc.selectFirst(selectors.status)
                 ?.text()?.trim()?.ifBlank { null }
+            // Řada Madara webů (např. mangaread.org) hostí manga, manhwa i manhua
+            // dohromady, takže pevný contentTypeOverride pro celý web sedí jen v
+            // průměru - konkrétní titul může být jiný (ověřeno živě: "Return of the
+            // Legendary Spear Knight" je na mangaread.org uvedený jako Manhwa, ale
+            // web má override "MANGA"). Standardní Madara šablona ale u každého
+            // titulu sama uvádí přesný typ v poli "Type" (stejná struktura jako pole
+            // Status, jen jiný nadpis) - když ho najdeme a rozpoznáme, věří se mu
+            // víc než odhadu za celý web.
+            val detectedType = doc.selectFirst("div.post-content_item:has(h5:contains(Type)) .summary-content")
+                ?.text()?.trim()?.let(::normalizeContentType)
 
-            manga.copy(description = desc, status = status)
+            manga.copy(description = desc, status = status, contentType = detectedType ?: contentTypeOverride)
         }
 
     // ─── Kapitoly ────────────────────────────────────────────────────────────
@@ -217,6 +227,15 @@ class MadaraSource(
         }
 
     // ─── Pomocné funkce ──────────────────────────────────────────────────────
+
+    /** Mapuje text pole "Type" z Madara detailu na náš interní kód. Neznámá/prázdná hodnota vrátí null. */
+    private fun normalizeContentType(text: String): String? = when (text.trim().lowercase()) {
+        "manga" -> "MANGA"
+        "manhwa" -> "MANHWA"
+        "manhua" -> "MANHUA"
+        "novel", "light novel" -> "NOVEL"
+        else -> null
+    }
 
     private fun fetchDocument(url: String): Document {
         val request = Request.Builder().url(url).build()

@@ -224,6 +224,21 @@ class MangaRepository @Inject constructor(
 
     suspend fun removeFromLibrary(mangaId: String) = mangaDao.setInLibrary(mangaId, false)
 
+    /**
+     * Znovu zjistí typ obsahu (MANGA/MANHWA/MANHUA/NOVEL) z detailu mangy u zdroje a uloží
+     * ho, pokud se od uloženého liší - viz [MadaraSource.getMangaDetails], kde weby jako
+     * mangaread.org hostí smíchaný obsah a uvádí přesný typ u každého titulu zvlášť.
+     *
+     * Volá se jen z ručního refreshe (Knihovna pull-to-refresh, refresh na detailu), NE z
+     * [com.haise.jiyu.work.ChapterUpdateWorker] - ten běží tiše na pozadí nad celou knihovnou
+     * a stahovat kvůli kosmetickému štítku o web navíc denně by nebylo úměrné.
+     */
+    suspend fun refreshContentType(mangaId: String, manga: SManga) {
+        val source = sourceManager.getById(manga.sourceId) ?: return
+        val detected = try { source.getMangaDetails(manga).contentType } catch (_: Exception) { return }
+        if (detected != manga.contentType) mangaDao.setContentType(mangaId, detected)
+    }
+
     /** Vrací seznam nově přidaných kapitol (existující kapitoly jsou přeskočeny). */
     suspend fun refreshChapters(mangaId: String, manga: SManga): List<ChapterEntity> {
         val source = sourceManager.getById(manga.sourceId) ?: return emptyList()

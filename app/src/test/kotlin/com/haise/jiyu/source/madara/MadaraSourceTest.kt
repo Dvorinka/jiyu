@@ -39,6 +39,17 @@ class MadaraSourceTest {
         </body></html>
     """.trimIndent()
 
+    // Reálná struktura pole "Type" v Madara šabloně - ověřeno živým stažením mangaread.org,
+    // mangasushi.org a coffeemanga.ink (viz komentář u MadaraSource.getMangaDetails).
+    private val detailHtmlManhwa = """
+        <html><body>
+        <div class="summary__content"><p>A revenge story.</p></div>
+        <div class="post-content_item"><div class="summary-heading"><h5>Genre(s)</h5></div><div class="summary-content"><a href="#">Action</a></div></div>
+        <div class="post-content_item"><div class="summary-heading"><h5>Type</h5></div><div class="summary-content">Manhwa</div></div>
+        <div class="post-status"><div class="summary-content">Vychází</div></div>
+        </body></html>
+    """.trimIndent()
+
     private val chaptersHtml = """
         <ul>
           <li class="wp-manga-chapter"><a href="/manga/one-piece/chapter-1092/">Chapter 1092</a><span class="chapter-release-date"><i>July 1, 2026</i></span></li>
@@ -66,6 +77,7 @@ class MadaraSourceTest {
                     path.startsWith("/manga/page/") -> MockResponse().setBody(listHtml)
                     path.startsWith("/page/") && path.contains("post_type=wp-manga") -> MockResponse().setBody(listHtml)
                     path == "/manga/one-piece/" -> MockResponse().setBody(detailHtml)
+                    path == "/manga/naruto/" -> MockResponse().setBody(detailHtmlManhwa)
                     path == "/manga/one-piece/chapter-1092/" -> MockResponse().setBody(pagesHtml)
                     else -> MockResponse().setResponseCode(404)
                 }
@@ -106,6 +118,44 @@ class MadaraSourceTest {
 
         assertEquals("A great pirate adventure.", details.description)
         assertEquals("Vychází", details.status)
+    }
+
+    @Test
+    fun `getMangaDetails falls back to the site override when the page has no Type field`() = runTest {
+        val manga = source.getPopular(1).first()
+
+        val details = source.getMangaDetails(manga)
+
+        assertEquals("MANGA", details.contentType)
+    }
+
+    @Test
+    fun `getMangaDetails prefers the page's own Type field over the site-wide override`() = runTest {
+        // "naruto" nema vlastni title atribut na listovaci karte, takze zdroj title odvodi
+        // z textu odkazu - viz "getPopular parses..." test. Zdroj sam je nastaveny na MANGA,
+        // ale detail teto konkretni polozky rika Manhwa - presne situace z mangaread.org,
+        // kde smichany web ma pevny odhad za cely web, ale kazdy titul uvadi typ zvlast.
+        val manga = source.getPopular(1)[1]
+
+        val details = source.getMangaDetails(manga)
+
+        assertEquals("MANHWA", details.contentType)
+    }
+
+    @Test
+    fun `getMangaDetails without a Type field respects a non-default site override`() = runTest {
+        val manhuaSource = MadaraSource(
+            id = "madara:test-manhua",
+            name = "Test Manhua",
+            baseUrl = server.url("/").toString(),
+            client = OkHttpClient(),
+            contentTypeOverride = "MANHUA",
+        )
+        val manga = manhuaSource.getPopular(1).first()
+
+        val details = manhuaSource.getMangaDetails(manga)
+
+        assertEquals("MANHUA", details.contentType)
     }
 
     @Test

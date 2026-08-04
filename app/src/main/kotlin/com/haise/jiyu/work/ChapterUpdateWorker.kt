@@ -47,7 +47,7 @@ class ChapterUpdateWorker @AssistedInject constructor(
                     async {
                         semaphore.withPermit {
                             try {
-                                val sManga = SManga(manga.sourceId, manga.url, manga.title, manga.coverUrl)
+                                val sManga = SManga(manga.sourceId, manga.url, manga.title, manga.coverUrl, contentType = manga.contentType)
                                 val newChapters = repository.refreshChapters(manga.id, sManga)
                                 if (newChapters.isNotEmpty()) {
                                     updatedManga.add(manga.title to (manga.id to newChapters.size))

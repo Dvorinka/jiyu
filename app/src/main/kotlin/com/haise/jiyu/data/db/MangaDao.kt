@@ -83,6 +83,9 @@ interface MangaDao {
     @Query("UPDATE manga SET excludeFromUpdates = :exclude WHERE id = :id")
     suspend fun setExcludeFromUpdates(id: String, exclude: Boolean)
 
+    @Query("UPDATE manga SET contentType = :contentType WHERE id = :id")
+    suspend fun setContentType(id: String, contentType: String)
+
     @Query("SELECT * FROM manga WHERE url = :url LIMIT 1")
     suspend fun getMangaByUrl(url: String): MangaEntity?
 

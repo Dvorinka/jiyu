@@ -520,8 +520,9 @@ class MangaDetailViewModel @Inject constructor(
             _isRefreshing.value = true
             _errorMessage.value = null
             try {
-                val sManga = SManga(current.sourceId, current.url, current.title, current.coverUrl, current.description, current.status)
+                val sManga = SManga(current.sourceId, current.url, current.title, current.coverUrl, current.description, current.status, contentType = current.contentType)
                 repository.refreshChapters(mangaId, sManga)
+                repository.refreshContentType(mangaId, sManga)
             } catch (e: Exception) {
                 _errorMessage.value = appContext.getString(R.string.detail_error_refresh_failed, e.toFriendlyMessage())
             } finally {
