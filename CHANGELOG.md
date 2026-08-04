@@ -6,6 +6,16 @@
 
 ## Nevydáno
 
+### Procházet se u mnoha zdrojů nikdy neposouvalo za první stránku
+Appka poznávala "možná je toho víc" podle toho, jestli první stránka měla aspoň 20
+položek - domněnka, že plná stránka má vždy přesně 20. Spousta zdrojů (MangaWorld,
+KuraManga a dalších ~17, ověřeno živě: jiné tituly na stránce 2 než na stránce 1) má
+ale přirozeně menší stránku (9, 13, 16...), takže první stránka vždy vypadala jako
+poslední a scrollování dál nikdy nic nenačetlo - i když web měl klidně desítky dalších
+stránek. "Konec seznamu" appka teď pozná jedině podle prázdné stránky, ne podle
+magického čísla. Ověřeno přímo na telefonu - MangaWorld teď při scrollování plynule
+načítá další a další stránky.
+
 ### nhentai v Procházet ukazoval pořád jen tu samou hrstku titulů
 `/galleries/popular`, který appka volala, je podle vlastní dokumentace nhentai "dnešní
 populární galerie" - pevná pětice bez stránkování (page=1/2/3 vracelo identický

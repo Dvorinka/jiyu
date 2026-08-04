@@ -71,6 +71,13 @@ class SourceBrowseViewModel @Inject constructor(
         }
     }
 
+    // "hasMore" se dřív rozhodovalo podle `page.size >= 20` - domněnka, že plná
+    // stránka má vždy 20 položek. Řada zdrojů (MangaWorld, KuraManga a dalších ~17,
+    // ověřeno živě: různé tituly na stránce 2 než na stránce 1) má ale přirozenou
+    // velikost stránky menší (9, 13, 16...) - první stránka tak vždy vypadala jako
+    // poslední a Procházet dál nikdy nenačetlo, i když web měl další stránky plné
+    // titulů. "Konec seznamu" pozná appka ted jedině podle PRÁZDNÉ stránky, ne podle
+    // magického čísla 20.
     fun loadMore() {
         if (_loading.value || !_hasMore.value) return
         currentPage++
@@ -87,7 +94,7 @@ class SourceBrowseViewModel @Inject constructor(
                     _hasMore.value = false
                 } else {
                     _results.value = _results.value + page
-                    _hasMore.value = page.size >= 20
+                    _hasMore.value = true
                 }
             } catch (e: Exception) {
                 // Načtení stránky selhalo - vracíme čítač, ať retry zkusí tu samou. Bez
@@ -178,7 +185,7 @@ class SourceBrowseViewModel @Inject constructor(
             try {
                 val page = repository.getPopular(sourceId, 1, filter)
                 _results.value = page
-                _hasMore.value = page.size >= 20
+                _hasMore.value = page.isNotEmpty()
             } catch (e: Exception) {
                 _error.value = e.toFriendlyMessage()
                 _results.value = emptyList()
@@ -205,7 +212,7 @@ class SourceBrowseViewModel @Inject constructor(
             try {
                 val page = repository.search(sourceId, query, 1, filter)
                 _results.value = page
-                _hasMore.value = page.size >= 20
+                _hasMore.value = page.isNotEmpty()
             } catch (e: Exception) {
                 _error.value = e.toFriendlyMessage()
                 _results.value = emptyList()

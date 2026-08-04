@@ -87,13 +87,28 @@ class SourceBrowseViewModelTest {
     }
 
     @Test
-    fun `a partial first page means the end of the list`() = runTest(dispatcher) {
+    fun `a small non-empty first page still means there may be more to load`() = runTest(dispatcher) {
+        // Jadro opravy: hasMore driv hadal "plna stranka = 20 polozek", takze zdroj s
+        // prirozene mensi strankou (9, 13, 16...) vypadal po prvni strance jako
+        // vycerpany, i kdyz web mel dalsi stranky plne titulu (overeno zive u MangaWorld,
+        // KuraManga a ~17 dalsich zdroju - jina strana 2 nez strana 1). "Konec seznamu"
+        // ted pozna appka jedine podle PRAZDNE stranky, ne podle poctu polozek.
         coEvery { repository.getPopular("src", 1, any()) } returns listOf(manga(1), manga(2))
 
         val vm = viewModel()
         advanceUntilIdle()
 
-        assertFalse("neuplna stranka -> uz nic dalsiho nenacitat", vm.hasMore.value)
+        assertTrue("neprazdna stranka, i kdyz mala -> muze byt dalsi", vm.hasMore.value)
+    }
+
+    @Test
+    fun `an empty first page means there is nothing to show`() = runTest(dispatcher) {
+        coEvery { repository.getPopular("src", 1, any()) } returns emptyList()
+
+        val vm = viewModel()
+        advanceUntilIdle()
+
+        assertFalse(vm.hasMore.value)
     }
 
     @Test
@@ -131,15 +146,19 @@ class SourceBrowseViewModelTest {
     }
 
     @Test
-    fun `loadMore does nothing once the end of the list is known`() = runTest(dispatcher) {
+    fun `loadMore does nothing once an empty page confirmed the end of the list`() = runTest(dispatcher) {
         coEvery { repository.getPopular("src", 1, any()) } returns listOf(manga(1))
+        coEvery { repository.getPopular("src", 2, any()) } returns emptyList()
 
         val vm = viewModel()
         advanceUntilIdle()
         vm.loadMore()
         advanceUntilIdle()
+        vm.loadMore()
+        advanceUntilIdle()
 
-        coVerify(exactly = 0) { repository.getPopular("src", 2, any()) }
+        coVerify(exactly = 1) { repository.getPopular("src", 2, any()) }
+        coVerify(exactly = 0) { repository.getPopular("src", 3, any()) }
     }
 
     @Test
