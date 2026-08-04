@@ -4,7 +4,12 @@
 > vidět v historii commitů a v popisech jednotlivých vydání na GitHubu; zpětně to sem
 > nedopisuju, abych si nevymýšlel.
 
-## Nevydáno
+## v1.0.9
+
+Devět oprav zdrojů v Procházet, objevených postupně na hlášení konkrétních zdrojů, které
+nefungovaly nebo nezobrazovaly všechno — u tří z nich (chybějící/duplicitní výsledky u
+HiveToons, nekonečné načítání u MangaCloud a stránkování obecně) ověřeno přímo na
+reálném telefonu, ne jen v testech.
 
 ### Procházet se u mnoha zdrojů nikdy neposouvalo za první stránku
 Appka poznávala "možná je toho víc" podle toho, jestli první stránka měla aspoň 20
