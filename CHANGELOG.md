@@ -6,6 +6,10 @@
 
 ## Nevydáno
 
+### Odebrány dva mrtvé zdroje
+PAWMANGA (pawmanga.com) - doména je zaparkovaná, žádný manga obsah. Manhuarm
+(manhuarmtl.com) - web žije, ale katalog je prázdný na všech testovaných stránkách.
+
 ### Mangago nezobrazoval žádné výsledky
 Web přesunul výpis populárních titulů z `/list/allmanga/page/N/` (mrtvé, "Total: 0") na
 `/list/?page=N` a hledání z `/r/search.php` (404) na `/r/l_search/` - obě URL i jejich

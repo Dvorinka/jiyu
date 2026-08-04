@@ -245,8 +245,10 @@ class SourceManager @Inject constructor(
         //     spekulantem, teď je to obecný thajský WordPress SEO blog bez
         //     jakéhokoliv manga obsahu.
         MadaraSource("manhuahot",     "Manhua Hot",         "https://manhuahot.com",        client, contentTypeOverride = "MANHUA"),
-        // Manhuarm - MTL (strojově přeložené) manhua, ale standardní Madara šablona.
-        MadaraSource("manhuarm",      "Manhuarm",           "https://manhuarmtl.com",       client, contentTypeOverride = "MANHUA"),
+        // manhuarm (manhuarmtl.com) odstraněno 2026-08-04 - web žije a vrací plnou
+        // stránku (ne parking/blok), ale katalog je prázdný: žádná karta na "/manga/",
+        // "/manga/?m_orderby=views" ani "/listing-big-thumbnail/". Ne chyba selektoru -
+        // tam prostě není co najít.
         // ── Manga — další populární weby ─────────────────────────────────────
         // toonily/mangagg: audit 2026-07-27 zjistil, ze vychozi "/manga/page/N/"
         // archiv vraci 404 - vlastni taxonomy slug ("/webtoons/", "/comic/").
@@ -267,7 +269,8 @@ class SourceManager @Inject constructor(
         MadaraSource("mangasushi",    "Mangasushi",         "https://mangasushi.org",       client, contentTypeOverride = "MANGA"),
         MadaraSource("manhwatoon",    "Manhwatoon",         "https://www.manhwatoon.me",    client, contentTypeOverride = "MANHWA"),
         // mangalink.site vraci Cloudflare 522 (origin nedostupny) - mrtvy web, nepridavat.
-        MadaraSource("pawmanga",      "PAWMANGA",           "https://pawmanga.com",         client, contentTypeOverride = "MANGA"),
+        // pawmanga (pawmanga.com) odstraněno 2026-08-04 - doména je zaparkovaná
+        // (FingerprintJS tracking/redirect skript, žádný manga obsah).
         // LikeManga (mgread.io) NENÍ Madara - "madara207" v HTML je jen jméno
         // uploadera, web běží na jiném WP pluginu (wp-theme-init-manga).
         // Vyžadovalo by vlastní MangaSource, viz project_jiyu_american_comics_audit
