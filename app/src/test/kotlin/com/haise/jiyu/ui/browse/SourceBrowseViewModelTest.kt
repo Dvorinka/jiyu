@@ -213,4 +213,45 @@ class SourceBrowseViewModelTest {
         assertTrue("chyba otevreni ma vlastni stav", vm.openError.value != null)
         assertEquals("a nesmi se prelit do celoobrazovkove chyby", null, vm.error.value)
     }
+
+    @Test
+    fun `fetchCoverIfMissing patches only the matching item once the cover arrives`() = runTest(dispatcher) {
+        coEvery { repository.getPopular("src", 1, any()) } returns listOf(manga(1), manga(2))
+        coEvery { repository.fetchCover(manga(1)) } returns "https://cdn.example.com/cover1.jpg"
+
+        val vm = viewModel()
+        advanceUntilIdle()
+        vm.fetchCoverIfMissing(manga(1))
+        advanceUntilIdle()
+
+        assertEquals("https://cdn.example.com/cover1.jpg", vm.results.value[0].coverUrl)
+        assertEquals("sousedni polozka nedotcena", null, vm.results.value[1].coverUrl)
+    }
+
+    @Test
+    fun `fetchCoverIfMissing for the same item twice fires only one network call`() = runTest(dispatcher) {
+        coEvery { repository.getPopular("src", 1, any()) } returns listOf(manga(1))
+        coEvery { repository.fetchCover(manga(1)) } returns "https://cdn.example.com/cover1.jpg"
+
+        val vm = viewModel()
+        advanceUntilIdle()
+        vm.fetchCoverIfMissing(manga(1))
+        vm.fetchCoverIfMissing(manga(1))
+        advanceUntilIdle()
+
+        coVerify(exactly = 1) { repository.fetchCover(manga(1)) }
+    }
+
+    @Test
+    fun `fetchCoverIfMissing does nothing when the item already has a cover`() = runTest(dispatcher) {
+        val withCover = manga(1).copy(coverUrl = "https://cdn.example.com/already-has-one.jpg")
+        coEvery { repository.getPopular("src", 1, any()) } returns listOf(withCover)
+
+        val vm = viewModel()
+        advanceUntilIdle()
+        vm.fetchCoverIfMissing(withCover)
+        advanceUntilIdle()
+
+        coVerify(exactly = 0) { repository.fetchCover(any()) }
+    }
 }

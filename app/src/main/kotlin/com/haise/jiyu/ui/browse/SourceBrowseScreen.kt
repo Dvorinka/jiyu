@@ -264,9 +264,9 @@ fun SourceBrowseScreen(
                 ) {
                     items(results, key = { it.sourceId + it.url }) { manga ->
                         val isOpening = openingManga?.let { it.sourceId == manga.sourceId && it.url == manga.url } == true
-                        BrowseMangaCard(manga = manga, isLoading = isOpening) {
+                        BrowseMangaCard(manga = manga, isLoading = isOpening, onClick = {
                             viewModel.openManga(manga, onOpenManga)
-                        }
+                        }, onCoverMissing = { viewModel.fetchCoverIfMissing(manga) })
                     }
                     if (hasMore || loading) {
                         item(span = { GridItemSpan(maxLineSpan) }) {
@@ -299,7 +299,15 @@ fun SourceBrowseScreen(
 }
 
 @Composable
-private fun BrowseMangaCard(manga: SManga, isLoading: Boolean = false, onClick: () -> Unit) {
+private fun BrowseMangaCard(manga: SManga, isLoading: Boolean = false, onClick: () -> Unit, onCoverMissing: () -> Unit) {
+    // Karta se zkomponuje jen kdyz je (blizko) ve viewportu LazyVerticalGrid - staci tedy
+    // spustit dotazeni tady, zadne rucni sledovani scrollu netreba. Klic je sourceId+url,
+    // aby se pri odscrollovani a navratu nespustilo znovu (fetchCoverIfMissing si navic
+    // sam hlida rozpracovane pozadavky, tohle je jen prvni bariera).
+    LaunchedEffect(manga.sourceId, manga.url) {
+        if (manga.coverUrl.isNullOrBlank()) onCoverMissing()
+    }
+
     var pressed by remember { mutableStateOf(false) }
     val scale by animateFloatAsState(
         targetValue = if (pressed) 0.92f else 1f,

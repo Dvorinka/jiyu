@@ -133,6 +133,25 @@ class SourceBrowseViewModel @Inject constructor(
 
     fun clearOpenError() { _openError.value = null }
 
+    // ── Líné dotažení obálky pro zdroje bez ní ve výpisu ────────────────────────
+    // Volané z BrowseMangaCard - LazyVerticalGrid komponuje jen karty ve/blízko
+    // viewportu, takže se tohle spustí jen pro to, co uživatel skutečně vidí.
+    private val coverFetchInFlight = mutableSetOf<String>()
+
+    fun fetchCoverIfMissing(manga: SManga) {
+        if (!manga.coverUrl.isNullOrBlank()) return
+        val key = manga.sourceId + manga.url
+        if (!coverFetchInFlight.add(key)) return
+        viewModelScope.launch {
+            val cover = repository.fetchCover(manga)
+            if (!cover.isNullOrBlank()) {
+                _results.value = _results.value.map {
+                    if (it.sourceId == manga.sourceId && it.url == manga.url) it.copy(coverUrl = cover) else it
+                }
+            }
+        }
+    }
+
     fun setFilters(filter: MangaFilter) {
         _activeFilter.value = filter
         val q = lastQuery

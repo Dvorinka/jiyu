@@ -239,6 +239,18 @@ class MangaRepository @Inject constructor(
         if (detected != manga.contentType) mangaDao.setContentType(mangaId, detected)
     }
 
+    /**
+     * Dotáhne obálku z detailu mangy - pro zdroje, které ji nemají v rychlém výpisu
+     * (Novelhall, Comics Kingdom, Dynasty Scans - viz komentáře u jejich `getPopular`/
+     * `parseFeatures`), jen na detailní stránce jednoho titulu. Volá [SourceBrowseViewModel]
+     * líně, jen pro karty, které se skutečně dostanou do viewportu Procházet (viz
+     * `LaunchedEffect` v `BrowseMangaCard`) - ne pro celou stránku výsledků najednou.
+     */
+    suspend fun fetchCover(manga: SManga): String? {
+        val source = sourceManager.getById(manga.sourceId) ?: return null
+        return try { source.getMangaDetails(manga).coverUrl } catch (_: Exception) { null }
+    }
+
     /** Vrací seznam nově přidaných kapitol (existující kapitoly jsou přeskočeny). */
     suspend fun refreshChapters(mangaId: String, manga: SManga): List<ChapterEntity> {
         val source = sourceManager.getById(manga.sourceId) ?: return emptyList()

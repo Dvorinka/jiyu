@@ -6,6 +6,12 @@
 
 ## Nevydáno
 
+### Chybějící obálky v Procházet u Novelhall, Comics Kingdom a Dynasty Scans
+Rychlý výpis titulů (Populární/Nejnovější) u těchto tří zdrojů obálku vůbec neobsahuje -
+je jen na stránce detailu jednotlivého titulu. Karta v mřížce si teď obálku dotáhne sama,
+jakmile se doscroluje do viewportu (`SourceBrowseViewModel.fetchCoverIfMissing`) - ne
+najednou pro celou stránku výsledků, jen pro to, co reálně vidíš.
+
 ### Chybějící obálky v Procházet u Novel Cool
 Web používá lazy-loading obrázků: `src` je vždy jen sdílený placeholder, skutečná
 adresa obálky je ve vlastním atributu `lazy_url`, který se dosud nikde nečetl.
