@@ -17,10 +17,13 @@ class NovelCoolSourceTest {
     private lateinit var server: MockWebServer
     private lateinit var source: NovelCoolSource
 
+    // Skutecny web pouziva lazy-loading: "src" je vzdy jen sdileny placeholder obrazek,
+    // realna obalka je v nestandardnim atributu "lazy_url" (overeno zivym stazenim
+    // novelcool.com/category/popular.html).
     private val listHtml = """
         <html><body>
         <div class="book-item">
-          <div class="book-pic"><a href="https://www.novelcool.com/novel/Test-Series.html"><img src="https://cdn.example.com/test.jpg"/></a></div>
+          <div class="book-pic"><a href="https://www.novelcool.com/novel/Test-Series.html"><img src="/files/images/default/default_pic.jpg" class="lazy-img" lazy_url="https://cdn.example.com/test.jpg"/></a></div>
           <div class="book-info">
             <a href="https://www.novelcool.com/novel/Test-Series.html">
               <div class="book-name single-line-ellipsis">Test Series</div>
@@ -87,6 +90,39 @@ class NovelCoolSourceTest {
         assertEquals(1, result.size)
         assertEquals("Test Series", result[0].title)
         assertTrue(source.getPopular(2).isEmpty())
+    }
+
+    @Test
+    fun `getPopular reads the cover from lazy_url, not the shared placeholder in src`() = runTest {
+        val result = source.getPopular(1)
+        assertEquals("https://cdn.example.com/test.jpg", result[0].coverUrl)
+    }
+
+    @Test
+    fun `getPopular falls back to src when lazy_url is absent`() = runTest {
+        server.shutdown()
+        server = MockWebServer()
+        val htmlWithoutLazyUrl = """
+            <html><body>
+            <div class="book-item">
+              <div class="book-pic"><a href="https://www.novelcool.com/novel/Test-Series.html"><img src="https://cdn.example.com/direct.jpg"/></a></div>
+              <div class="book-info">
+                <a href="https://www.novelcool.com/novel/Test-Series.html">
+                  <div class="book-name single-line-ellipsis">Test Series</div>
+                </a>
+              </div>
+            </div>
+            </body></html>
+        """.trimIndent()
+        server.dispatcher = object : Dispatcher() {
+            override fun dispatch(request: RecordedRequest) = MockResponse().setBody(htmlWithoutLazyUrl)
+        }
+        server.start()
+        val fallbackSource = NovelCoolSource(redirectingClient(server))
+
+        val result = fallbackSource.getPopular(1)
+
+        assertEquals("https://cdn.example.com/direct.jpg", result[0].coverUrl)
     }
 
     @Test

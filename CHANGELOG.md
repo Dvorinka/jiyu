@@ -6,6 +6,10 @@
 
 ## Nevydáno
 
+### Chybějící obálky v Procházet u Novel Cool
+Web používá lazy-loading obrázků: `src` je vždy jen sdílený placeholder, skutečná
+adresa obálky je ve vlastním atributu `lazy_url`, který se dosud nikde nečetl.
+
 ### Odebrání z knihovny dlouhým podržením
 Na kartě mangy/novely v Knihovně (rozečtené, nedávno přidané, dokončené i výsledky
 hledání a jejich "Zobrazit vše" mřížky) teď jde dlouze podržet prst a odebrat titul přímo

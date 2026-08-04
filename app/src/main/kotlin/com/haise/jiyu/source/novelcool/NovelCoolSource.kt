@@ -50,7 +50,14 @@ class NovelCoolSource @Inject constructor(private val client: OkHttpClient) : Ma
             val link = el.selectFirst("div.book-info a[href]") ?: return@mapNotNull null
             val href = link.attr("href").ifBlank { return@mapNotNull null }
             val title = el.selectFirst("div.book-name")?.text()?.trim() ?: return@mapNotNull null
-            val cover = el.selectFirst("div.book-pic img")?.attr("src")?.takeIf { it.startsWith("http") }
+            // <img src="/files/images/default/default_pic.jpg" class="lazy-img"
+            //      lazy_url="https://img.novelcool.com/.../Shadow_Slave....jpg" .../>
+            // "src" je vzdy jen placeholder (proto ho startsWith("http") spravne odmita) -
+            // skutecna obalka je v nestandardnim atributu "lazy_url" (overeno zivym
+            // stazenim novelcool.com/category/popular.html).
+            val img = el.selectFirst("div.book-pic img")
+            val cover = img?.attr("lazy_url")?.ifBlank { null }
+                ?: img?.attr("src")?.takeIf { it.startsWith("http") }
             SManga(sourceId = id, url = href, title = title, coverUrl = cover)
         }
     }
