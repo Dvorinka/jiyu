@@ -6,6 +6,12 @@
 
 ## Nevydáno
 
+### nhentai v Procházet ukazoval pořád jen tu samou hrstku titulů
+`/galleries/popular`, který appka volala, je podle vlastní dokumentace nhentai "dnešní
+populární galerie" - pevná pětice bez stránkování (page=1/2/3 vracelo identický
+výsledek, ověřeno živě). Teď appka volá obecný `/galleries?page=N`, který má skutečné
+stránkování (25 různých titulů na stránku) - ověřeno i přímo na telefonu.
+
 ### HiveToons a Vortex Scans nezobrazovaly žádné výsledky
 Oba weby (stejná Astro šablona) posílají na adresu bez koncového lomítka přesměrování
 na **http://**, ne https - appka takové nešifrované spojení správně odmítá, což se navenek

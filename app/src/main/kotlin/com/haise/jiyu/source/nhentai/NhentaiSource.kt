@@ -76,7 +76,13 @@ class NhentaiSource @Inject constructor(
     }
 
     override suspend fun getPopular(page: Int, filter: MangaFilter): List<SManga> = withContext(Dispatchers.IO) {
-        try { parseList(fetch("$apiBase/galleries/popular?page=$page")) }
+        // "/galleries/popular" NENÍ stránkovaný výpis - podle OpenAPI schématu appky
+        // (/api/v2/openapi.json) je to "Get today's popular galleries" bez jakéhokoli
+        // parametru, vrací vždy stejnou pevnou pětici bez ohledu na "page" (ověřeno
+        // živě: page=1/2/3 vrací identických 5 položek). Obecný výpis "/galleries" má
+        // v OpenAPI parametry page + per_page a živě vrací 25 různých položek na
+        // stránku, proto se browse teď opírá o ten.
+        try { parseList(fetch("$apiBase/galleries?page=$page")) }
         catch (_: Exception) { emptyList() }
     }
 

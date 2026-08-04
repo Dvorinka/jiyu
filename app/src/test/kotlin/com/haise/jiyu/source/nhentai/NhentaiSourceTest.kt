@@ -28,7 +28,10 @@ class NhentaiSourceTest {
         {"id": 999, "media_id": "12345", "english_title": "Test Gallery", "japanese_title": "テスト", "thumbnail": "galleries/12345/thumb.webp", "num_pages": 2}
     """.trimIndent()
 
-    private val popularJson = "[ $listItemJson ]"
+    // "/galleries" (obecny vypis pouzity pro getPopular) vraci na rozdil od
+    // "/galleries/popular" objekt s "result" polem, ne holé pole - overeno zivym
+    // volanim API (viz komentar v NhentaiSource.kt).
+    private val galleriesListJson = """{ "result": [ $listItemJson ] }"""
     private val searchJson = """{ "result": [ $listItemJson ] }"""
 
     private val galleryDetailJson = """
@@ -56,9 +59,9 @@ class NhentaiSourceTest {
             override fun dispatch(request: RecordedRequest): MockResponse {
                 val path = request.path.orEmpty()
                 return when {
-                    path.startsWith("/api/v2/galleries/popular") -> MockResponse().setBody(popularJson)
                     path.startsWith("/api/v2/search") -> MockResponse().setBody(searchJson)
                     path.startsWith("/api/v2/galleries/999") -> MockResponse().setBody(galleryDetailJson)
+                    path.startsWith("/api/v2/galleries?") -> MockResponse().setBody(galleriesListJson)
                     else -> MockResponse().setResponseCode(404)
                 }
             }
@@ -80,6 +83,20 @@ class NhentaiSourceTest {
         assertEquals("Test Gallery", result[0].title)
         assertEquals("/gallery/999", result[0].url)
         assertTrue(result[0].coverUrl!!.endsWith("12345/thumb.webp"))
+    }
+
+    @Test
+    fun `getPopular uses the paginated general listing, not the fixed today's-top-5 endpoint`() = runTest {
+        // "/galleries/popular" nema podle OpenAPI schematu appky vubec parametr "page" -
+        // je to "Get today's popular galleries", vzdy stejnych ~5 polozek bez ohledu na
+        // stranku (overeno zivym volanim: page=1/2/3 vraci identicky vysledek). Obecny
+        // "/galleries?page=N" ma realne strankovani (25 ruznych polozek na stranku) -
+        // presne to appka teď musí volat, jinak Prochazet zobrazi porad jen tu samou
+        // hrstku titulu bez ohledu na scroll.
+        source.getPopular(1)
+        val request = server.takeRequest()
+        assertTrue(request.path!!.startsWith("/api/v2/galleries?"))
+        assertTrue("nesmi volat fixni endpoint bez strankovani", !request.path!!.contains("/galleries/popular"))
     }
 
     @Test
