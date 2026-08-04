@@ -17,11 +17,15 @@ class HiveToonsSourceTest {
     private lateinit var server: MockWebServer
     private lateinit var source: HiveToonsSource
 
+    // Realna karta ma DVA odkazy na stejnou mangu - obalku (s <img>) a nazev pod ni
+    // (bez <img>) - overeno zivym stazenim. Bez deduplikace v parseList tohle spadne
+    // LazyVerticalGrid v Prochazet ("Key ... was already used").
     private val listHtml = """
         <html><body>
         <a href="/series/test-series" title="Test Series" class="card">
           <img alt="Test Series" src="https://cdn.example.com/cover.webp" />
         </a>
+        <a href="/series/test-series" title="Test Series" class="title-link">Test Series</a>
         </body></html>
     """.trimIndent()
 
@@ -74,6 +78,25 @@ class HiveToonsSourceTest {
         assertEquals(1, result.size)
         assertEquals("Test Series", result[0].title)
         assertEquals("https://cdn.example.com/cover.webp", result[0].coverUrl)
+    }
+
+    @Test
+    fun `getPopular deduplicates the two anchors a card has for the same manga`() = runTest {
+        // Kazda karta ma odkaz na obalku i samostatny odkaz na nazev, oba na stejne "url" -
+        // bez distinctBy by appka poslala LazyVerticalGrid duplicitni klic a spadla
+        // ("Key ... was already used"), presne to se stalo na realnem telefonu.
+        val urls = source.getPopular(1).map { it.url }
+        assertEquals(urls, urls.distinct())
+    }
+
+    @Test
+    fun `getPopular requests the listing WITH a trailing slash, to avoid the site's http-downgrade redirect`() = runTest {
+        // Overeno na realnem telefonu: "/series?page=1" (bez lomitka) dostane 301 na
+        // "http://..." (ne https) a Android takove pripojeni spravne odmitne jako
+        // cleartext - appka pak tise skoncila na prazdnem seznamu. S lomitkem web
+        // odpovi rovnou 200, zadne presmerovani.
+        source.getPopular(1)
+        assertEquals("/series/?page=1", server.takeRequest().path)
     }
 
     @Test

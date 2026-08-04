@@ -6,6 +6,17 @@
 
 ## Nevydáno
 
+### HiveToons a Vortex Scans nezobrazovaly žádné výsledky
+Oba weby (stejná Astro šablona) posílají na adresu bez koncového lomítka přesměrování
+na **http://**, ne https - appka takové nešifrované spojení správně odmítá, což se navenek
+projevilo jako "Žádné výsledky". Ověřeno přímo na telefonu (log skutečného síťového
+přenosu). S lomítkem web odpoví rovnou, žádné přesměrování.
+
+Po opravě se navíc ukázal druhý, skrytý bug: HiveToons u každého titulu v seznamu má
+dva odkazy na stejnou stránku (obálka + název pod ní) - bez odstranění duplicit appka
+na to spadla ("Key ... was already used"). Taky opraveno a ověřeno pádem i zprovozněním
+na reálném zařízení.
+
 ### Odebrány dva mrtvé zdroje
 PAWMANGA (pawmanga.com) - doména je zaparkovaná, žádný manga obsah. Manhuarm
 (manhuarmtl.com) - web žije, ale katalog je prázdný na všech testovaných stránkách.

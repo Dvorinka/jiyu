@@ -51,15 +51,26 @@ class HiveToonsSource @Inject constructor(private val client: OkHttpClient) : Ma
             val cover = el.selectFirst("img")?.attr("src")?.takeIf { it.startsWith("http") }
             SManga(sourceId = id, url = base + href, title = title, coverUrl = cover)
         }
+            // Kazda karta ma DVA <a href="/series/..." title="..."> odkazy na stejnou
+            // mangu - obalku a nazev pod ni - oba sedi na selektor vyse. Bez deduplikace
+            // vznikne v seznamu duplicitni "url", coz spadne LazyVerticalGrid v
+            // SourceBrowseScreen ("Key ... was already used") - overeno padem na realnem
+            // telefonu. distinctBy nechava PRVNI vyskyt, coz je prave ten s obalkovym
+            // <img> (druhy - textovy odkaz na nazev - obalku nema).
+            .distinctBy { it.url }
 
     override suspend fun getPopular(page: Int, filter: MangaFilter): List<SManga> = withContext(Dispatchers.IO) {
-        try { parseList(get("$base/series?page=$page")) } catch (_: Exception) { emptyList() }
+        // Bez koncoveho lomitka web posle 301 na "http://..." (ne https) - Android to
+        // spravne odmitne jako cleartext (viz network_security_config.xml) a appka pak
+        // tise skonci na prazdnem seznamu. Overeno logem site pripojeni na realnem
+        // telefonu. S lomitkem uz web odpovi rovnou 200, zadne presmerovani.
+        try { parseList(get("$base/series/?page=$page")) } catch (_: Exception) { emptyList() }
     }
 
     override suspend fun search(query: String, page: Int, filter: MangaFilter): List<SManga> = withContext(Dispatchers.IO) {
         if (page > 1) return@withContext emptyList()
         try {
-            parseList(get("$base/series")).filter { it.title.contains(query, ignoreCase = true) }
+            parseList(get("$base/series/")).filter { it.title.contains(query, ignoreCase = true) }
         } catch (_: Exception) { emptyList() }
     }
 

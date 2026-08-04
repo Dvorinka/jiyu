@@ -55,7 +55,7 @@ class VortexScansSourceTest {
             override fun dispatch(request: RecordedRequest): MockResponse {
                 val path = request.path.orEmpty()
                 return when {
-                    path.startsWith("/series?page=") -> MockResponse().setBody(listHtml)
+                    path.startsWith("/series/?page=") -> MockResponse().setBody(listHtml)
                     path == "/series/test-series" -> MockResponse().setBody(detailHtml)
                     path.startsWith("/api/chapters") -> MockResponse().setBody(chaptersJson)
                     path == "/series/test-series/chapter-1" -> MockResponse().setBody(pagesHtml)
@@ -78,6 +78,17 @@ class VortexScansSourceTest {
         assertEquals(1, result.size)
         assertEquals("Test Series", result[0].title)
         assertEquals("https://cdn.example.com/test.jpg", result[0].coverUrl)
+    }
+
+    @Test
+    fun `getPopular requests the listing WITH a trailing slash, to avoid the site's http-downgrade redirect`() = runTest {
+        // Overeno na realnem telefonu: "/series?page=1" (bez lomitka) dostane 301 na
+        // "http://..." (ne https) a Android takove pripojeni spravne odmitne jako
+        // cleartext - appka pak tise skoncila na prazdnem seznamu. S lomitkem web
+        // odpovi rovnou 200, zadne presmerovani. Stejna pricina jako u HiveToonsSource
+        // (oba bezi na Astro).
+        source.getPopular(1)
+        assertEquals("/series/?page=1", server.takeRequest().path)
     }
 
     @Test

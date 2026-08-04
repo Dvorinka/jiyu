@@ -56,7 +56,12 @@ class VortexScansSource @Inject constructor(private val client: OkHttpClient) : 
     }
 
     override suspend fun getPopular(page: Int, filter: MangaFilter): List<SManga> = withContext(Dispatchers.IO) {
-        try { parseList(get("$base/series?page=$page")) } catch (_: Exception) { emptyList() }
+        // Bez koncoveho lomitka web posle 301 na "http://..." (ne https) - Android to
+        // spravne odmitne jako cleartext (viz network_security_config.xml) a appka pak
+        // tise skonci na prazdnem seznamu. Overeno logem site pripojeni na realnem
+        // telefonu (stejna pricina jako u HiveToonsSource - oba bezi na Astro). S
+        // lomitkem uz web odpovi rovnou 200, zadne presmerovani.
+        try { parseList(get("$base/series/?page=$page")) } catch (_: Exception) { emptyList() }
     }
 
     override suspend fun search(query: String, page: Int, filter: MangaFilter): List<SManga> = withContext(Dispatchers.IO) {
