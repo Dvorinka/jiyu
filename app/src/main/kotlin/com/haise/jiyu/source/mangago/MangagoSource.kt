@@ -41,18 +41,20 @@ class MangagoSource @Inject constructor(
 
     override suspend fun getPopular(page: Int, filter: MangaFilter): List<SManga> = withContext(Dispatchers.IO) {
         try {
-            val doc = Jsoup.parse(get("$base/list/allmanga/page/$page/?o=views"))
-            doc.select(".thumbnail-group li").mapNotNull { li ->
-                val link = li.selectFirst("a") ?: return@mapNotNull null
+            // Puvodni "/list/allmanga/page/N/?o=views" je mrtve (Total: 0, zadna karta) -
+            // aktualni vypis zije na "/list/?page=N" (Total: 20000+), overeno zivym
+            // stazenim. Karta = ".listitem", obalka je v "data-src" (v "src" je jen
+            // sdileny base64 placeholder pro lazy-load).
+            val doc = Jsoup.parse(get("$base/list/?page=$page"))
+            doc.select(".listitem").mapNotNull { li ->
+                val link = li.selectFirst("div.left a[href]") ?: return@mapNotNull null
                 SManga(
                     sourceId = id,
                     url = link.attr("href").removePrefix(base),
-                    title = li.selectFirst(".g-title, .title, h3")?.text()?.trim()
+                    title = li.selectFirst("span.title a")?.text()?.trim()?.ifBlank { null }
                         ?: link.attr("title").trim().takeIf { it.isNotBlank() }
                         ?: return@mapNotNull null,
-                    coverUrl = li.selectFirst("img")?.let {
-                        it.attr("data-src").takeIf { s -> s.isNotBlank() } ?: it.attr("src")
-                    },
+                    coverUrl = li.selectFirst("img")?.attr("data-src")?.takeIf { it.isNotBlank() },
                 )
             }
         } catch (_: Exception) { emptyList() }
@@ -60,17 +62,22 @@ class MangagoSource @Inject constructor(
 
     override suspend fun search(query: String, page: Int, filter: MangaFilter): List<SManga> = withContext(Dispatchers.IO) {
         try {
+            // Puvodni "/r/search.php" vraci 404 - skutecny hledaci formular na hlavni
+            // strance vede na "/r/l_search/" (overeno zivym stazenim, funguje i strankovani
+            // pres &page=N). Vysledky maji jinou strukturu nez popularni vypis - obalka je
+            // v primem "src" (bez lazy-load placeholderu) a nadpis obsahuje vnoreny
+            // <span class="hilight"> se shodou hledaneho vyrazu, .text() ho spoji do ciste
+            // podoby.
             val q = URLEncoder.encode(query, "UTF-8")
-            val doc = Jsoup.parse(get("$base/r/search.php?name=$q&page=$page"))
-            doc.select(".thumbnail-group li, .searchresult li").mapNotNull { li ->
-                val link = li.selectFirst("a[href*='/read-manga/']") ?: return@mapNotNull null
+            val doc = Jsoup.parse(get("$base/r/l_search/?name=$q&page=$page"))
+            doc.select("#search_list li").mapNotNull { li ->
+                val link = li.selectFirst("div.left a[href*='/read-manga/']") ?: return@mapNotNull null
                 SManga(
                     sourceId = id,
                     url = link.attr("href").removePrefix(base),
-                    title = li.selectFirst(".g-title, h3, .title")?.text()?.trim()
-                        ?: link.attr("title").trim().takeIf { it.isNotBlank() }
+                    title = li.selectFirst("span.tit h2 a")?.text()?.trim()?.ifBlank { null }
                         ?: return@mapNotNull null,
-                    coverUrl = li.selectFirst("img")?.attr("src"),
+                    coverUrl = li.selectFirst("div.left img")?.attr("src"),
                 )
             }
         } catch (_: Exception) { emptyList() }

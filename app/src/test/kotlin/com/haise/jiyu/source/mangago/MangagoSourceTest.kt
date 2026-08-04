@@ -28,9 +28,35 @@ class MangagoSourceTest {
     private lateinit var server: MockWebServer
     private lateinit var source: MangagoSource
 
+    // Skutecna struktura "/list/?page=N" - overeno zivym stazenim. "src" je vzdy jen
+    // sdileny base64 placeholder pro lazy-load, realna obalka je v "data-src".
     private val listHtml = """
         <html><body>
-        <ul class="thumbnail-group"><li><a href="/read-manga/test-series" title="Test Series"><img data-src="https://cdn.example.com/test.jpg" /></a></li></ul>
+        <div class="flex1 listitem ">
+          <div class="updatesli"><div class="left">
+            <a href="/read-manga/test-series" title="ignored-placeholder-title">
+              <img class="showdesc" src="data:image/gif;base64,ignored" data-src="https://cdn.example.com/test.jpg">
+            </a>
+          </div></div>
+          <span class="title"><a href="/read-manga/test-series" title="Test Series">Test Series</a></span>
+        </div>
+        </body></html>
+    """.trimIndent()
+
+    // Skutecna struktura "/r/l_search/?name=..." - jiny layout nez popularni vypis,
+    // obalka v primem "src" a nadpis se shodou hledaneho vyrazu obalenou v <span class="hilight">.
+    private val searchHtml = """
+        <html><body>
+        <ul id="search_list" class="pic_list">
+          <li>
+            <div class="box">
+              <div class="left"><a href="/read-manga/test-series"><img src="https://cdn.example.com/test.jpg" alt="Test Series"></a></div>
+              <div class="left">
+                <span class="tit"><h2><a href="/read-manga/test-series"><span class="hilight">Test</span> Series</a></h2></span>
+              </div>
+            </div>
+          </li>
+        </ul>
         </body></html>
     """.trimIndent()
 
@@ -54,7 +80,8 @@ class MangagoSourceTest {
             override fun dispatch(request: RecordedRequest): MockResponse {
                 val path = request.path.orEmpty()
                 return when {
-                    path.startsWith("/list/allmanga/") -> MockResponse().setBody(listHtml)
+                    path.startsWith("/list/") -> MockResponse().setBody(listHtml)
+                    path.startsWith("/r/l_search/") -> MockResponse().setBody(searchHtml)
                     path == "/read-manga/test-series" -> MockResponse().setBody(detailHtml)
                     path == "/read-manga/test-series/chapter-1" -> MockResponse().setBody(pagesHtml)
                     else -> MockResponse().setResponseCode(404)
@@ -76,6 +103,20 @@ class MangagoSourceTest {
         val result = source.getPopular(1)
         assertEquals(1, result.size)
         assertEquals("Test Series", result[0].title)
+    }
+
+    @Test
+    fun `getPopular reads the cover from data-src, not the lazy-load placeholder in src`() = runTest {
+        val result = source.getPopular(1)
+        assertEquals("https://cdn.example.com/test.jpg", result[0].coverUrl)
+    }
+
+    @Test
+    fun `search parses title and cover from the search-only markup, joining the highlighted match span`() = runTest {
+        val result = source.search("test", 1)
+        assertEquals(1, result.size)
+        assertEquals("Test Series", result[0].title)
+        assertEquals("https://cdn.example.com/test.jpg", result[0].coverUrl)
     }
 
     @Test

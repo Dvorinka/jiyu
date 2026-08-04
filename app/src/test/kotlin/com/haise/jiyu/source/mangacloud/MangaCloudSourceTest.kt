@@ -8,6 +8,7 @@ import okhttp3.mockwebserver.MockWebServer
 import okhttp3.mockwebserver.RecordedRequest
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -115,5 +116,37 @@ class MangaCloudSourceTest {
     fun `missing session cookie still attempts request without crashing`() = runTest {
         val noSession = MangaCloudSource(redirectingClient(server), FakeSession(cookie = null))
         assertEquals(1, noSession.getPopular(1).size)
+    }
+}
+
+/**
+ * [FailureCooldown] samostatne, bez WebView/Handler - viz komentar u tridy v
+ * MangaCloudSource.kt pro to, proc existuje (bez ni kazda dalsi karta/scroll znovu
+ * spousti az 30s WebView bootstrap, coz uzivatel vidi jako appku toci se navzdy).
+ */
+class FailureCooldownTest {
+
+    @Test
+    fun `a fresh cooldown is not active`() {
+        val cooldown = FailureCooldown(cooldownMs = 1000, now = { 0L })
+        assertFalse(cooldown.isActive())
+    }
+
+    @Test
+    fun `right after a recorded failure the cooldown is active`() {
+        var clock = 0L
+        val cooldown = FailureCooldown(cooldownMs = 1000, now = { clock })
+        cooldown.recordFailure()
+        clock += 500
+        assertTrue(cooldown.isActive())
+    }
+
+    @Test
+    fun `once the cooldown window passes it is active no longer`() {
+        var clock = 0L
+        val cooldown = FailureCooldown(cooldownMs = 1000, now = { clock })
+        cooldown.recordFailure()
+        clock += 1000
+        assertFalse(cooldown.isActive())
     }
 }

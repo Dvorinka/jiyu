@@ -40,6 +40,32 @@ interface MangaCloudSession {
 }
 
 /**
+ * Cesta zamezujici opakovanym 30s cekanim na WebView bootstrap, kdyz predchozi pokus
+ * selhal (Turnstile nedobehl, cookie prisla prazdna). Bez tehle pauzy by KAZDA dalsi
+ * karta/scroll/otevreni zdroje znovu spustilo cely 30s bootstrap - uzivateli se to jevi
+ * jako appka, ktera se navzdy tocí. Stejny vzor uz pouziva `CloudflareInterceptor.
+ * failureCache` pro jine zdroje - jen prenesen sem jako samostatna, cistne testovatelna
+ * trida (bez zavislosti na WebView/Handler), protoze [WebViewMangaCloudSession] jako
+ * celek neni realisticke jednotkove testovat.
+ */
+internal class FailureCooldown(
+    private val cooldownMs: Long,
+    private val now: () -> Long = System::currentTimeMillis,
+) {
+    // null = "jeste nikdy neselhalo", NE cas 0 - jinak by cerstva instance vysla jako
+    // "v cooldownu", kdykoliv by `now()` bylo bliz nule nez cooldownMs (chytilo to
+    // FailureCooldownTest s pevnym testovacim hodinami).
+    private val lastFailureAt = AtomicReference<Long?>(null)
+
+    fun isActive(): Boolean {
+        val failedAt = lastFailureAt.get() ?: return false
+        return now() - failedAt < cooldownMs
+    }
+
+    fun recordFailure() { lastFailureAt.set(now()) }
+}
+
+/**
  * Produkcni implementace [MangaCloudSession]. MangaCloud (mangacloud.org)
  * je Vite/React SPA, cele API bezi na api.mangacloud.org. Kazdy pozadavek
  * na API vyzaduje relacni cookie, kterou frontend ziska tak, ze na
@@ -57,12 +83,18 @@ class WebViewMangaCloudSession(private val context: Context) : MangaCloudSession
     private val cachedCookie = AtomicReference<String?>(null)
     private val cachedExpiresAt = AtomicLong(0)
     private val sessionTtlMs = TimeUnit.MINUTES.toMillis(20)
+    private val failureCooldown = FailureCooldown(TimeUnit.MINUTES.toMillis(2))
 
     override fun getCookie(): String? {
         if (cachedCookie.get() != null && System.currentTimeMillis() < cachedExpiresAt.get()) {
             return cachedCookie.get()
         }
-        val cookie = bootstrapViaWebView() ?: return null
+        if (failureCooldown.isActive()) return null
+        val cookie = bootstrapViaWebView()
+        if (cookie == null) {
+            failureCooldown.recordFailure()
+            return null
+        }
         cachedCookie.set(cookie)
         cachedExpiresAt.set(System.currentTimeMillis() + sessionTtlMs)
         return cookie

@@ -6,6 +6,20 @@
 
 ## Nevydáno
 
+### Mangago nezobrazoval žádné výsledky
+Web přesunul výpis populárních titulů z `/list/allmanga/page/N/` (mrtvé, "Total: 0") na
+`/list/?page=N` a hledání z `/r/search.php` (404) na `/r/l_search/` - obě URL i jejich
+struktura HTML se od doby, kdy byl zdroj napsaný, změnily. Adresa obálky navíc není v
+`src` (to je jen sdílený placeholder pro lazy-load), ale v `data-src`.
+
+### MangaCloud se dokola točil při načítání
+Web vyžaduje neviditelně vyřešenou Cloudflare výzvu přes WebView, což trvá až 30 sekund.
+Když se to nepovedlo, appka to zkoušela znovu od nuly při každé další kartě/scrollu/
+otevření zdroje - uživatel viděl nekonečné točení, i když jednotlivé pokusy nakonec
+doběhly. Neúspěch se teď na 2 minuty zapamatuje, takže další pokusy selžou rovnou
+místo dalšího 30sekundového čekání (stejný princip jako `CloudflareInterceptor` už
+používá pro jiné zdroje).
+
 ### Chybějící obálky v Procházet u Novelhall, Comics Kingdom a Dynasty Scans
 Rychlý výpis titulů (Populární/Nejnovější) u těchto tří zdrojů obálku vůbec neobsahuje -
 je jen na stránce detailu jednotlivého titulu. Karta v mřížce si teď obálku dotáhne sama,
