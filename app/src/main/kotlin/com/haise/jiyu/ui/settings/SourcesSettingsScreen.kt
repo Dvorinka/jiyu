@@ -50,6 +50,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.haise.jiyu.R
+import com.haise.jiyu.settings.AppMode
 import com.haise.jiyu.ui.components.JiyuLoadingIndicator
 import com.haise.jiyu.ui.theme.Cyan
 import com.haise.jiyu.ui.theme.GlowViolet
@@ -70,6 +71,7 @@ fun SourcesSettingsScreen(
 ) {
     val customSources by viewModel.customSources.collectAsState()
     val showAdultSources by viewModel.showAdultSources.collectAsState()
+    val appMode by viewModel.appMode.collectAsState()
 
     Scaffold(containerColor = Color.Transparent, contentWindowInsets = WindowInsets(0, 0, 0, 0)) { innerPadding ->
         Column(
@@ -100,6 +102,34 @@ fun SourcesSettingsScreen(
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = Cyan),
                     ) {
                         Text(stringResource(R.string.settings_sources_custom_css_button))
+                    }
+                }
+
+                Spacer(Modifier.height(12.dp))
+
+                // ── Režim appky (Klasický vs. ComicK agregovaný) ──────────────
+                SettingsSection(title = stringResource(R.string.settings_sources_mode_section_title)) {
+                    val isComicKMode = appMode == AppMode.COMICK
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .toggleable(
+                                value = isComicKMode,
+                                role = Role.Switch,
+                                onValueChange = { viewModel.setAppMode(if (it) AppMode.COMICK else AppMode.SOURCES) },
+                            )
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(stringResource(R.string.settings_sources_mode_toggle_title), color = TextPrimary, fontSize = 14.sp)
+                            Text(stringResource(R.string.settings_sources_mode_toggle_desc), color = TextSecondary, fontSize = 11.sp)
+                        }
+                        Switch(
+                            checked = isComicKMode,
+                            onCheckedChange = null,
+                            colors = SwitchDefaults.colors(checkedThumbColor = GlowViolet, checkedTrackColor = GlowViolet.copy(alpha = 0.5f)),
+                        )
                     }
                 }
 

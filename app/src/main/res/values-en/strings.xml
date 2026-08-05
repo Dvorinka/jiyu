@@ -780,6 +780,9 @@
     <string name="settings_sources_adult_section_title">18+ sources</string>
     <string name="settings_sources_adult_toggle_title">Show adult sources</string>
     <string name="settings_sources_adult_toggle_desc">Turning this off hides sources with 18+ content from Browse and search (manga already added from them stays readable)</string>
+    <string name="settings_sources_mode_section_title">App mode</string>
+    <string name="settings_sources_mode_toggle_title">ComicK aggregated mode</string>
+    <string name="settings_sources_mode_toggle_desc">Instead of picking from every source, the app shows only ComicK as the catalog - you\'ll see scan groups per title and per chapter exactly like on ComicK. Reading is automatically resolved to a real source that actually has that chapter.</string>
 
     <string name="settings_reader_preload_novel_title">Preload next chapter translation (light novel)</string>
     <string name="settings_reader_preload_novel_desc">Once the current chapter is translated, the next one is translated in the background so it is ready right away</string>

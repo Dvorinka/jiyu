@@ -27,6 +27,7 @@ import com.haise.jiyu.data.db.TranslatedPageDao
 import com.haise.jiyu.data.db.entity.CustomSourceEntity
 import com.haise.jiyu.data.db.entity.DownloadStatus
 import com.haise.jiyu.data.repository.MangaRepository
+import com.haise.jiyu.settings.AppMode
 import com.haise.jiyu.settings.SettingsRepository
 import com.haise.jiyu.update.ApkUpdateInstaller
 import com.haise.jiyu.update.UpdateChecker
@@ -419,6 +420,13 @@ class SettingsViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
     fun setShowAdultSources(enabled: Boolean) = viewModelScope.launch { settings.setShowAdultSources(enabled) }
+
+    // Výchozí "sources" (Klasický režim) - musí sedět s SettingsRepository.appMode, jinak by
+    // přepínač po startu na okamžik ukázal špatný stav, než dorazí hodnota z DataStore.
+    val appMode: StateFlow<String> = settings.appMode
+        .stateIn(viewModelScope, SharingStarted.Eagerly, AppMode.SOURCES)
+
+    fun setAppMode(mode: String) = viewModelScope.launch { settings.setAppMode(mode) }
 
     // ── Soukromí ──────────────────────────────────────────────────────────────
     /** Potvrzená plnoletost z onboardingu - viz [SettingsKeys.IS_ADULT]. Odemyká přepínač výš. */
