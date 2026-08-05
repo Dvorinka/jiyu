@@ -250,7 +250,8 @@ fun LibraryScreen(
                         item = heroItem,
                         progressPercent = progressPercentFor(heroItem.manga.id, unreadCounts, totalCounts),
                         onFavoriteToggle = { viewModel.toggleFavorite(heroItem.manga.id, heroItem.manga.isFavorite) },
-                        onClick = {
+                        onOpenDetail = { onOpenManga(heroItem.manga.id) },
+                        onContinue = {
                             val chapterId = heroItem.manga.lastReadChapterId
                             if (chapterId != null) onOpenChapter(chapterId) else onOpenManga(heroItem.manga.id)
                         },
@@ -276,7 +277,8 @@ fun LibraryScreen(
                                 ContinueReadingCard(
                                     item = item,
                                     progressPercent = progressPercentFor(item.manga.id, unreadCounts, totalCounts),
-                                    onClick = {
+                                    onOpenDetail = { onOpenManga(item.manga.id) },
+                                    onContinue = {
                                         val chapterId = item.manga.lastReadChapterId
                                         if (chapterId != null) onOpenChapter(chapterId) else onOpenManga(item.manga.id)
                                     },
@@ -398,7 +400,8 @@ private fun HeroContinueReadingCard(
     item: ContinueReadingItem,
     progressPercent: Int,
     onFavoriteToggle: () -> Unit,
-    onClick: () -> Unit,
+    onOpenDetail: () -> Unit,
+    onContinue: () -> Unit,
 ) {
     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(top = 14.dp)) {
         Row(modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -425,7 +428,7 @@ private fun HeroContinueReadingCard(
                 .clip(RoundedCornerShape(16.dp))
                 .background(NightBlue)
                 .border(1.dp, CardBorder, RoundedCornerShape(16.dp))
-                .clickable(onClick = onClick)
+                .clickable(onClick = onOpenDetail)
                 .padding(12.dp),
         ) {
             Box(
@@ -472,7 +475,7 @@ private fun HeroContinueReadingCard(
                         .height(38.dp)
                         .clip(RoundedCornerShape(50))
                         .background(Brush.horizontalGradient(listOf(GlowViolet, GlowCyan)))
-                        .clickable(onClick = onClick),
+                        .clickable(onClick = onContinue),
                     contentAlignment = Alignment.Center,
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -592,12 +595,12 @@ private fun CarouselSection(title: String, count: Int, onShowAll: () -> Unit, co
 }
 
 @Composable
-private fun ContinueReadingCard(item: ContinueReadingItem, progressPercent: Int, onClick: () -> Unit, onLongPress: () -> Unit) {
+private fun ContinueReadingCard(item: ContinueReadingItem, progressPercent: Int, onOpenDetail: () -> Unit, onContinue: () -> Unit, onLongPress: () -> Unit) {
     Column(
         modifier = Modifier
             .width(130.dp)
             .clip(RoundedCornerShape(12.dp))
-            .pointerInput(Unit) { detectTapGestures(onTap = { onClick() }, onLongPress = { onLongPress() }) },
+            .pointerInput(Unit) { detectTapGestures(onTap = { onOpenDetail() }, onLongPress = { onLongPress() }) },
     ) {
         Box(
             modifier = Modifier
@@ -628,6 +631,26 @@ private fun ContinueReadingCard(item: ContinueReadingItem, progressPercent: Int,
                     .padding(horizontal = 7.dp, vertical = 3.dp),
             ) {
                 Text(formatChapterNumber(item.lastChapterNumber), color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+            }
+            // Malé tlačítko navrch obálky - klepnutí na zbytek karty otevře detail (viz
+            // onOpenDetail výš), tohle jde rovnou do poslední rozečtené kapitoly. Vnořený
+            // clickable dostane klepnutí přednostně před rodičovským pointerInputem karty.
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(6.dp)
+                    .size(26.dp)
+                    .clip(CircleShape)
+                    .background(Color.Black.copy(alpha = 0.55f))
+                    .clickable(onClick = onContinue),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    TablerIcons.PlayerPlay,
+                    contentDescription = stringResource(R.string.action_continue_reading),
+                    tint = Color.White,
+                    modifier = Modifier.size(13.dp),
+                )
             }
             Text(
                 text = "$progressPercent %",

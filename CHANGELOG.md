@@ -4,6 +4,15 @@
 > vidět v historii commitů a v popisech jednotlivých vydání na GitHubu; zpětně to sem
 > nedopisuju, abych si nevymýšlel.
 
+## Nevydáno
+
+### V karuselu "Pokračovat ve čtení" šlo jen skočit rovnou do poslední kapitoly
+Klepnutí na kartu vždycky otevřelo přímo rozečtenou kapitolu - nešlo se přes obálku
+podívat na detail titulu (seznam kapitol, popis) bez otevření čtečky. Teď má karta
+malé kolečko s tlačítkem přehrání navrch obálky, které skočí rovnou do rozečtené
+kapitoly jako dřív; klepnutí kdekoli jinde na kartě otevře detail titulu. Stejně to
+teď funguje i u velké karty nahoře na Knihovně.
+
 ## v1.0.9
 
 Devět oprav zdrojů v Procházet, objevených postupně na hlášení konkrétních zdrojů, které
