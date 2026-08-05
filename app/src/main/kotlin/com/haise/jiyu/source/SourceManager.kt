@@ -80,6 +80,7 @@ import javax.inject.Singleton
 class SourceManager @Inject constructor(
     mangaDexSource: MangaDexSource,
     mangaPlusSource: MangaPlusSource,
+    comicKSource: ComicKSource,
     hitomiSource: HitomiSource,
     nhentaiSource: NhentaiSource,
     webtoonSource: WebtoonSource,
@@ -123,7 +124,6 @@ class SourceManager @Inject constructor(
     manga18fxSource: Manga18fxSource,
     hentai20Source: Hentai20Source,
     demonicScansSource: DemonicScansSource,
-    comicKSource: ComicKSource,
     comizySource: ComizySource,
     hiveToonsSource: HiveToonsSource,
     mangaWorldSource: MangaWorldSource,
