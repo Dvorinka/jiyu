@@ -56,6 +56,7 @@ import com.haise.jiyu.source.kingofshojo.KingofshojoSource
 import com.haise.jiyu.source.manga18fx.Manga18fxSource
 import com.haise.jiyu.source.hentai20.Hentai20Source
 import com.haise.jiyu.source.demonicscans.DemonicScansSource
+import com.haise.jiyu.source.comick.ComicKSource
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -122,6 +123,7 @@ class SourceManager @Inject constructor(
     manga18fxSource: Manga18fxSource,
     hentai20Source: Hentai20Source,
     demonicScansSource: DemonicScansSource,
+    comicKSource: ComicKSource,
     comizySource: ComizySource,
     hiveToonsSource: HiveToonsSource,
     mangaWorldSource: MangaWorldSource,
@@ -140,12 +142,16 @@ class SourceManager @Inject constructor(
     private val staticSources: List<MangaSource> = listOf(
         mangaDexSource,
         mangaPlusSource,
-        // ComicK (api.comick.dev) odstraněno 2026-07-27 - web i API teď fungují jen jako
-        // "tracker" (odkazuje na oficiální licencované platformy jako Tappytoon/MangaPlus),
-        // reálné stránky kapitol (md_images) API nevrací a ani samotný web comick.dev je
-        // v čtečce nezobrazí (ověřeno naživo v prohlížeči) - žádné reálné obrázky ke stažení.
-        // Metadata/seznam kapitol by šly, ale appka bez čitelných stránek by byla zavádějící.
-        // Viz ComicKSource.kt / ComicKSourceTest.kt (ponecháno pro případ, že by se to vrátilo).
+        // ComicK (api.comick.dev) bylo 2026-07-27 vypnuto, protože web i API fungují jen
+        // jako "tracker" (odkazuje na oficiální licencované platformy) a getPageList()
+        // nevrací použitelné obrázky - jako běžný ČTECÍ zdroj proto pořád nefunguje.
+        // Znovu zapojeno 2026-08-05 jako podklad pro ComicK agregovaný režim (viz
+        // docs/superpowers/specs/2026-08-05-comick-aggregated-mode-design.md) - appka
+        // ho používá k prohlížení katalogu/metadat/skupin, NE ke čtení. Ochrana proti
+        // omylem otevřené nečitelné kapitole je úkol Sub-projektu 3 (motor pro křížové
+        // vyhledání skutečného zdroje) - do té doby otevření kapitoly u ComicK titulu
+        // skončí chybou v čtečce, ne pádem appky.
+        comicKSource,
         hitomiSource,
         nhentaiSource,
         // MangaFire odstraněno 2026-07-27 (čtvrté kolo) - API (mangafire.to/api/titles)
