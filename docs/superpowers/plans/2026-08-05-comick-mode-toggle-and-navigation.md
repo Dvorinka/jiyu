@@ -15,7 +15,7 @@
 - Existující chování v Klasickém režimu (výchozí) se nesmí nijak změnit — `AppMode.SOURCES` musí být bitově identické s dnešním chováním.
 - `versionCode`/`versionName` se nezvedá (dělá se jen při skutečném vydání, viz release proces).
 - Po dokončení: `./gradlew testDebugUnitTest` a `./gradlew lintDebug` musí projít čistě.
-- Commit až na konci celého plánu (všechny úkoly), ne po každém kroku zvlášť — jde o jednu uzavřenou, samostatně otestovatelnou dodávku.
+- Commit po každém tasku zvlášť (standardní mechanika subagent-driven developmentu — recenzent porovnává diff commitu před/po tasku). Task 5 dělá jen finální ověření celku, ne souhrnný commit.
 
 ---
 
@@ -114,6 +114,16 @@ V těle třídy `SettingsRepository`, za `toggleFavoriteSource` (řádek s uzav�
 
 Run: `./gradlew testDebugUnitTest --tests "com.haise.jiyu.settings.AppModeSettingTest"`
 Expected: PASS (3 testy).
+
+- [ ] **Krok 5: Commit**
+
+```bash
+git add app/src/main/kotlin/com/haise/jiyu/settings/SettingsRepository.kt \
+        app/src/test/kotlin/com/haise/jiyu/settings/AppModeSettingTest.kt
+git commit -m "feat: pridat AppMode nastaveni (Klasicky/ComicK rezim)
+
+Task 1 z docs/superpowers/plans/2026-08-05-comick-mode-toggle-and-navigation.md."
+```
 
 ---
 
@@ -226,6 +236,20 @@ Expected: BUILD SUCCESSFUL.
 
 (Manuální ověření přepínače na zařízení proběhne až po Task 4, kdy má viditelný efekt.)
 
+- [ ] **Krok 5: Commit**
+
+```bash
+git add app/src/main/kotlin/com/haise/jiyu/ui/settings/SettingsViewModel.kt \
+        app/src/main/kotlin/com/haise/jiyu/ui/settings/SourcesSettingsScreen.kt \
+        app/src/main/res/values/strings.xml \
+        app/src/main/res/values-en/strings.xml \
+        app/src/main/res/values-fr/strings.xml \
+        app/src/main/res/values-es/strings.xml
+git commit -m "feat: prepinac ComicK agregovaneho rezimu v Nastaveni - Zdroje
+
+Task 2 z docs/superpowers/plans/2026-08-05-comick-mode-toggle-and-navigation.md."
+```
+
 ---
 
 ### Task 3: Znovu zaregistrovat ComicK jako zdroj
@@ -290,6 +314,16 @@ Expected: BUILD SUCCESSFUL, existující testy ComicK zdroje (nezávislé na reg
 
 Run: `./gradlew testDebugUnitTest --tests "com.haise.jiyu.source.SourceManagerTest"` (pokud takový test existuje - zkontrolovat `app/src/test/kotlin/com/haise/jiyu/source/` a spustit, ať se ověří, že přidání dalšího zdroje nerozbilo nic, co počítá s pevným seznamem/počtem zdrojů).
 Expected: PASS. Pokud test počítá s přesným počtem zdrojů nebo jejich seznamem, upravit očekávanou hodnotu o nově přidaný ComicK.
+
+- [ ] **Krok 4: Commit**
+
+```bash
+git add app/src/main/kotlin/com/haise/jiyu/source/SourceManager.kt
+git commit -m "feat: znovu zaregistrovat ComicK jako zdroj (jen prohlizeni/metadata)
+
+Task 3 z docs/superpowers/plans/2026-08-05-comick-mode-toggle-and-navigation.md.
+Cteni pres ComicK zatim neni chranene - resi az Sub-projekt 3."
+```
 
 ---
 
@@ -397,9 +431,20 @@ V `MainScreen.kt` upravit volání `JiyuNavGraph`:
 Run: `./gradlew compileDebugKotlin`
 Expected: BUILD SUCCESSFUL. (Pokud `JiyuNavGraph` má i jiná volací místa - např. v testech/preview - doplnit jim `appMode = AppMode.SOURCES` jako výchozí, ať nespadne kompilace. Zkontrolovat `grep -rn "JiyuNavGraph(" app/src`.)
 
+- [ ] **Krok 6: Commit**
+
+```bash
+git add app/src/main/kotlin/com/haise/jiyu/ui/navigation/MainViewModel.kt \
+        app/src/main/kotlin/com/haise/jiyu/ui/navigation/MainScreen.kt \
+        app/src/main/kotlin/com/haise/jiyu/ui/navigation/NavGraph.kt
+git commit -m "feat: zalozka Prochazet respektuje ComicK agregovany rezim
+
+Task 4 z docs/superpowers/plans/2026-08-05-comick-mode-toggle-and-navigation.md."
+```
+
 ---
 
-### Task 5: Ověření a commit
+### Task 5: Závěrečné ověření celku (bez commitu — vše už je commitnuté z Tasků 1-4)
 
 - [ ] **Krok 1: Celá testovací sada**
 
@@ -411,40 +456,18 @@ Expected: BUILD SUCCESSFUL, žádný regresní pád.
 Run: `./gradlew lintDebug`
 Expected: BUILD SUCCESSFUL.
 
-- [ ] **Krok 3: Manuální ověření (na zařízení, pokud je připojené)**
+- [ ] **Krok 3: `git status` je čistý**
+
+Run: `git status --short`
+Expected: prázdný výstup — všechno z Tasků 1-4 je už commitnuté, nic nezůstalo neuložené.
+
+- [ ] **Krok 4: Manuální ověření (na zařízení, pokud je připojené)**
 
 1. V Nastavení → Zdroje zapnout "ComicK agregovaný režim".
 2. Přejít na záložku "Procházet" ve spodní liště - musí ukázat ComicK vyhledávání/populární (ne výběr ze zdrojů) a záložka musí zůstat zvýrazněná jako aktivní.
 3. V Knihovně (prázdný stav, pokud lze simulovat) kliknout "Procházet mangu" - musí vést na stejné ComicK browse.
 4. Vypnout přepínač zpět, ověřit, že "Procházet" ukazuje zase původní výběr ze všech zdrojů.
 5. V ComicK režimu otevřít libovolný titul a kliknout na kapitolu - OČEKÁVANÝ, dočasný stav: čtečka skončí chybou (žádné obrázky), appka nespadne. To je záměrné - opraví Sub-projekt 3.
-
-- [ ] **Krok 4: Commit**
-
-```bash
-git add app/src/main/kotlin/com/haise/jiyu/settings/SettingsRepository.kt \
-        app/src/main/kotlin/com/haise/jiyu/ui/settings/SettingsViewModel.kt \
-        app/src/main/kotlin/com/haise/jiyu/ui/settings/SourcesSettingsScreen.kt \
-        app/src/main/kotlin/com/haise/jiyu/source/SourceManager.kt \
-        app/src/main/kotlin/com/haise/jiyu/ui/navigation/MainViewModel.kt \
-        app/src/main/kotlin/com/haise/jiyu/ui/navigation/MainScreen.kt \
-        app/src/main/kotlin/com/haise/jiyu/ui/navigation/NavGraph.kt \
-        app/src/main/res/values/strings.xml \
-        app/src/main/res/values-en/strings.xml \
-        app/src/main/res/values-fr/strings.xml \
-        app/src/main/res/values-es/strings.xml \
-        app/src/test/kotlin/com/haise/jiyu/settings/AppModeSettingTest.kt
-git commit -m "feat: prepinac ComicK agregovaneho rezimu + navigace Prochazet
-
-Sub-projekt 1 z docs/superpowers/specs/2026-08-05-comick-aggregated-mode-design.md.
-Novy prepinac v Nastaveni - Zdroje; v ComicK rezimu zalozka Prochazet
-vede rovnou na ComicK misto vyberu ze ~180 zdroju. ComicK znovu
-zaregistrovan jako zdroj (jen pro prohlizeni/metadata - cteni pres nej
-zatim neni chranene, resi az Sub-projekt 3)."
-git status --short
-```
-
-Expected: čistý `git status` po commitu.
 
 ---
 
