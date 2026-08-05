@@ -49,7 +49,7 @@ class HostedNovelSource @Inject constructor(private val client: OkHttpClient) : 
                 val title = a.nextElementSibling()?.takeIf { it.tagName() == "p" }?.text()?.trim()
                     ?.ifBlank { null } ?: return@mapNotNull null
                 val cover = a.selectFirst("img")?.attr("data-src")?.takeIf { it.startsWith("http") }
-                SManga(sourceId = id, url = href, title = title, coverUrl = cover)
+                SManga(sourceId = id, url = href, title = title, coverUrl = cover, contentType = "NOVEL")
             }
 
     override suspend fun getPopular(page: Int, filter: MangaFilter): List<SManga> = withContext(Dispatchers.IO) {
@@ -75,6 +75,7 @@ class HostedNovelSource @Inject constructor(private val client: OkHttpClient) : 
                 description = doc.selectFirst("div.prose div")?.text()?.trim()?.takeIf { it.isNotBlank() },
                 author = ddFor(doc, "Author"),
                 status = ddFor(doc, "Status"),
+                contentType = "NOVEL",
             )
         } catch (_: Exception) { manga }
     }

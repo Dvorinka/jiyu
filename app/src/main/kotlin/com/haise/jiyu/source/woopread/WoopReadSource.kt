@@ -63,7 +63,7 @@ class WoopReadSource @Inject constructor(private val client: OkHttpClient) : Man
                 val href = a.attr("href").ifBlank { return@mapNotNull null }
                 val img = a.selectFirst("img") ?: return@mapNotNull null
                 val title = img.attr("alt").removePrefix("Cover image for ").trim().ifBlank { return@mapNotNull null }
-                SManga(sourceId = id, url = "$base$href", title = title, coverUrl = coverFromSrcSet(img))
+                SManga(sourceId = id, url = "$base$href", title = title, coverUrl = coverFromSrcSet(img), contentType = "NOVEL")
             }
 
     override suspend fun getPopular(page: Int, filter: MangaFilter): List<SManga> = withContext(Dispatchers.IO) {
@@ -91,6 +91,7 @@ class WoopReadSource @Inject constructor(private val client: OkHttpClient) : Man
                 author = labelValue(doc, "Author"),
                 status = labelValue(doc, "Status"),
                 genres = genresSibling?.select("a")?.map { it.text().trim() }?.filter { it.isNotBlank() } ?: emptyList(),
+                contentType = "NOVEL",
             )
         } catch (_: Exception) { manga }
     }

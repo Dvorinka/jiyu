@@ -81,6 +81,7 @@ class NovelFireSourceTest {
         assertEquals(1, result.size)
         assertEquals("Test Series", result[0].title)
         assertEquals("https://novelfire.net/server-1/test.jpg", result[0].coverUrl)
+        assertEquals("NOVEL", result[0].contentType)
     }
 
     @Test
@@ -91,6 +92,7 @@ class NovelFireSourceTest {
         assertEquals("Ongoing", details.status)
         assertEquals(listOf("Action", "Drama"), details.genres)
         assertEquals("A test summary.", details.description)
+        assertEquals("NOVEL", details.contentType)
     }
 
     @Test

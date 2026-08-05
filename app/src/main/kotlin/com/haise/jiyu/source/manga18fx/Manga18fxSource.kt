@@ -70,7 +70,7 @@ class Manga18fxSource @Inject constructor(private val client: OkHttpClient) : Ma
                 img.attr("data-src").ifBlank { img.attr("src") }
             }?.trim()?.ifBlank { null }
 
-            SManga(sourceId = id, url = url, title = title, coverUrl = cover)
+            SManga(sourceId = id, url = url, title = title, coverUrl = cover, contentType = "MANHWA")
         }
 
     override suspend fun getPopular(page: Int, filter: MangaFilter): List<SManga> =
@@ -110,7 +110,7 @@ class Manga18fxSource @Inject constructor(private val client: OkHttpClient) : Ma
                 }
             }
 
-            manga.copy(description = description, status = status, author = author, artist = artist, genres = genres)
+            manga.copy(description = description, status = status, author = author, artist = artist, genres = genres, contentType = "MANHWA")
         }
 
     override suspend fun getChapterList(manga: SManga): List<SChapter> =

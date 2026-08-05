@@ -99,6 +99,7 @@ class WuxiaBoxSourceTest {
         assertEquals(1, result.size)
         assertEquals("Test Series", result[0].title)
         assertEquals("https://www.wuxiabox.com/d/file/coverb/test.jpg", result[0].coverUrl)
+        assertEquals("NOVEL", result[0].contentType)
     }
 
     @Test
@@ -116,6 +117,7 @@ class WuxiaBoxSourceTest {
         assertEquals("Jane Doe", details.author)
         assertEquals(listOf("Action", "Fantasy"), details.genres)
         assertEquals("A test summary.", details.description)
+        assertEquals("NOVEL", details.contentType)
     }
 
     @Test

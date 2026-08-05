@@ -60,7 +60,7 @@ class KingofshojoSource @Inject constructor(private val client: OkHttpClient) : 
             val postId = link.attr("rel").takeIf { it.isNotBlank() } ?: return@mapNotNull null
             val title = link.text().trim().takeIf { it.isNotBlank() } ?: return@mapNotNull null
             val cover = li.selectFirst("div.imgseries img")?.attr("src")
-            SManga(sourceId = id, url = encodeUrl(href, postId), title = title, coverUrl = cover)
+            SManga(sourceId = id, url = encodeUrl(href, postId), title = title, coverUrl = cover, contentType = "MANHWA")
         }
     }
 
@@ -92,6 +92,7 @@ class KingofshojoSource @Inject constructor(private val client: OkHttpClient) : 
                     statusText.contains("complet", ignoreCase = true) -> "Completed"
                     else -> statusText
                 },
+                contentType = "MANHWA",
             )
         } catch (_: Exception) { manga }
     }

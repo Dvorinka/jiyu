@@ -49,6 +49,7 @@ class ScribbleHubSource @Inject constructor(private val client: OkHttpClient) : 
                     img.attr("src").takeIf { s -> s.startsWith("http") }
                         ?: img.attr("data-src").takeIf { s -> s.startsWith("http") }
                 },
+                contentType = "NOVEL",
             )
         }
     }

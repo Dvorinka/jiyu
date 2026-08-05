@@ -98,7 +98,7 @@ class MadaraSource(
                 img.attr("data-src").ifBlank { img.attr("data-lazy-src") }.ifBlank { img.attr("src") }
             }?.trim()?.ifBlank { null }
 
-            SManga(sourceId = id, url = url, title = title, coverUrl = cover)
+            SManga(sourceId = id, url = url, title = title, coverUrl = cover, contentType = contentTypeOverride)
         }
     }
 
@@ -119,8 +119,18 @@ class MadaraSource(
             // titulu sama uvádí přesný typ v poli "Type" (stejná struktura jako pole
             // Status, jen jiný nadpis) - když ho najdeme a rozpoznáme, věří se mu
             // víc než odhadu za celý web.
+            //
+            // Pole "Type" ale na mangaread.org nemá u každého titulu stejný význam -
+            // ověřeno živě na "The Former Supreme": stejná struktura, ale obsahem je
+            // seznam alternativních názvů ("Supreme Job Change, ..."), ne typ. Tam,
+            // kde selže, proto appka zkusí ještě štítky v poli "Genre(s)" - Madara
+            // weby tam běžně mají mezi žánry i "Manga"/"Manhwa"/"Manhua"/"Novel"
+            // jako klasifikaci (ověřeno živě: "The Former Supreme" má mezi žánry
+            // "Manhwa").
             val detectedType = doc.selectFirst("div.post-content_item:has(h5:contains(Type)) .summary-content")
                 ?.text()?.trim()?.let(::normalizeContentType)
+                ?: doc.select("div.post-content_item:has(h5:contains(Genre)) a")
+                    .firstNotNullOfOrNull { normalizeContentType(it.text()) }
 
             manga.copy(description = desc, status = status, contentType = detectedType ?: contentTypeOverride)
         }

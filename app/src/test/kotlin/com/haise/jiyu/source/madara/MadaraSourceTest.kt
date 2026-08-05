@@ -1,5 +1,6 @@
 package com.haise.jiyu.source.madara
 
+import com.haise.jiyu.source.SManga
 import kotlinx.coroutines.test.runTest
 import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.Dispatcher
@@ -50,6 +51,21 @@ class MadaraSourceTest {
         </body></html>
     """.trimIndent()
 
+    // Realny pripad z mangaread.org ("The Former Supreme"): pole "Type" tam u
+    // nekterych titulu neobsahuje klasifikaci, ale seznam alternativnich nazvu
+    // ("Supreme Job Change, ...") - normalizeContentType() ho spravne nerozpozna
+    // a vrati null. Klasifikace je ale i tak dohledatelna v "Genre(s)" - Madara
+    // weby tam casto maji format ("Manga"/"Manhwa"/"Manhua"/"Novel") jako jeden
+    // ze zanru.
+    private val detailHtmlTypeFieldIsAltTitles = """
+        <html><body>
+        <div class="summary__content"><p>A cultivation revenge story.</p></div>
+        <div class="post-content_item"><div class="summary-heading"><h5>Genre(s)</h5></div><div class="summary-content"><a href="#">Action</a>, <a href="#">Manhwa</a>, <a href="#">Martial Arts</a></div></div>
+        <div class="post-content_item"><div class="summary-heading"><h5>Type</h5></div><div class="summary-content">Supreme Job Change, The Former Absolute Supreme</div></div>
+        <div class="post-status"><div class="summary-content">Vychází</div></div>
+        </body></html>
+    """.trimIndent()
+
     private val chaptersHtml = """
         <ul>
           <li class="wp-manga-chapter"><a href="/manga/one-piece/chapter-1092/">Chapter 1092</a><span class="chapter-release-date"><i>July 1, 2026</i></span></li>
@@ -78,6 +94,7 @@ class MadaraSourceTest {
                     path.startsWith("/page/") && path.contains("post_type=wp-manga") -> MockResponse().setBody(listHtml)
                     path == "/manga/one-piece/" -> MockResponse().setBody(detailHtml)
                     path == "/manga/naruto/" -> MockResponse().setBody(detailHtmlManhwa)
+                    path == "/manga/former-supreme/" -> MockResponse().setBody(detailHtmlTypeFieldIsAltTitles)
                     path == "/manga/one-piece/chapter-1092/" -> MockResponse().setBody(pagesHtml)
                     else -> MockResponse().setResponseCode(404)
                 }
@@ -136,6 +153,37 @@ class MadaraSourceTest {
         // ale detail teto konkretni polozky rika Manhwa - presne situace z mangaread.org,
         // kde smichany web ma pevny odhad za cely web, ale kazdy titul uvadi typ zvlast.
         val manga = source.getPopular(1)[1]
+
+        val details = source.getMangaDetails(manga)
+
+        assertEquals("MANHWA", details.contentType)
+    }
+
+    @Test
+    fun `getPopular tags every item with the site's own content type immediately, not always MANGA`() = runTest {
+        // Driv parseMangaList() nikdy nenastavovalo contentType, takze kazda polozka v
+        // Prochazet/pri pridani do knihovny dostala vychozi "MANGA" z SManga() - bez ohledu
+        // na contentTypeOverride zdroje - dokud si ji uzivatel rucne neobnovil (refreshContentType).
+        // Manhwa/manhua/novel zdroje tak vzdy ukazovaly spatny stitek, dokud nedoslo k refreshi.
+        val manhuaSource = MadaraSource(
+            id = "madara:test-manhua-list",
+            name = "Test Manhua List",
+            baseUrl = server.url("/").toString(),
+            client = OkHttpClient(),
+            contentTypeOverride = "MANHUA",
+        )
+
+        val result = manhuaSource.getPopular(1)
+
+        assertEquals("MANHUA", result[0].contentType)
+    }
+
+    @Test
+    fun `getMangaDetails falls back to a Manga-Manhwa-Manhua-Novel tag in Genre(s) when the Type field isn't a classification`() = runTest {
+        // "The Former Supreme" na mangaread.org: pole "Type" tam obsahuje seznam
+        // alternativnich nazvu, ne klasifikaci - normalizeContentType ho neuzna, takze by
+        // to bez fallbacku spadlo zpet na site-wide override "MANGA", presne jako predtim.
+        val manga = SManga(sourceId = source.id, url = server.url("/manga/former-supreme/").toString(), title = "The Former Supreme", coverUrl = null)
 
         val details = source.getMangaDetails(manga)
 

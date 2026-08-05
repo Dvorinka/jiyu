@@ -76,6 +76,7 @@ class WebtoonSourceTest {
         assertEquals("Test Toon", result[0].title)
         assertEquals("https://cdn.example.com/test.jpg", result[0].coverUrl)
         assertEquals("MANHWA", source.contentType)
+        assertEquals("MANHWA", result[0].contentType)
     }
 
     @Test
@@ -84,6 +85,7 @@ class WebtoonSourceTest {
         val details = source.getMangaDetails(manga)
         assertEquals("A toon summary.", details.description)
         assertEquals("Some Author", details.author)
+        assertEquals("MANHWA", details.contentType)
 
         val chapters = source.getChapterList(manga)
         assertEquals(1, chapters.size)

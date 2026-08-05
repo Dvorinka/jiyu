@@ -49,6 +49,7 @@ class RoyalRoadSource @Inject constructor(private val client: OkHttpClient) : Ma
                 coverUrl = el.selectFirst("img")?.let { img ->
                     img.attr("src").takeIf { s -> s.isNotBlank() }
                 }?.let { if (it.startsWith("//")) "https:$it" else if (it.startsWith("/")) "$base$it" else it },
+                contentType = "NOVEL",
             )
         }
     }

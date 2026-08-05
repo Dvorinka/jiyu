@@ -57,6 +57,7 @@ class ComizySource @Inject constructor(private val client: OkHttpClient) : Manga
         url = base + o.optString("url"),
         title = o.optString("name"),
         coverUrl = o.optString("cover").takeIf { it.isNotBlank() },
+        contentType = "MANHWA",
     )
 
     override suspend fun getPopular(page: Int, filter: MangaFilter): List<SManga> = withContext(Dispatchers.IO) {
@@ -90,6 +91,7 @@ class ComizySource @Inject constructor(private val client: OkHttpClient) : Manga
                 description = im.optString("summary").takeIf { it.isNotBlank() },
                 status = im.optString("status").takeIf { it.isNotBlank() },
                 genres = genres,
+                contentType = "MANHWA",
             )
         } catch (_: Exception) { manga }
     }

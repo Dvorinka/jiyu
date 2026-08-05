@@ -47,7 +47,7 @@ class WuxiaBoxSource @Inject constructor(private val client: OkHttpClient) : Man
             val cover = el.selectFirst("img")?.let {
                 it.attr("data-src").ifBlank { it.attr("src") }
             }?.let { if (it.startsWith("http")) it else "$base$it" }
-            SManga(sourceId = id, url = href, title = title, coverUrl = cover)
+            SManga(sourceId = id, url = href, title = title, coverUrl = cover, contentType = "NOVEL")
         }
     }
 
@@ -90,6 +90,7 @@ class WuxiaBoxSource @Inject constructor(private val client: OkHttpClient) : Man
                 genres = doc.select("div.categories a.property-item").map { it.text().trim() },
                 description = doc.selectFirst("p.description")?.text()?.trim(),
                 status = status,
+                contentType = "NOVEL",
             )
         } catch (_: Exception) { manga }
     }

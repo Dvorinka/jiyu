@@ -48,7 +48,7 @@ class GalaxyMangaSource @Inject constructor(private val client: OkHttpClient) : 
             val cover = el.selectFirst("img")?.let {
                 it.attr("src").ifBlank { it.attr("data-src") }
             }?.takeIf { it.startsWith("http") }
-            SManga(sourceId = id, url = link.attr("href"), title = title, coverUrl = cover)
+            SManga(sourceId = id, url = link.attr("href"), title = title, coverUrl = cover, contentType = "MANHWA")
         }
     }
 
@@ -75,6 +75,7 @@ class GalaxyMangaSource @Inject constructor(private val client: OkHttpClient) : 
                 description = doc.selectFirst(".entry-content-single")?.text()?.trim(),
                 genres = doc.select(".mgen a").map { it.text().trim() },
                 status = status,
+                contentType = "MANHWA",
             )
         } catch (_: Exception) { manga }
     }

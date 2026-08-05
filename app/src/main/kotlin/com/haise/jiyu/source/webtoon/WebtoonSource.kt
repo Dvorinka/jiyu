@@ -50,7 +50,7 @@ class WebtoonSource @Inject constructor(
                     ?: it.attr("src").takeIf { s -> s.isNotBlank() }
             }
             val url = if (href.startsWith("http")) href.removePrefix(base) else href
-            SManga(sourceId = id, url = url, title = title, coverUrl = cover)
+            SManga(sourceId = id, url = url, title = title, coverUrl = cover, contentType = "MANHWA")
         }
     }
 
@@ -82,7 +82,7 @@ class WebtoonSource @Inject constructor(
             val author = doc.selectFirst(".author, .author_area .author, .info .author")?.text()?.trim()
             val genres = doc.select(".genre, .info .genre, .detail_body .genre")
                 .map { it.text().trim() }.filter { it.isNotBlank() }
-            manga.copy(title = title, coverUrl = cover, description = desc, author = author, genres = genres)
+            manga.copy(title = title, coverUrl = cover, description = desc, author = author, genres = genres, contentType = "MANHWA")
         } catch (_: Exception) { manga }
     }
 

@@ -74,6 +74,7 @@ class VoidScansSourceTest {
         assertEquals(1, result.size)
         assertEquals("Test Series", result[0].title)
         assertEquals("https://cdn.example.com/cover.jpg", result[0].coverUrl)
+        assertEquals("MANHWA", result[0].contentType)
     }
 
     @Test
@@ -93,6 +94,7 @@ class VoidScansSourceTest {
         val details = source.getMangaDetails(manga)
         assertEquals("Test Series", details.title)
         assertEquals("A test summary.", details.description)
+        assertEquals("MANHWA", details.contentType)
     }
 
     @Test

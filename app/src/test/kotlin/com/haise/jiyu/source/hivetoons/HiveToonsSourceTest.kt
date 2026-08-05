@@ -78,6 +78,7 @@ class HiveToonsSourceTest {
         assertEquals(1, result.size)
         assertEquals("Test Series", result[0].title)
         assertEquals("https://cdn.example.com/cover.webp", result[0].coverUrl)
+        assertEquals("MANHWA", result[0].contentType)
     }
 
     @Test
@@ -113,6 +114,7 @@ class HiveToonsSourceTest {
         assertEquals("A test summary.", details.description)
         assertEquals("ONGOING", details.status)
         assertEquals(listOf("Action", "Romance"), details.genres)
+        assertEquals("MANHWA", details.contentType)
     }
 
     @Test

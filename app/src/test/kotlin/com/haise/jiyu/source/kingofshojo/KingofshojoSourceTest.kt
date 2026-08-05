@@ -77,6 +77,7 @@ class KingofshojoSourceTest {
         assertEquals(1, result.size)
         assertEquals("Test Series", result[0].title)
         assertEquals("/manga/test-series/::12345", result[0].url)
+        assertEquals("MANHWA", result[0].contentType)
     }
 
     @Test
@@ -86,6 +87,7 @@ class KingofshojoSourceTest {
         assertEquals("A summary.", details.description)
         assertEquals(listOf("Action", "Romance"), details.genres)
         assertEquals("Ongoing", details.status)
+        assertEquals("MANHWA", details.contentType)
 
         val chapters = source.getChapterList(manga)
         assertEquals(2, chapters.size)

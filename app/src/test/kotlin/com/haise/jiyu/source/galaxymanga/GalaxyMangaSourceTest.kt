@@ -74,6 +74,7 @@ class GalaxyMangaSourceTest {
         assertEquals(1, result.size)
         assertEquals("Test Series", result[0].title)
         assertEquals("https://cdn.example.com/test.jpg", result[0].coverUrl)
+        assertEquals("MANHWA", result[0].contentType)
     }
 
     @Test
@@ -83,6 +84,7 @@ class GalaxyMangaSourceTest {
         assertEquals("Ongoing", details.status)
         assertEquals(listOf("Action", "Romance"), details.genres)
         assertEquals("A test summary.", details.description)
+        assertEquals("MANHWA", details.contentType)
     }
 
     @Test

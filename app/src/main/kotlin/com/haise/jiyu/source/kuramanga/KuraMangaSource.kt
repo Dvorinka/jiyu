@@ -46,7 +46,7 @@ class KuraMangaSource @Inject constructor(private val client: OkHttpClient) : Ma
             val m = arr.getJSONObject(i)
             val slug = m.optString("normalized_title").ifBlank { return@mapNotNull null }
             val title = m.optString("title").ifBlank { return@mapNotNull null }
-            SManga(sourceId = id, url = "/$slug", title = title, coverUrl = m.optString("thumb").ifBlank { null })
+            SManga(sourceId = id, url = "/$slug", title = title, coverUrl = m.optString("thumb").ifBlank { null }, contentType = "MANHWA")
         }
     }
 
@@ -82,6 +82,7 @@ class KuraMangaSource @Inject constructor(private val client: OkHttpClient) : Ma
                 genres = doc.select(".genre-list a.genre-chip").map { it.text().trim() },
                 status = status,
                 author = author,
+                contentType = "MANHWA",
             )
         } catch (_: Exception) { manga }
     }

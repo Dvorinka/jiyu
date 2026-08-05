@@ -54,7 +54,7 @@ class Hentai20Source @Inject constructor(private val client: OkHttpClient) : Man
                 img.attr("data-src").ifBlank { img.attr("src") }
             }?.trim()?.ifBlank { null }
 
-            SManga(sourceId = id, url = url, title = title, coverUrl = cover)
+            SManga(sourceId = id, url = url, title = title, coverUrl = cover, contentType = "MANHWA")
         }
 
     override suspend fun getPopular(page: Int, filter: MangaFilter): List<SManga> =
@@ -86,7 +86,7 @@ class Hentai20Source @Inject constructor(private val client: OkHttpClient) : Man
             // Genre odkazy na strance jsou ve sdilenem "browse all genres" widgetu, ne
             // specificke pro tuhle mangu - zamerne se nezpracovavaji, aby se predeslo
             // spatnemu prirazeni genru vsem titulum.
-            manga.copy(description = description, status = status)
+            manga.copy(description = description, status = status, contentType = "MANHWA")
         }
 
     override suspend fun getChapterList(manga: SManga): List<SChapter> =

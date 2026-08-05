@@ -49,7 +49,7 @@ class RanobesSource @Inject constructor(private val client: OkHttpClient) : Mang
             val title = link.text().trim().ifBlank { return@mapNotNull null }
             val style = el.selectFirst("a.poster figure")?.attr("style").orEmpty()
             val cover = Regex("""url\(([^)]+)\)""").find(style)?.groupValues?.get(1)
-            SManga(sourceId = id, url = href, title = title, coverUrl = cover)
+            SManga(sourceId = id, url = href, title = title, coverUrl = cover, contentType = "NOVEL")
         }
     }
 
@@ -87,6 +87,7 @@ class RanobesSource @Inject constructor(private val client: OkHttpClient) : Mang
                 status = status,
                 genres = genres,
                 description = description,
+                contentType = "NOVEL",
             )
         } catch (_: Exception) { manga }
     }

@@ -69,6 +69,7 @@ class ScribbleHubSourceTest {
         val result = source.getPopular(1)
         assertEquals(1, result.size)
         assertEquals("Test Novel", result[0].title)
+        assertEquals("NOVEL", result[0].contentType)
     }
 
     @Test

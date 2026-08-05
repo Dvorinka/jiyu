@@ -78,6 +78,7 @@ class HostedNovelSourceTest {
         assertEquals(1, result.size)
         assertEquals("Test Novel", result[0].title)
         assertEquals("https://cdn.example.com/cover.jpg", result[0].coverUrl)
+        assertEquals("NOVEL", result[0].contentType)
     }
 
     @Test
@@ -93,6 +94,7 @@ class HostedNovelSourceTest {
         assertEquals("A test summary.", details.description)
         assertEquals("Test Author", details.author)
         assertEquals("Ongoing", details.status)
+        assertEquals("NOVEL", details.contentType)
     }
 
     @Test

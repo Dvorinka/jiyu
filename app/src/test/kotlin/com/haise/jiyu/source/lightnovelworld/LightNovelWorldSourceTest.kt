@@ -98,6 +98,7 @@ class LightNovelWorldSourceTest {
         assertEquals(1, result.size)
         assertEquals("Test Series", result[0].title)
         assertTrue(result[0].coverUrl!!.startsWith("https://lightnovelworld.org"))
+        assertEquals("NOVEL", result[0].contentType)
     }
 
     @Test
@@ -108,6 +109,7 @@ class LightNovelWorldSourceTest {
         assertEquals("Ongoing", details.status)
         assertEquals(listOf("ACTION", "DRAMA"), details.genres)
         assertEquals("A test summary.", details.description)
+        assertEquals("NOVEL", details.contentType)
     }
 
     @Test

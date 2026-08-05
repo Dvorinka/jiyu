@@ -48,7 +48,7 @@ class LightNovelWorldSource @Inject constructor(private val client: OkHttpClient
             val cover = el.selectFirst("img")?.attr("src")?.let {
                 if (it.startsWith("http")) it else "$base$it"
             }
-            SManga(sourceId = id, url = href, title = title, coverUrl = cover)
+            SManga(sourceId = id, url = href, title = title, coverUrl = cover, contentType = "NOVEL")
         }
     }
 
@@ -74,6 +74,7 @@ class LightNovelWorldSource @Inject constructor(private val client: OkHttpClient
                 genres = doc.select("div.genre-tags span.genre-tag").map { it.text().trim() },
                 description = description,
                 status = doc.selectFirst("span.status-badge")?.text()?.trim(),
+                contentType = "NOVEL",
             )
         } catch (_: Exception) { manga }
     }

@@ -92,6 +92,10 @@ class NovelHallSourceTest {
         val result = source.getPopular(1)
         assertEquals(1, result.size)
         assertEquals("Test Series", result[0].title)
+        // Zdroj je NOVEL, ale SManga() bez explicitniho contentType by tise
+        // defaultoval na "MANGA" - presne bug, kvuli kteremu appka ukazovala
+        // spatny stitek u novel titulu v knihovne (viz LibraryScreen).
+        assertEquals("NOVEL", result[0].contentType)
     }
 
     @Test
@@ -99,6 +103,7 @@ class NovelHallSourceTest {
         val result = source.search("test", 1)
         assertEquals(1, result.size)
         assertEquals("Test Series", result[0].title)
+        assertEquals("NOVEL", result[0].contentType)
     }
 
     @Test
@@ -109,6 +114,7 @@ class NovelHallSourceTest {
         assertEquals("Active", details.status)
         assertEquals(listOf("Urban"), details.genres)
         assertEquals("A test summary.", details.description)
+        assertEquals("NOVEL", details.contentType)
     }
 
     @Test

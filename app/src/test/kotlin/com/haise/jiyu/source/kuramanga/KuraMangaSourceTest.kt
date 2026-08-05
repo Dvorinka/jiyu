@@ -73,6 +73,7 @@ class KuraMangaSourceTest {
         assertEquals("Test Series", result[0].title)
         assertEquals("/testseries", result[0].url)
         assertEquals("https://cdn.example.com/test.jpg", result[0].coverUrl)
+        assertEquals("MANHWA", result[0].contentType)
     }
 
     @Test
@@ -83,6 +84,7 @@ class KuraMangaSourceTest {
         assertEquals("Jane Doe", details.author)
         assertEquals("A test summary.", details.description)
         assertEquals(listOf("Action", "Romance"), details.genres)
+        assertEquals("MANHWA", details.contentType)
     }
 
     @Test

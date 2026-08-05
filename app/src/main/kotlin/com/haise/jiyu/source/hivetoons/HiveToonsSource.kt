@@ -49,7 +49,7 @@ class HiveToonsSource @Inject constructor(private val client: OkHttpClient) : Ma
             val href = el.attr("href").takeIf { it.isNotBlank() } ?: return@mapNotNull null
             val title = el.attr("title").trim().ifBlank { return@mapNotNull null }
             val cover = el.selectFirst("img")?.attr("src")?.takeIf { it.startsWith("http") }
-            SManga(sourceId = id, url = base + href, title = title, coverUrl = cover)
+            SManga(sourceId = id, url = base + href, title = title, coverUrl = cover, contentType = "MANHWA")
         }
             // Kazda karta ma DVA <a href="/series/..." title="..."> odkazy na stejnou
             // mangu - obalku a nazev pod ni - oba sedi na selektor vyse. Bez deduplikace
@@ -85,6 +85,7 @@ class HiveToonsSource @Inject constructor(private val client: OkHttpClient) : Ma
                 description = doc.selectFirst("div[itemprop=description]")?.text()?.trim(),
                 genres = doc.select("a[itemprop=genre]").map { it.text().trim() }.filter { it.isNotBlank() },
                 status = status,
+                contentType = "MANHWA",
             )
         } catch (_: Exception) { manga }
     }

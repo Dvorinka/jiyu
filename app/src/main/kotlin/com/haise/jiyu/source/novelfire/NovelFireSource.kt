@@ -49,7 +49,7 @@ class NovelFireSource @Inject constructor(private val client: OkHttpClient) : Ma
             val cover = el.selectFirst("img")?.let {
                 it.attr("data-src").ifBlank { it.attr("src") }
             }?.let { if (it.startsWith("http")) it else "$base$it" }
-            SManga(sourceId = id, url = href, title = title, coverUrl = cover)
+            SManga(sourceId = id, url = href, title = title, coverUrl = cover, contentType = "NOVEL")
         }
     }
 
@@ -75,6 +75,7 @@ class NovelFireSource @Inject constructor(private val client: OkHttpClient) : Ma
                 genres = doc.select("div.categories a.property-item").map { it.text().trim() },
                 description = description,
                 status = doc.selectFirst("strong.ongoing, strong.completed, strong.hiatus")?.text()?.trim(),
+                contentType = "NOVEL",
             )
         } catch (_: Exception) { manga }
     }

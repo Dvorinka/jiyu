@@ -70,6 +70,7 @@ class WoopReadSourceTest {
         assertEquals(1, result.size)
         assertEquals("Test Novel", result[0].title)
         assertEquals("https://imgcdn.example.com/cover.jpg", result[0].coverUrl)
+        assertEquals("NOVEL", result[0].contentType)
     }
 
     @Test
@@ -87,6 +88,7 @@ class WoopReadSourceTest {
         assertEquals("Test Author", details.author)
         assertEquals("Ongoing", details.status)
         assertEquals(listOf("Drama", "Fantasy"), details.genres)
+        assertEquals("NOVEL", details.contentType)
     }
 
     @Test

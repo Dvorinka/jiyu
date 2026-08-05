@@ -55,7 +55,7 @@ class ManhuaBuddySource @Inject constructor(private val client: OkHttpClient) : 
             // absolutni) - OkHttp Request.Builder().url() na relativni URL vyhodi
             // IllegalArgumentException, ktera se ztrati v try/catch jako prazdny seznam.
             val absoluteHref = href.takeIf { it.startsWith("http") } ?: (base + href)
-            SManga(sourceId = id, url = absoluteHref, title = title, coverUrl = cover)
+            SManga(sourceId = id, url = absoluteHref, title = title, coverUrl = cover, contentType = "MANHWA")
         }
 
     override suspend fun getPopular(page: Int, filter: MangaFilter): List<SManga> = withContext(Dispatchers.IO) {
@@ -82,6 +82,7 @@ class ManhuaBuddySource @Inject constructor(private val client: OkHttpClient) : 
                 description = doc.selectFirst("meta[name=twitter:description]")?.attr("content")?.trim()?.takeIf { it.isNotBlank() },
                 status = lineContent(doc, "Status"),
                 genres = genresSpan?.select("a.item-tag")?.map { it.text().trim() }?.filter { it.isNotBlank() } ?: emptyList(),
+                contentType = "MANHWA",
             )
         } catch (_: Exception) { manga }
     }

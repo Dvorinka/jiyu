@@ -68,6 +68,7 @@ class RoyalRoadSourceTest {
         assertEquals(1, result.size)
         assertEquals("Test Novel", result[0].title)
         assertEquals("/fiction/12345/test-novel", result[0].url)
+        assertEquals("NOVEL", result[0].contentType)
     }
 
     @Test

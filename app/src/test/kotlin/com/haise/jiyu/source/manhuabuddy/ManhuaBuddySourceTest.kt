@@ -90,6 +90,7 @@ class ManhuaBuddySourceTest {
         assertEquals(1, result.size)
         assertEquals("Test Series", result[0].title)
         assertEquals("https://cdn.example.com/cover.jpg", result[0].coverUrl)
+        assertEquals("MANHWA", result[0].contentType)
     }
 
     @Test
@@ -106,6 +107,7 @@ class ManhuaBuddySourceTest {
         assertEquals("A test summary.", details.description)
         assertEquals("Ongoing", details.status)
         assertEquals(listOf("Action", "Fantasy"), details.genres)
+        assertEquals("MANHWA", details.contentType)
     }
 
     @Test

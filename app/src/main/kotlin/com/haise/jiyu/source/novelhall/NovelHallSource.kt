@@ -56,7 +56,7 @@ class NovelHallSource @Inject constructor(private val client: OkHttpClient) : Ma
                 val link = row.selectFirst("td.w70 a") ?: return@mapNotNull null
                 val href = link.attr("href").ifBlank { return@mapNotNull null }
                 val title = link.text().trim().ifBlank { return@mapNotNull null }
-                SManga(sourceId = id, url = href, title = title, coverUrl = null)
+                SManga(sourceId = id, url = href, title = title, coverUrl = null, contentType = "NOVEL")
             }
         } catch (_: Exception) { emptyList() }
     }
@@ -70,7 +70,7 @@ class NovelHallSource @Inject constructor(private val client: OkHttpClient) : Ma
                 val href = link.attr("href").ifBlank { return@mapNotNull null }
                 val title = link.text().trim().ifBlank { return@mapNotNull null }
                 val cover = h4.parent()?.parent()?.selectFirst("img")?.attr("src")?.takeIf { it.startsWith("http") }
-                SManga(sourceId = id, url = href, title = title, coverUrl = cover)
+                SManga(sourceId = id, url = href, title = title, coverUrl = cover, contentType = "NOVEL")
             }
         } catch (_: Exception) { emptyList() }
     }
@@ -100,6 +100,7 @@ class NovelHallSource @Inject constructor(private val client: OkHttpClient) : Ma
                 status = status,
                 description = description,
                 genres = genres,
+                contentType = "NOVEL",
             )
         } catch (_: Exception) { manga }
     }

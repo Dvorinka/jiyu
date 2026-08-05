@@ -45,7 +45,7 @@ class VoidScansSource @Inject constructor(private val client: OkHttpClient) : Ma
             val href = link.attr("href").ifBlank { return@mapNotNull null }
             val title = el.selectFirst("p.card-text")?.text()?.trim() ?: return@mapNotNull null
             val cover = link.selectFirst("img")?.attr("src")?.takeIf { it.startsWith("http") }
-            SManga(sourceId = id, url = href, title = title, coverUrl = cover)
+            SManga(sourceId = id, url = href, title = title, coverUrl = cover, contentType = "MANHWA")
         }
 
     override suspend fun getPopular(page: Int, filter: MangaFilter): List<SManga> = withContext(Dispatchers.IO) {
@@ -65,6 +65,7 @@ class VoidScansSource @Inject constructor(private val client: OkHttpClient) : Ma
                 title = doc.selectFirst("h1")?.text()?.trim() ?: manga.title,
                 coverUrl = doc.selectFirst("img#manga-img")?.attr("src")?.takeIf { it.startsWith("http") } ?: manga.coverUrl,
                 description = doc.selectFirst("h1 + p")?.text()?.trim()?.takeIf { it.isNotBlank() },
+                contentType = "MANHWA",
             )
         } catch (_: Exception) { manga }
     }

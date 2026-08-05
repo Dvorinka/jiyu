@@ -13,6 +13,25 @@ malé kolečko s tlačítkem přehrání navrch obálky, které skočí rovnou d
 kapitoly jako dřív; klepnutí kdekoli jinde na kartě otevře detail titulu. Stejně to
 teď funguje i u velké karty nahoře na Knihovně.
 
+### Manhwa/manhua/novel tituly ukazovaly v knihovně štítek "MANGA"
+`SManga` (interní popis titulu) má `contentType` s výchozí hodnotou "MANGA" - a přesně
+21 zdrojů (9 novel: Novelhall, Ranobes, Wuxia Box, ScribbleHub, WoopRead, HostedNovel,
+Light Novel World, Royal Road, Novel Fire; 10 manhwa: ManhuaBuddy, Webtoon, Kingofshojo,
+KuraManga, Galaxy Manga, Comizy, Manga18fx, Hentai20, HiveToons, Void Scans; plus
+generický MadaraSource, který pohání dalších ~10 nakonfigurovaných webů typu manhua/
+manhwa/novel) tenhle parametr při stavění výpisu ani při obnově detailu nikdy
+neposílalo - takže každá položka z těchto zdrojů dostala tiše "MANGA" bez ohledu na
+skutečný typ webu, a to jak při prvním přidání do knihovny, tak i po ručním obnovení
+(pull-to-refresh), protože ani tam se typ znovu nezjišťoval. Teď ho každý z těchto
+zdrojů posílá výslovně - u nových přidání se objeví správně hned, u už přidaných titulů
+stačí knihovnu ručně obnovit (potáhnutím dolů).
+
+U generického MadaraSource (weby jako mangaread.org, které hostí smíchaný obsah) navíc
+pole "Type" na detailu titulu u některých položek neobsahuje klasifikaci, ale seznam
+alternativních názvů (ověřeno živě na "The Former Supreme") - appka teď jako záložní
+zdroj zkusí ještě štítek Manga/Manhwa/Manhua/Novel v poli "Genre(s)", které bývá
+spolehlivější.
+
 ## v1.0.9
 
 Devět oprav zdrojů v Procházet, objevených postupně na hlášení konkrétních zdrojů, které

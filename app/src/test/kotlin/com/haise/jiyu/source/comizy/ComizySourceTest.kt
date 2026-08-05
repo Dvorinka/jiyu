@@ -70,6 +70,7 @@ class ComizySourceTest {
         assertEquals("Test Manga", result[0].title)
         assertEquals("https://cdn.example.com/cover.webp", result[0].coverUrl)
         assertEquals("https://comizy.io/test-manga", result[0].url)
+        assertEquals("MANHWA", result[0].contentType)
     }
 
     @Test
@@ -86,6 +87,7 @@ class ComizySourceTest {
         assertEquals("A test summary.", details.description)
         assertEquals("Ongoing", details.status)
         assertEquals(listOf("Action", "Romance"), details.genres)
+        assertEquals("MANHWA", details.contentType)
     }
 
     @Test
