@@ -85,6 +85,16 @@ internal object Routes {
     fun detail(mangaId: String) = "detail/${android.net.Uri.encode(mangaId)}"
     fun detailInfo(mangaId: String) = "detail_info/${android.net.Uri.encode(mangaId)}"
     fun sourceBrowse(sourceId: String) = "source_browse/${android.net.Uri.encode(sourceId)}"
+
+    /**
+     * Cesta, na kterou vede záložka "Procházet" - závisí na režimu appky (Task 4,
+     * docs/superpowers/specs/2026-08-05-comick-aggregated-mode-design.md). V ComicK
+     * režimu appka nevykresluje jinak stejnou cestu, ale rovnou naviguje/zvýrazňuje
+     * jinou cestu (source_browse/comick) - jinak by se rozbilo zvýraznění aktivní
+     * záložky, které porovnává přesnou shodu cesty.
+     */
+    fun browseRoute(appMode: String): String =
+        if (appMode == com.haise.jiyu.settings.AppMode.COMICK) sourceBrowse("comick") else BROWSE
     fun reader(chapterId: String, incognito: Boolean = false) =
         "reader/${android.net.Uri.encode(chapterId)}?incognito=$incognito"
     fun qr(mangaId: String, mangaTitle: String) =
@@ -95,6 +105,7 @@ internal object Routes {
 fun JiyuNavGraph(
     navController: NavHostController,
     startDestination: String = Routes.LIBRARY,
+    appMode: String,
 ) {
     NavHost(navController = navController, startDestination = startDestination) {
 
@@ -111,7 +122,7 @@ fun JiyuNavGraph(
         composable(Routes.LIBRARY) {
             LibraryScreen(
                 onOpenManga = { mangaId -> navController.navigate(Routes.detail(mangaId)) },
-                onOpenBrowse = { navController.navigate(Routes.BROWSE) },
+                onOpenBrowse = { navController.navigate(Routes.browseRoute(appMode)) },
                 onOpenChapter = { chapterId -> navController.navigate(Routes.reader(chapterId)) },
                 onOpenSettings = { navController.navigate(Routes.SETTINGS) },
                 onOpenStats = { navController.navigate(Routes.STATS) },
@@ -139,7 +150,7 @@ fun JiyuNavGraph(
         composable(Routes.MY_LIST) {
             MyListScreen(
                 onOpenManga = { mangaId -> navController.navigate(Routes.detail(mangaId)) },
-                onOpenBrowse = { navController.navigate(Routes.BROWSE) },
+                onOpenBrowse = { navController.navigate(Routes.browseRoute(appMode)) },
                 onOpenChapter = { chapterId -> navController.navigate(Routes.reader(chapterId)) },
                 onOpenStats = { navController.navigate(Routes.STATS) },
             )

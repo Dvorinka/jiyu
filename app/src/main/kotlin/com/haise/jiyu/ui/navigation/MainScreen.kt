@@ -45,11 +45,11 @@ private data class NavTab(
 )
 
 @Composable
-private fun rememberNavTabs(): List<NavTab> = listOf(
+private fun rememberNavTabs(appMode: String): List<NavTab> = listOf(
     NavTab(Routes.LIBRARY,  stringResource(R.string.main_screen_tab_library),  TablerIcons.Book,        TablerIcons.Book),
     NavTab(Routes.MY_LIST,  stringResource(R.string.main_screen_tab_list),     TablerIcons.ListCheck,   TablerIcons.ListCheck),
     NavTab(Routes.UPDATES,  stringResource(R.string.main_screen_tab_updates), TablerIcons.Compass,     TablerIcons.Compass),
-    NavTab(Routes.BROWSE,   stringResource(R.string.main_screen_tab_browse),  TablerIcons.Search,      TablerIcons.Search),
+    NavTab(Routes.browseRoute(appMode), stringResource(R.string.main_screen_tab_browse),  TablerIcons.Search,      TablerIcons.Search),
     NavTab(Routes.HISTORY,  stringResource(R.string.main_screen_tab_history), TablerIcons.History,     TablerIcons.History),
     NavTab(Routes.SETTINGS, stringResource(R.string.settings_title),          TablerIcons.User,        TablerIcons.User),
 )
@@ -61,7 +61,8 @@ fun MainScreen(
     viewModel: MainViewModel = hiltViewModel(),
 ) {
     val newChaptersCount by viewModel.newChaptersCount.collectAsState()
-    val tabs = rememberNavTabs()
+    val appMode by viewModel.appMode.collectAsState()
+    val tabs = rememberNavTabs(appMode)
     val navBackStack by navController.currentBackStackEntryAsState()
     val currentDest = navBackStack?.destination
     val currentRoute = currentDest?.route
@@ -144,7 +145,7 @@ fun MainScreen(
                 .fillMaxSize()
                 .padding(innerPadding),
         ) {
-            JiyuNavGraph(navController = navController, startDestination = startDestination)
+            JiyuNavGraph(navController = navController, startDestination = startDestination, appMode = appMode)
         }
     }
 }

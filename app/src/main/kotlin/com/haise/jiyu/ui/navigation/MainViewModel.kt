@@ -2,6 +2,7 @@ package com.haise.jiyu.ui.navigation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.haise.jiyu.settings.AppMode
 import com.haise.jiyu.settings.SettingsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
@@ -16,4 +17,7 @@ class MainViewModel @Inject constructor(
 
     val newChaptersCount: StateFlow<Int> = settings.newChaptersCount
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+
+    val appMode: StateFlow<String> = settings.appMode
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AppMode.SOURCES)
 }
