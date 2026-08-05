@@ -49,6 +49,12 @@ object SettingsKeys {
     val PRELOAD_NEXT_CHAPTER_MANGA = booleanPreferencesKey("preload_next_chapter_manga")
     val PRELOAD_NEXT_CHAPTER_WIFI_ONLY = booleanPreferencesKey("preload_next_chapter_wifi_only")
     val FAVORITE_SOURCE_IDS    = stringSetPreferencesKey("favorite_source_ids")
+    /**
+     * Klasický režim (výběr ze všech zdrojů) vs. ComicK agregovaný režim (ComicK jako
+     * jediný katalog, čtení se automaticky přeloží na skutečný zdroj) - viz
+     * docs/superpowers/specs/2026-08-05-comick-aggregated-mode-design.md.
+     */
+    val APP_MODE = stringPreferencesKey("app_mode")
     val SHOW_ADULT_SOURCES     = booleanPreferencesKey("show_adult_sources")
     val SAVED_SEARCHES         = stringPreferencesKey("saved_searches")
     val CROP_BORDERS           = booleanPreferencesKey("crop_borders")
@@ -112,6 +118,11 @@ object ReadingDirection {
 object ReadingMode {
     const val MANGA    = "manga"    // horizontální stránky (klasická manga)
     const val WEBTOON  = "webtoon"  // vertikální scroll (manhwa/webtoon)
+}
+
+object AppMode {
+    const val SOURCES = "sources"
+    const val COMICK  = "comick"
 }
 
 @Singleton
@@ -337,6 +348,12 @@ class SettingsRepository @Inject constructor(
         val current = prefs[SettingsKeys.FAVORITE_SOURCE_IDS] ?: emptySet()
         prefs[SettingsKeys.FAVORITE_SOURCE_IDS] = if (sourceId in current) current - sourceId else current + sourceId
     }
+
+    val appMode: Flow<String> =
+        dataStore.data.map { it[SettingsKeys.APP_MODE] ?: AppMode.SOURCES }
+
+    suspend fun setAppMode(mode: String) =
+        dataStore.edit { it[SettingsKeys.APP_MODE] = mode }
 
     /**
      * Výchozí true - zdroje s [com.haise.jiyu.source.MangaSource.isAdult] byly přidané na
