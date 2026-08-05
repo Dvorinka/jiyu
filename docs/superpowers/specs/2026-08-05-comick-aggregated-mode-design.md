@@ -47,7 +47,7 @@ Příliš velké na jeden plán, dělá se postupně, každý má vlastní commi
 
 **Cesty (routes) se NEMĚNÍ** — záložka "Procházet" ve spodní liště pozná svou aktivitu přesnou shodou `route == Routes.BROWSE` (`MainScreen.kt:96`, `tabs.forEach`); kdyby se v ComicK režimu navigovalo na jinou cestu (např. `Routes.sourceBrowse("comick")`), záložka by se přestala zvýrazňovat jako aktivní a rozbilo by se `saveState`/`restoreState` mezi záložkami.
 
-Místo toho se větví **destinace samotná**: `composable(Routes.BROWSE) { ... }` v `NavGraph.kt` (~řádek 155) podle `appMode` vykreslí buď dnešní `BrowseScreen` (výběr ze zdrojů), nebo přímo `SourceBrowseScreen(sourceId = "comick", ...)`. Všechna volání `onOpenBrowse`/navigace na `Routes.BROWSE` (bottom nav tab, prázdný stav Knihovny `LibraryScreen.kt`, prázdný stav `MyListScreen.kt`) zůstávají beze změny — jen jedno místo (destinace) rozhoduje, co se pod tou cestou skutečně zobrazí.
+Místo toho se **cesta, na kterou se naviguje, počítá dynamicky podle režimu** — sdílená funkce `Routes.browseRoute(appMode)` vrací `Routes.BROWSE` v Klasickém režimu nebo `Routes.sourceBrowse("comick")` v ComicK režimu, použitá konzistentně na všech 3 místech (bottom nav tab, prázdný stav Knihovny, prázdný stav Seznamu). Tab samotný (`NavTab.route`) tak v ComicK režimu nese rovnou cílovou cestu, takže zvýraznění aktivní záložky (`it.route == tab.route`) i `saveState`/`restoreState` zůstávají konzistentní. (Přesné technické detaily viz implementační plán `docs/superpowers/plans/2026-08-05-comick-mode-toggle-and-navigation.md`.)
 
 `SourceBrowseScreen` už dnes umí zobrazit jeden konkrétní zdroj (parametr `sourceId`) — žádná úprava té obrazovky není potřeba pro tenhle krok.
 
