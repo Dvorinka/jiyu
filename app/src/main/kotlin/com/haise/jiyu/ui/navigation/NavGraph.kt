@@ -218,8 +218,11 @@ fun JiyuNavGraph(
                 navArgument("chapterId") { type = NavType.StringType },
                 navArgument("incognito") { type = NavType.BoolType; defaultValue = false },
             ),
-        ) {
-            ReaderScreen()
+        ) { backStackEntry ->
+            val chapterId = backStackEntry.arguments?.getString("chapterId")
+            ReaderScreen(
+                onFindSource = { chapterId?.let { navController.navigate(Routes.sourceResolver(it)) } },
+            )
         }
 
         composable(

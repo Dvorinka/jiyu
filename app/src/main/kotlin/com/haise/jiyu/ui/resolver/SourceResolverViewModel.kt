@@ -1,14 +1,18 @@
 package com.haise.jiyu.ui.resolver
 
+import android.content.Context
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.haise.jiyu.R
 import com.haise.jiyu.data.repository.MangaRepository
 import com.haise.jiyu.source.SManga
 import com.haise.jiyu.source.comick.ComicKChapterResolver
 import com.haise.jiyu.source.comick.ResolvedCandidate
 import com.haise.jiyu.util.report
+import com.haise.jiyu.util.toFriendlyMessage
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -21,6 +25,7 @@ class SourceResolverViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val resolver: ComicKChapterResolver,
     private val repository: MangaRepository,
+    @param:ApplicationContext private val appContext: Context,
 ) : ViewModel() {
 
     private val chapterId: String = checkNotNull(savedStateHandle["chapterId"])
@@ -45,6 +50,11 @@ class SourceResolverViewModel @Inject constructor(
 
     private val _openedChapterId = MutableStateFlow<String?>(null)
     val openedChapterId: StateFlow<String?> = _openedChapterId.asStateFlow()
+
+    private val _error = MutableStateFlow<String?>(null)
+    val error: StateFlow<String?> = _error.asStateFlow()
+
+    fun clearError() { _error.value = null }
 
     init {
         viewModelScope.launch {
@@ -76,12 +86,16 @@ class SourceResolverViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 val mangaId = repository.openPreview(candidate.manga)
-                repository.refreshChapters(mangaId, candidate.manga)
                 val resolvedChapters = repository.getAllChapters(mangaId)
                 val bestMatch = resolvedChapters.minByOrNull { abs(it.chapterNumber - target) }
-                _openedChapterId.value = bestMatch?.id
+                if (bestMatch == null) {
+                    _error.value = appContext.getString(R.string.resolver_chapter_missing_after_select)
+                } else {
+                    _openedChapterId.value = bestMatch.id
+                }
             } catch (e: Exception) {
                 e.report("resolver:selectCandidate")
+                _error.value = e.toFriendlyMessage()
             } finally {
                 _resolving.value = false
             }

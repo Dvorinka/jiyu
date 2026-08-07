@@ -14,6 +14,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
+import kotlinx.coroutines.withTimeoutOrNull
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.math.abs
@@ -54,11 +55,12 @@ class ComicKChapterResolver @Inject constructor(
         comicKContentType: String,
         requestedChapterNumber: Float?,
     ): List<ResolvedCandidate> {
-        val cached = cache[comicKMangaId] ?: searchAndFetch(comicKTitle, comicKContentType).also {
-            cache[comicKMangaId] = it
+        val cached = cache[comicKMangaId]
+        val found = cached ?: searchAndFetch(comicKTitle, comicKContentType).also { result ->
+            if (result.isNotEmpty()) cache[comicKMangaId] = result
         }
         val favorites = settings.favoriteSourceIds.first()
-        return cached.map { c ->
+        return found.map { c ->
             ResolvedCandidate(
                 source = c.source,
                 manga = c.manga,
@@ -80,9 +82,11 @@ class ComicKChapterResolver @Inject constructor(
                     async {
                         semaphore.withPermit {
                             try {
-                                val results = source.search(comicKTitle, 1, MangaFilter())
-                                val match = results.firstOrNull { normalizeMangaTitle(it.title) == normalizedTarget }
-                                match?.let { m -> CachedCandidate(source, m, source.getChapterList(m)) }
+                                withTimeoutOrNull(8_000) {
+                                    val results = source.search(comicKTitle, 1, MangaFilter())
+                                    val match = results.firstOrNull { normalizeMangaTitle(it.title) == normalizedTarget }
+                                    match?.let { m -> CachedCandidate(source, m, source.getChapterList(m)) }
+                                }
                             } catch (e: Exception) {
                                 e.report("comick:resolver:${source.id}")
                                 null

@@ -389,7 +389,8 @@
     <string name="detail_all_groups">Todos los grupos</string>
     <string name="detail_no_volume">Sin volumen</string>
     <string name="detail_volume_label">Volumen %1$s</string>
-    <string name="detail_comick_read_unavailable">La lectura a través de ComicK todavía no funciona – la búsqueda de la fuente real llegará en una próxima actualización.</string>
+    <string name="detail_comick_read_unavailable">Leer a través de ComicK requiere primero encontrar una fuente real.</string>
+    <string name="reader_comick_find_source">Buscar fuente</string>
     <string name="resolver_title">Elegir fuente</string>
     <string name="resolver_loading">Buscando fuentes…</string>
     <string name="resolver_no_candidates">Ninguna fuente tiene este título.</string>
@@ -398,6 +399,7 @@
     <string name="resolver_favorite_badge">Favorito</string>
     <string name="resolver_missing_chapter">No tiene este capítulo</string>
     <string name="resolver_opening">Abriendo…</string>
+    <string name="resolver_chapter_missing_after_select">Esta fuente no tiene realmente ese capítulo.</string>
     <string name="detail_chapter_downloaded">Descargado</string>
     <string name="detail_mark_read_up_to">Marcar este y todos los anteriores como leídos</string>
     <string name="detail_mark_all_older_read">Marcar todos los anteriores como leídos</string>

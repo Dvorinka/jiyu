@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -54,7 +55,7 @@ import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ReaderScreen(viewModel: ReaderViewModel = hiltViewModel()) {
+fun ReaderScreen(onFindSource: () -> Unit = {}, viewModel: ReaderViewModel = hiltViewModel()) {
     val pages               by viewModel.pages.collectAsState()
     val comickUnavailable   by viewModel.comickUnavailable.collectAsState()
     val loading             by viewModel.loading.collectAsState()
@@ -225,7 +226,16 @@ fun ReaderScreen(viewModel: ReaderViewModel = hiltViewModel()) {
                 onAddGlossaryEntry = { source, target -> viewModel.addGlossaryEntry(source, target) },
                 onRemoveGlossaryEntry = { viewModel.removeGlossaryEntry(it) },
             )
-            comickUnavailable -> Text(stringResource(R.string.detail_comick_read_unavailable), color = Color.White)
+            comickUnavailable -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    stringResource(R.string.detail_comick_read_unavailable),
+                    color = Color.White,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                )
+                Button(onClick = onFindSource, modifier = Modifier.padding(top = 16.dp)) {
+                    Text(stringResource(R.string.reader_comick_find_source))
+                }
+            }
             pages.isEmpty() -> Text(stringResource(R.string.reader_chapter_load_failed), color = Color.White)
             else -> ReaderContent(
                 pages = pages,

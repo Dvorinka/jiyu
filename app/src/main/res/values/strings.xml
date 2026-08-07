@@ -410,7 +410,8 @@
     <string name="detail_all_groups">Všechny skupiny</string>
     <string name="detail_no_volume">Bez volumu</string>
     <string name="detail_volume_label">Volume %1$s</string>
-    <string name="detail_comick_read_unavailable">Čtení přes ComicK ještě nefunguje – hledání skutečného zdroje přidáme v příští aktualizaci.</string>
+    <string name="detail_comick_read_unavailable">Čtení přes ComicK vyžaduje nejdřív najít skutečný zdroj.</string>
+    <string name="reader_comick_find_source">Najít zdroj</string>
     <string name="resolver_title">Vyber zdroj</string>
     <string name="resolver_loading">Hledám zdroje…</string>
     <string name="resolver_no_candidates">Žádný zdroj tenhle titul nemá.</string>
@@ -419,6 +420,7 @@
     <string name="resolver_favorite_badge">Oblíbený</string>
     <string name="resolver_missing_chapter">Tuhle kapitolu nemá</string>
     <string name="resolver_opening">Otevírám…</string>
+    <string name="resolver_chapter_missing_after_select">Tenhle zdroj nakonec danou kapitolu nemá.</string>
     <string name="detail_chapter_downloaded">Staženo</string>
     <string name="detail_mark_read_up_to">Označit toto i vše starší přečtené</string>
     <string name="detail_mark_all_older_read">Označit vše starší jako přečtené</string>
