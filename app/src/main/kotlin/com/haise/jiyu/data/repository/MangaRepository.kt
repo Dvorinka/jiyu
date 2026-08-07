@@ -16,11 +16,14 @@ import com.haise.jiyu.data.db.entity.MangaCategoryEntity
 import com.haise.jiyu.data.db.entity.MangaEntity
 import com.haise.jiyu.source.MangaFilter
 import com.haise.jiyu.source.SChapter
+import com.haise.jiyu.source.SGroup
 import com.haise.jiyu.source.SManga
 import com.haise.jiyu.source.SourceManager
 import com.haise.jiyu.source.mangadex.MangaDexSource
 import com.haise.jiyu.util.normalizeMangaTitle
 import kotlinx.coroutines.flow.Flow
+import org.json.JSONArray
+import org.json.JSONObject
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -266,6 +269,7 @@ class MangaRepository @Inject constructor(
                 dateUpload = chapter.dateUpload,
                 scanlationGroup = chapter.scanlationGroup,
                 volume = chapter.volume,
+                groupsJson = serializeChapterGroups(chapter.groups),
             )
         }
         val rowIds = chapterDao.insertNewOnly(entities)
@@ -349,3 +353,9 @@ class MangaRepository @Inject constructor(
     fun mangaId(sourceId: String, url: String) = "$sourceId::$url"
     fun chapterId(chapter: SChapter) = "${chapter.sourceId}::${chapter.url}"
 }
+
+/** JSON pole [{"name":...,"slug":...}] pro uložení SChapter.groups do ChapterEntity.groupsJson. */
+internal fun serializeChapterGroups(groups: List<SGroup>): String? =
+    groups.takeIf { it.isNotEmpty() }?.let { list ->
+        JSONArray(list.map { JSONObject().apply { put("name", it.name); put("slug", it.slug) } }).toString()
+    }
