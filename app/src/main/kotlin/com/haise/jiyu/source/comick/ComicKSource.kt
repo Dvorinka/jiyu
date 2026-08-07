@@ -221,8 +221,11 @@ class ComicKSource @Inject constructor(
     private fun chapterFromJson(json: JSONObject, mangaUrl: String): SChapter? {
         val chHid = json.optString("hid").ifBlank { return null }
         val chap  = json.optString("chap", "0")
-        val vol   = json.optString("vol").ifBlank { null }
-        val title = json.optString("title").ifBlank { null }
+        // ComicK API vraci "vol"/"title" jako JSON null (ne jako chybejici klic) -
+        // org.json.optString() na JSONObject.NULL vraci doslovny retezec "null",
+        // proto je nutne nejdriv zkontrolovat isNull(), ne az .ifBlank {}.
+        val vol   = if (json.isNull("vol")) null else json.optString("vol").ifBlank { null }
+        val title = if (json.isNull("title")) null else json.optString("title").ifBlank { null }
 
         val chapterNum = chap.toFloatOrNull() ?: 0f
         val name = buildString {
@@ -238,6 +241,7 @@ class ComicKSource @Inject constructor(
             name          = name,
             chapterNumber = chapterNum,
             dateUpload    = parseIso(json.optString("created_at")),
+            volume        = vol,
         )
     }
 

@@ -103,6 +103,52 @@ class ComicKSourceTest {
     }
 
     @Test
+    fun `getChapterList treats explicit JSON null vol and title as missing, not string literal null`() = runTest {
+        // ComicK API vraci vol a title jako JSON null (ne jako chybejici klic) -
+        // overeno zive na /comic/{hid}/chapters. Android org.json.optString() na
+        // JSONObject.NULL vraci doslovny retezec null, ne "" - bez isNull() kontroly
+        // se v UI zobrazi Vol.null Ch.3 - null.
+        server.dispatcher = object : Dispatcher() {
+            override fun dispatch(request: RecordedRequest): MockResponse {
+                val path = request.path.orEmpty()
+                return when {
+                    path.startsWith("/v1.0/search") -> MockResponse().setBody(searchArrayJson)
+                    path == "/comic/test-series" -> MockResponse().setBody(mangaDetailJson)
+                    path.startsWith("/comic/abcd/chapters") -> MockResponse().setBody(
+                        """{"chapters": [{"hid": "ch1", "chap": "3", "vol": null, "title": null, "created_at": "2026-01-01T00:00:00Z"}]}"""
+                    )
+                    else -> MockResponse().setResponseCode(404)
+                }
+            }
+        }
+        val manga = source.getPopular(1).first()
+        val chapters = source.getChapterList(manga)
+        assertEquals("Ch.3", chapters[0].name)
+        assertEquals(null, chapters[0].volume)
+    }
+
+    @Test
+    fun `getChapterList carries a real vol value into SChapter#volume`() = runTest {
+        server.dispatcher = object : Dispatcher() {
+            override fun dispatch(request: RecordedRequest): MockResponse {
+                val path = request.path.orEmpty()
+                return when {
+                    path.startsWith("/v1.0/search") -> MockResponse().setBody(searchArrayJson)
+                    path == "/comic/test-series" -> MockResponse().setBody(mangaDetailJson)
+                    path.startsWith("/comic/abcd/chapters") -> MockResponse().setBody(
+                        """{"chapters": [{"hid": "ch1", "chap": "3", "vol": "2", "title": "", "created_at": "2026-01-01T00:00:00Z"}]}"""
+                    )
+                    else -> MockResponse().setResponseCode(404)
+                }
+            }
+        }
+        val manga = source.getPopular(1).first()
+        val chapters = source.getChapterList(manga)
+        assertEquals("Vol.2 Ch.3", chapters[0].name)
+        assertEquals("2", chapters[0].volume)
+    }
+
+    @Test
     fun `server error throws (no try-catch around ComicK network calls)`() = runTest {
         server.shutdown()
         server = MockWebServer()
