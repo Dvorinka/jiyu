@@ -247,21 +247,23 @@ class MangaRepository @Inject constructor(
         val source = sourceManager.getById(manga.sourceId) ?: return
         val detail = try { source.getMangaDetails(manga) } catch (_: Exception) { return }
         val existing = mangaDao.getById(mangaId) ?: return
-        mangaDao.upsert(
-            existing.copy(
-                description = detail.description ?: existing.description,
-                status = detail.status ?: existing.status,
-                author = detail.author ?: existing.author,
-                artist = detail.artist ?: existing.artist,
-                genres = detail.genres.takeIf { it.isNotEmpty() }?.joinToString(",") ?: existing.genres,
-                year = detail.year ?: existing.year,
-                contentType = detail.contentType,
-                demographic = detail.demographic ?: existing.demographic,
-                translationCompleted = detail.translationCompleted ?: existing.translationCompleted,
-                hasAnime = detail.hasAnime ?: existing.hasAnime,
-                finalChapter = detail.finalChapter ?: existing.finalChapter,
-            )
+        val updated = existing.copy(
+            description = detail.description ?: existing.description,
+            status = detail.status ?: existing.status,
+            author = detail.author ?: existing.author,
+            artist = detail.artist ?: existing.artist,
+            genres = detail.genres.takeIf { it.isNotEmpty() }?.joinToString(",") ?: existing.genres,
+            year = detail.year ?: existing.year,
+            contentType = detail.contentType,
+            demographic = detail.demographic ?: existing.demographic,
+            translationCompleted = detail.translationCompleted ?: existing.translationCompleted,
+            hasAnime = detail.hasAnime ?: existing.hasAnime,
+            finalChapter = detail.finalChapter ?: existing.finalChapter,
         )
+        // LibraryViewModel vola tohle pro kazdy titul v knihovne pri kazdem pull-to-refresh -
+        // bez tehle podminky by to byl plny row-write (+ Room invalidace/Flow re-emit) pro
+        // kazdy titul pri kazdem refreshi, i kdyz se ze zdroje nic nezmenilo.
+        if (updated != existing) mangaDao.upsert(updated)
     }
 
     /**

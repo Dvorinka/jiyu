@@ -105,11 +105,14 @@ class ComicKSource @Inject constructor(
                 }
             }
 
-            val demographic = json.optString("demographic").ifBlank { null }
-            val translationCompleted = comic.optBoolean("translation_completed", false)
-            val hasAnime = comic.optBoolean("has_anime", false)
-            val finalChapterRaw = comic.optString("final_chapter").ifBlank { null }
-            val finalVolumeRaw = comic.optString("final_volume").ifBlank { null }
+            // final_chapter/final_volume/demographic/translation_completed/has_anime umi ComicK
+            // vracet jako JSON null (ne jako chybejici klic) - stejny bug jako u vol/title vyse,
+            // proto isNull() guardy misto primeho optString()/optBoolean() s defaultem.
+            val demographic = if (json.isNull("demographic")) null else json.optString("demographic").ifBlank { null }
+            val translationCompleted = if (comic.has("translation_completed") && !comic.isNull("translation_completed")) comic.optBoolean("translation_completed") else null
+            val hasAnime = if (comic.has("has_anime") && !comic.isNull("has_anime")) comic.optBoolean("has_anime") else null
+            val finalChapterRaw = if (comic.isNull("final_chapter")) null else comic.optString("final_chapter").ifBlank { null }
+            val finalVolumeRaw = if (comic.isNull("final_volume")) null else comic.optString("final_volume").ifBlank { null }
             val finalChapter = finalChapterRaw?.let { chap ->
                 if (finalVolumeRaw != null) "Svazek $finalVolumeRaw, kapitola $chap" else "Kapitola $chap"
             }

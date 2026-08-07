@@ -137,13 +137,18 @@ class ComicKSourceTest {
 
     @Test
     fun `getMangaDetails leaves finalChapter null when the API provides no final_chapter`() = runTest {
+        // ComicK vraci final_chapter/final_volume/translation_completed/has_anime casto jako
+        // explicitni JSON null (ne jako chybejici klic) - overeno zive na API pro vic titulu.
+        // Fixtura proto musi obsahovat tyhle klice s hodnotou null, ne je vynechat, jinak by
+        // netestovala presne tenhle bug (org.json optString() na JSON null vraci na realnem
+        // Android org.json doslovny retezec "null", ne "").
         server.dispatcher = object : Dispatcher() {
             override fun dispatch(request: RecordedRequest): MockResponse {
                 val path = request.path.orEmpty()
                 return when {
                     path.startsWith("/v1.0/search") -> MockResponse().setBody(searchArrayJson)
                     path == "/comic/test-series" -> MockResponse().setBody(
-                        """{"demographic": "Seinen", "comic": {"hid": "abcd", "desc": "A summary.", "status": 1, "year": 2020, "country": "kr"}}"""
+                        """{"demographic": null, "comic": {"hid": "abcd", "desc": "A summary.", "status": 1, "year": 2020, "country": "kr", "translation_completed": null, "has_anime": null, "final_chapter": null, "final_volume": null}}"""
                     )
                     else -> MockResponse().setResponseCode(404)
                 }
@@ -152,8 +157,8 @@ class ComicKSourceTest {
         val manga = source.getPopular(1).first()
         val details = source.getMangaDetails(manga)
         assertEquals(null, details.finalChapter)
-        assertEquals(false, details.translationCompleted)
-        assertEquals(false, details.hasAnime)
+        assertEquals(null, details.translationCompleted)
+        assertEquals(null, details.hasAnime)
     }
 
     @Test
