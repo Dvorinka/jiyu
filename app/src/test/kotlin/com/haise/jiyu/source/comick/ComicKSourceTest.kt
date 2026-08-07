@@ -170,6 +170,83 @@ class ComicKSourceTest {
     }
 
     @Test
+    fun `getChapterList prefers md_chapters_groups title over the raw group_name string, and keeps the slug`() = runTest {
+        server.dispatcher = object : Dispatcher() {
+            override fun dispatch(request: RecordedRequest): MockResponse {
+                val path = request.path.orEmpty()
+                return when {
+                    path.startsWith("/v1.0/search") -> MockResponse().setBody(searchArrayJson)
+                    path == "/comic/test-series" -> MockResponse().setBody(mangaDetailJson)
+                    path.startsWith("/comic/abcd/chapters") -> MockResponse().setBody(
+                        """{"chapters": [{"hid": "ch1", "chap": "1", "vol": null, "title": null,
+                            "created_at": "2026-01-01T00:00:00Z", "group_name": ["asurascans"],
+                            "md_chapters_groups": [{"md_groups": {"title": "Asura", "slug": "asura"}}]}]}"""
+                    )
+                    else -> MockResponse().setResponseCode(404)
+                }
+            }
+        }
+        val manga = source.getPopular(1).first()
+        val chapters = source.getChapterList(manga)
+        assertEquals(1, chapters[0].groups.size)
+        assertEquals("Asura", chapters[0].groups[0].name)
+        assertEquals("asura", chapters[0].groups[0].slug)
+        assertEquals("Asura", chapters[0].scanlationGroup)
+    }
+
+    @Test
+    fun `getChapterList falls back to the raw group_name string when md_chapters_groups is empty`() = runTest {
+        // Overeno zive na API - md_chapters_groups muze byt [] i kdyz group_name neni
+        // prazdne (napr. kdyz skupinu ComicK smaze/anonymizuje, ale historicka kapitola zustane).
+        server.dispatcher = object : Dispatcher() {
+            override fun dispatch(request: RecordedRequest): MockResponse {
+                val path = request.path.orEmpty()
+                return when {
+                    path.startsWith("/v1.0/search") -> MockResponse().setBody(searchArrayJson)
+                    path == "/comic/test-series" -> MockResponse().setBody(mangaDetailJson)
+                    path.startsWith("/comic/abcd/chapters") -> MockResponse().setBody(
+                        """{"chapters": [{"hid": "ch1", "chap": "1", "vol": null, "title": null,
+                            "created_at": "2026-01-01T00:00:00Z", "group_name": ["Official"],
+                            "md_chapters_groups": []}]}"""
+                    )
+                    else -> MockResponse().setResponseCode(404)
+                }
+            }
+        }
+        val manga = source.getPopular(1).first()
+        val chapters = source.getChapterList(manga)
+        assertEquals(1, chapters[0].groups.size)
+        assertEquals("Official", chapters[0].groups[0].name)
+        assertEquals(null, chapters[0].groups[0].slug)
+    }
+
+    @Test
+    fun `getChapterList handles multiple groups on one chapter`() = runTest {
+        server.dispatcher = object : Dispatcher() {
+            override fun dispatch(request: RecordedRequest): MockResponse {
+                val path = request.path.orEmpty()
+                return when {
+                    path.startsWith("/v1.0/search") -> MockResponse().setBody(searchArrayJson)
+                    path == "/comic/test-series" -> MockResponse().setBody(mangaDetailJson)
+                    path.startsWith("/comic/abcd/chapters") -> MockResponse().setBody(
+                        """{"chapters": [{"hid": "ch1", "chap": "1", "vol": null, "title": null,
+                            "created_at": "2026-01-01T00:00:00Z", "group_name": ["Asura", "Flame Scans"],
+                            "md_chapters_groups": [
+                                {"md_groups": {"title": "Asura", "slug": "asura"}},
+                                {"md_groups": {"title": "Flame Scans", "slug": "flame-scans-kft5oueu"}}
+                            ]}]}"""
+                    )
+                    else -> MockResponse().setResponseCode(404)
+                }
+            }
+        }
+        val manga = source.getPopular(1).first()
+        val chapters = source.getChapterList(manga)
+        assertEquals(2, chapters[0].groups.size)
+        assertEquals("Asura, Flame Scans", chapters[0].scanlationGroup)
+    }
+
+    @Test
     fun `server error throws (no try-catch around ComicK network calls)`() = runTest {
         server.shutdown()
         server = MockWebServer()

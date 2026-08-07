@@ -23,6 +23,9 @@ data class MangaFilter(
     val sortBy: String = "popular",
 )
 
+/** Překladatelská/scan skupina u konkrétní kapitoly - `slug` je nepovinný (ne každý zdroj ho má). */
+data class SGroup(val name: String, val slug: String? = null)
+
 /**
  * Kapitola tak, jak ji vrací konkrétní zdroj.
  */
@@ -35,6 +38,7 @@ data class SChapter(
     val dateUpload: Long,
     val scanlationGroup: String? = null,
     val volume: String? = null,
+    val groups: List<SGroup> = emptyList(),
 )
 
 /**

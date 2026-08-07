@@ -6,6 +6,7 @@ import com.haise.jiyu.source.MangaFilter
 import com.haise.jiyu.source.MangaSource
 import com.haise.jiyu.source.Page
 import com.haise.jiyu.source.SChapter
+import com.haise.jiyu.source.SGroup
 import com.haise.jiyu.source.SManga
 import com.haise.jiyu.source.interceptor.CloudflareInterceptor
 import kotlinx.coroutines.Dispatchers
@@ -250,15 +251,39 @@ class ComicKSource @Inject constructor(
             if (!title.isNullOrBlank()) append(" – $title")
         }
 
+        val groups = parseGroups(json)
+
         return SChapter(
-            sourceId      = id,
-            mangaUrl      = mangaUrl,
-            url           = "$apiBase/chapter/$chHid",
-            name          = name,
-            chapterNumber = chapterNum,
-            dateUpload    = parseIso(json.optString("created_at")),
-            volume        = vol,
+            sourceId        = id,
+            mangaUrl        = mangaUrl,
+            url             = "$apiBase/chapter/$chHid",
+            name            = name,
+            chapterNumber   = chapterNum,
+            dateUpload      = parseIso(json.optString("created_at")),
+            volume          = vol,
+            scanlationGroup = groups.joinToString(", ") { it.name }.ifBlank { null },
+            groups          = groups,
         )
+    }
+
+    /**
+     * "group_name" je autoritativní seznam jmen/pořadí skupin u kapitoly.
+     * "md_chapters_groups" ho jen doplňuje o slug a hezčí zobrazovací jméno, ale
+     * ověřeno živě na API: může být kratší, nebo úplně `[]`, i když group_name
+     * prázdné není (např. smazaná/anonymizovaná skupina u starší kapitoly).
+     * Párujeme podle indexu; chybějící index = jen jméno z group_name bez slugu.
+     */
+    private fun parseGroups(json: JSONObject): List<SGroup> {
+        val names = json.optJSONArray("group_name") ?: return emptyList()
+        val mdGroups = json.optJSONArray("md_chapters_groups")
+        return (0 until names.length()).map { i ->
+            val rawName = names.optString(i)
+            val mdGroup = mdGroups?.optJSONObject(i)?.optJSONObject("md_groups")
+            SGroup(
+                name = mdGroup?.optString("title")?.ifBlank { null } ?: rawName,
+                slug = mdGroup?.optString("slug")?.ifBlank { null },
+            )
+        }
     }
 
     private fun parseIso(iso: String): Long = try {
