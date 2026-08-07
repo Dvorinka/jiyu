@@ -7,6 +7,7 @@ import com.haise.jiyu.source.SChapter
 import com.haise.jiyu.source.SManga
 import com.haise.jiyu.source.SourceManager
 import com.haise.jiyu.util.normalizeMangaTitle
+import com.haise.jiyu.util.report
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -40,7 +41,7 @@ class ComicKChapterResolver @Inject constructor(
 ) {
     private data class CachedCandidate(val source: MangaSource, val manga: SManga, val chapters: List<SChapter>)
 
-    private val cache = mutableMapOf<String, List<CachedCandidate>>()
+    private val cache = java.util.Collections.synchronizedMap(mutableMapOf<String, List<CachedCandidate>>())
 
     /**
      * @param comicKMangaId klíč pro cache (Room id ComicK manga entity)
@@ -82,7 +83,8 @@ class ComicKChapterResolver @Inject constructor(
                                 val results = source.search(comicKTitle, 1, MangaFilter())
                                 val match = results.firstOrNull { normalizeMangaTitle(it.title) == normalizedTarget }
                                 match?.let { m -> CachedCandidate(source, m, source.getChapterList(m)) }
-                            } catch (_: Exception) {
+                            } catch (e: Exception) {
+                                e.report("comick:resolver:${source.id}")
                                 null
                             }
                         }
