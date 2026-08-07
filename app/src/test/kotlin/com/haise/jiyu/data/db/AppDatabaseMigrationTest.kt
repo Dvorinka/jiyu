@@ -95,6 +95,7 @@ class AppDatabaseMigrationTest {
                 AppDatabase.MIGRATION_26_27,
                 AppDatabase.MIGRATION_27_28,
                 AppDatabase.MIGRATION_28_29,
+                AppDatabase.MIGRATION_29_30,
             )
             .build()
 
@@ -124,6 +125,16 @@ class AppDatabaseMigrationTest {
         assertEquals("kitsu-1", result.kitsuId)
         assertEquals(42L, result.mangaUpdatesId)
         assertEquals(5000L, result.readingTimeMs)
+
+        // MIGRATION_29_30: groupsJson pridany na chapter, musi byt citelny (nullable, default null)
+        // a musi prezit round-trip pres Room.
+        val ch = com.haise.jiyu.data.db.entity.ChapterEntity(
+            id = "ch1", mangaId = "m1", sourceId = "comick", url = "https://example.com/ch1",
+            name = "Ch.1", chapterNumber = 1f, dateUpload = 0L,
+            groupsJson = """[{"name":"Asura","slug":"asura"}]""",
+        )
+        chapters.upsertAll(listOf(ch))
+        assertEquals("""[{"name":"Asura","slug":"asura"}]""", chapters.getById("ch1")?.groupsJson)
 
         db.close()
         context.deleteDatabase(dbName)

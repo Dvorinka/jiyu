@@ -34,4 +34,6 @@ data class ChapterEntity(
     val pageCount: Int = 0,
     val scanlationGroup: String? = null,
     val volume: String? = null,
+    /** JSON pole [{"name":...,"slug":...}] - viz SGroup. Zatim se nikde nectete zpet do UI (pripraveno pro budouci klikaci stranku skupiny). */
+    val groupsJson: String? = null,
 )

@@ -43,7 +43,7 @@ class Converters {
         GlossaryEntity::class,
         ManualTranslationEntity::class,
     ],
-    version = 29,
+    version = 30,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -295,6 +295,11 @@ abstract class AppDatabase : RoomDatabase() {
                     )"""
                 )
                 db.execSQL("CREATE INDEX IF NOT EXISTS `index_manual_translation_chapterId_pageIndex` ON `manual_translation` (`chapterId`, `pageIndex`)")
+            }
+        }
+        val MIGRATION_29_30 = object : Migration(29, 30) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE chapter ADD COLUMN groupsJson TEXT")
             }
         }
     }
