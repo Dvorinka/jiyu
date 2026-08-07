@@ -82,13 +82,14 @@ import com.haise.jiyu.ui.theme.titleGradient
 fun GlobalSearchScreen(
     onBack: () -> Unit,
     onOpenManga: (String) -> Unit,
+    initialQuery: String = "",
     viewModel: GlobalSearchViewModel = hiltViewModel(),
 ) {
     val results by viewModel.results.collectAsState()
     val query   by viewModel.query.collectAsState()
     val savedSearches by viewModel.savedSearches.collectAsState()
     val pendingDuplicateAdd by viewModel.pendingDuplicateAdd.collectAsState()
-    var inputText by remember { mutableStateOf("") }
+    var inputText by remember { mutableStateOf(initialQuery) }
     val focusManager = LocalFocusManager.current
 
     Column(modifier = Modifier.fillMaxSize().background(screenGradient)) {

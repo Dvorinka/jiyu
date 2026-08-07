@@ -58,7 +58,7 @@ internal object Routes {
     const val HISTORY       = "history"
     const val CATALOG       = "catalog"
     const val ACCOUNT       = "account"
-    const val GLOBAL_SEARCH = "global_search"
+    const val GLOBAL_SEARCH = "global_search?q={q}"
     const val STATS         = "stats"
     const val LIBRARY_SECTION = "library_section/{section}"
     const val GOALS         = "goals"
@@ -101,6 +101,8 @@ internal object Routes {
         "reader/${android.net.Uri.encode(chapterId)}?incognito=$incognito"
     fun sourceResolver(chapterId: String, incognito: Boolean = false) =
         "source_resolver/${android.net.Uri.encode(chapterId)}?incognito=$incognito"
+    fun globalSearch(query: String? = null) =
+        if (query.isNullOrBlank()) "global_search?q=" else "global_search?q=${android.net.Uri.encode(query)}"
     fun qr(mangaId: String, mangaTitle: String) =
         "qr/${android.net.Uri.encode(mangaId)}?title=${android.net.Uri.encode(mangaTitle)}"
 }
@@ -170,7 +172,7 @@ fun JiyuNavGraph(
         composable(Routes.BROWSE) {
             BrowseScreen(
                 onOpenSource = { sourceId -> navController.navigate(Routes.sourceBrowse(sourceId)) },
-                onGlobalSearch = { navController.navigate(Routes.GLOBAL_SEARCH) },
+                onGlobalSearch = { navController.navigate(Routes.globalSearch()) },
             )
         }
 
@@ -334,10 +336,15 @@ fun JiyuNavGraph(
             )
         }
 
-        composable(Routes.GLOBAL_SEARCH) {
+        composable(
+            route = Routes.GLOBAL_SEARCH,
+            arguments = listOf(navArgument("q") { type = NavType.StringType; defaultValue = "" }),
+        ) { backStackEntry ->
+            val initialQuery = backStackEntry.arguments?.getString("q").orEmpty()
             GlobalSearchScreen(
                 onBack = { navController.popBackStack() },
                 onOpenManga = { mangaId -> navController.navigate(Routes.detail(mangaId)) },
+                initialQuery = initialQuery,
             )
         }
 

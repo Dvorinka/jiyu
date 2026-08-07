@@ -1,5 +1,6 @@
 package com.haise.jiyu.ui.search
 
+import androidx.lifecycle.SavedStateHandle
 import com.haise.jiyu.data.repository.MangaRepository
 import com.haise.jiyu.settings.SettingsRepository
 import com.haise.jiyu.source.MangaSource
@@ -59,7 +60,8 @@ class GlobalSearchViewModelTest {
     private fun manga(src: String, i: Int) =
         SManga(sourceId = src, url = "/$i", title = "$src-$i", coverUrl = null)
 
-    private fun viewModel() = GlobalSearchViewModel(sourceManager, repository, settings)
+    private fun viewModel(savedStateHandle: SavedStateHandle = SavedStateHandle()) =
+        GlobalSearchViewModel(savedStateHandle, sourceManager, repository, settings)
 
     @Test
     fun `a blank query is ignored instead of hammering every source`() = runTest(dispatcher) {
@@ -143,6 +145,27 @@ class GlobalSearchViewModelTest {
         assertEquals(1, vm.results.value.size)
         assertEquals("a-2", vm.results.value.first().results.single().title)
         assertEquals("druhy", vm.query.value)
+    }
+
+    @Test
+    fun `init with a non-blank saved-state query triggers an immediate search`() = runTest(dispatcher) {
+        coEvery { sourceManager.getAll() } returns listOf(source("a"))
+        coEvery { repository.search("a", "naruto", any(), any()) } returns listOf(manga("a", 1))
+
+        val vm = viewModel(SavedStateHandle(mapOf("q" to "naruto")))
+        advanceUntilIdle()
+
+        assertEquals("naruto", vm.query.value)
+        assertEquals(1, vm.results.value.first().results.size)
+    }
+
+    @Test
+    fun `init with a blank saved-state query does not search`() = runTest(dispatcher) {
+        val vm = viewModel(SavedStateHandle(mapOf("q" to "")))
+        advanceUntilIdle()
+
+        assertTrue(vm.results.value.isEmpty())
+        assertTrue(vm.query.value.isBlank())
     }
 
     @Test

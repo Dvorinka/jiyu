@@ -1,5 +1,6 @@
 package com.haise.jiyu.ui.search
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.haise.jiyu.data.repository.DuplicateMatch
@@ -33,6 +34,7 @@ data class SourceResult(
 
 @HiltViewModel
 class GlobalSearchViewModel @Inject constructor(
+    savedStateHandle: SavedStateHandle,
     private val sourceManager: SourceManager,
     private val repository: MangaRepository,
     private val settings: SettingsRepository,
@@ -49,6 +51,11 @@ class GlobalSearchViewModel @Inject constructor(
 
     private val _results = MutableStateFlow<List<SourceResult>>(emptyList())
     val results: StateFlow<List<SourceResult>> = _results.asStateFlow()
+
+    init {
+        val initialQuery = savedStateHandle.get<String>("q").orEmpty()
+        if (initialQuery.isNotBlank()) search(initialQuery)
+    }
 
     fun search(q: String) {
         if (q.isBlank()) return
