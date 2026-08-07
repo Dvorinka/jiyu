@@ -24,7 +24,7 @@ class SourceResolverViewModel @Inject constructor(
 ) : ViewModel() {
 
     private val chapterId: String = checkNotNull(savedStateHandle["chapterId"])
-    val incognito: Boolean = savedStateHandle.get<String>("incognito")?.toBoolean() ?: false
+    val incognito: Boolean = savedStateHandle["incognito"] ?: false
 
     private var requestedChapterNumber: Float? = null
 

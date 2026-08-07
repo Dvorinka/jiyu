@@ -24,6 +24,7 @@ import com.haise.jiyu.ui.library.MyListScreen
 import com.haise.jiyu.ui.onboarding.OnboardingScreen
 import com.haise.jiyu.ui.qr.MangaQrScreen
 import com.haise.jiyu.ui.reader.ReaderScreen
+import com.haise.jiyu.ui.resolver.SourceResolverScreen
 import com.haise.jiyu.ui.search.GlobalSearchScreen
 import com.haise.jiyu.ui.settings.AboutSettingsScreen
 import com.haise.jiyu.ui.settings.AppearanceSettingsScreen
@@ -216,6 +217,24 @@ fun JiyuNavGraph(
             ),
         ) {
             ReaderScreen()
+        }
+
+        composable(
+            route = Routes.SOURCE_RESOLVER,
+            arguments = listOf(
+                navArgument("chapterId") { type = NavType.StringType },
+                navArgument("incognito") { type = NavType.BoolType; defaultValue = false },
+            ),
+        ) {
+            SourceResolverScreen(
+                onBack = { navController.popBackStack() },
+                onOpenChapter = { chapterId, incognito ->
+                    navController.navigate(Routes.reader(chapterId, incognito)) {
+                        popUpTo(Routes.SOURCE_RESOLVER) { inclusive = true }
+                    }
+                },
+                onSearchManually = { query -> navController.navigate(Routes.globalSearch(query)) },
+            )
         }
 
         composable(Routes.SETTINGS) {

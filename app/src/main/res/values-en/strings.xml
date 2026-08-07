@@ -393,6 +393,14 @@
     <string name="detail_no_volume">No volume</string>
     <string name="detail_volume_label">Volume %1$s</string>
     <string name="detail_comick_read_unavailable">Reading through ComicK doesn\'t work yet – source lookup is coming in a future update.</string>
+    <string name="resolver_title">Choose a source</string>
+    <string name="resolver_loading">Searching sources…</string>
+    <string name="resolver_no_candidates">No source has this title.</string>
+    <string name="resolver_search_manually">Search manually</string>
+    <string name="resolver_chapters_ratio">%1$d/%2$d chapters</string>
+    <string name="resolver_favorite_badge">Favorite</string>
+    <string name="resolver_missing_chapter">Doesn\'t have this chapter</string>
+    <string name="resolver_opening">Opening…</string>
     <string name="detail_chapter_downloaded">Downloaded</string>
     <string name="detail_mark_read_up_to">Mark this and all older as read</string>
     <string name="detail_mark_all_older_read">Mark all older as read</string>
