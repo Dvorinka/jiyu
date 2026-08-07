@@ -35,13 +35,18 @@ class ComicKChapterResolverTest {
 
     private lateinit var sourceManager: SourceManager
     private lateinit var settings: SettingsRepository
+    private lateinit var comicKSource: ComicKSource
     private lateinit var resolver: ComicKChapterResolver
 
     @Before
     fun setUp() {
         sourceManager = mockk()
         settings = SettingsRepository(FakeDataStore())
-        resolver = ComicKChapterResolver(sourceManager, settings)
+        comicKSource = mockk()
+        // Výchozí: žádné alternativní názvy - findCandidates spadne zpátky na comicKTitle
+        // samotný, což zachovává chování testů psaných před zavedením alt. názvů.
+        coEvery { comicKSource.getAlternateTitles(any()) } returns emptyList()
+        resolver = ComicKChapterResolver(sourceManager, settings, comicKSource)
     }
 
     @Test
@@ -51,7 +56,7 @@ class ComicKChapterResolverTest {
         val novelSource = FakeSource("src-novel", "Novel Site", "NOVEL", searchResults = listOf(manhwaMatch.copy(sourceId = "src-novel")))
         coEvery { sourceManager.getAll() } returns listOf(manhwaSource, novelSource)
 
-        val result = resolver.findCandidates("comick-id-1", "Solo Leveling", "MANHWA", requestedChapterNumber = null)
+        val result = resolver.findCandidates("comick-id-1", "u1", "Solo Leveling", "MANHWA", requestedChapterNumber = null)
 
         assertEquals(1, result.size)
         assertEquals("src-manhwa", result[0].source.id)
@@ -64,7 +69,7 @@ class ComicKChapterResolverTest {
         coEvery { sourceManager.getAll() } returns listOf(mangaSource)
 
         // ComicK title is MANHWA, candidate source is generically tagged MANGA - must still match.
-        val result = resolver.findCandidates("comick-id-2", "Solo Leveling", "MANHWA", requestedChapterNumber = null)
+        val result = resolver.findCandidates("comick-id-2", "u1", "Solo Leveling", "MANHWA", requestedChapterNumber = null)
 
         assertEquals(1, result.size)
     }
@@ -75,7 +80,7 @@ class ComicKChapterResolverTest {
         val source = FakeSource("src-a", "Site A", "MANHWA", searchResults = listOf(wrongMatch))
         coEvery { sourceManager.getAll() } returns listOf(source)
 
-        val result = resolver.findCandidates("comick-id-3", "Solo Leveling", "MANHWA", requestedChapterNumber = null)
+        val result = resolver.findCandidates("comick-id-3", "u1", "Solo Leveling", "MANHWA", requestedChapterNumber = null)
 
         assertTrue(result.isEmpty())
     }
@@ -85,7 +90,7 @@ class ComicKChapterResolverTest {
         val failing = FakeSource("src-fail", "Broken Site", "MANHWA", failSearch = true)
         coEvery { sourceManager.getAll() } returns listOf(failing)
 
-        val result = resolver.findCandidates("comick-id-4", "Solo Leveling", "MANHWA", requestedChapterNumber = null)
+        val result = resolver.findCandidates("comick-id-4", "u1", "Solo Leveling", "MANHWA", requestedChapterNumber = null)
 
         assertTrue(result.isEmpty())
     }
@@ -96,10 +101,25 @@ class ComicKChapterResolverTest {
         val source = FakeSource("src-a", "Site A", "MANHWA", searchResults = listOf(match), chapters = listOf(chapter(1f), chapter(5f), chapter(5.5f)))
         coEvery { sourceManager.getAll() } returns listOf(source)
 
-        val result = resolver.findCandidates("comick-id-5", "Solo Leveling", "MANHWA", requestedChapterNumber = 5f)
+        val result = resolver.findCandidates("comick-id-5", "u1", "Solo Leveling", "MANHWA", requestedChapterNumber = 5f)
 
         assertEquals(1, result.size)
         assertTrue(result[0].hasRequestedChapter)
+        assertEquals(3, result[0].matchedChapterCount)
+    }
+
+    @Test
+    fun `matchedChapterCount counts distinct chapter numbers, not one row per scanlation group`() = runTest {
+        // ComicK (a i jiné zdroje) uklada kazdy preklad kapitoly zvlast - stejne cislo
+        // kapitoly muze mit vic radku, kdyz ji prelozilo vic skupin. Pomer v UI ma
+        // ukazovat "kolik ruznych kapitol zdroj ma", ne "kolik radku ma v databazi".
+        val match = SManga(sourceId = "src-a", url = "u1", title = "Solo Leveling", coverUrl = null)
+        val duplicated = listOf(chapter(1f), chapter(1f), chapter(2f), chapter(2f), chapter(2f), chapter(3f))
+        val source = FakeSource("src-a", "Site A", "MANHWA", searchResults = listOf(match), chapters = duplicated)
+        coEvery { sourceManager.getAll() } returns listOf(source)
+
+        val result = resolver.findCandidates("comick-id-5b", "u1", "Solo Leveling", "MANHWA", requestedChapterNumber = null)
+
         assertEquals(3, result[0].matchedChapterCount)
     }
 
@@ -109,7 +129,7 @@ class ComicKChapterResolverTest {
         val source = FakeSource("src-a", "Site A", "MANHWA", searchResults = listOf(match), chapters = listOf(chapter(1f), chapter(2f)))
         coEvery { sourceManager.getAll() } returns listOf(source)
 
-        val result = resolver.findCandidates("comick-id-6", "Solo Leveling", "MANHWA", requestedChapterNumber = 99f)
+        val result = resolver.findCandidates("comick-id-6", "u1", "Solo Leveling", "MANHWA", requestedChapterNumber = 99f)
 
         assertEquals(1, result.size)
         assertTrue(!result[0].hasRequestedChapter)
@@ -121,7 +141,7 @@ class ComicKChapterResolverTest {
         val source = FakeSource("src-a", "Site A", "MANHWA", searchResults = listOf(match), chapters = listOf(chapter(1f)))
         coEvery { sourceManager.getAll() } returns listOf(source)
 
-        val result = resolver.findCandidates("comick-id-7", "Solo Leveling", "MANHWA", requestedChapterNumber = null)
+        val result = resolver.findCandidates("comick-id-7", "u1", "Solo Leveling", "MANHWA", requestedChapterNumber = null)
 
         assertTrue(result[0].hasRequestedChapter)
     }
@@ -135,7 +155,7 @@ class ComicKChapterResolverTest {
         val sourceB = FakeSource("src-b", "Site B", "MANHWA", searchResults = listOf(matchB), chapters = listOf(chapter(1f)))
         coEvery { sourceManager.getAll() } returns listOf(sourceA, sourceB)
 
-        val result = resolver.findCandidates("comick-id-8", "Solo Leveling", "MANHWA", requestedChapterNumber = null)
+        val result = resolver.findCandidates("comick-id-8", "u1", "Solo Leveling", "MANHWA", requestedChapterNumber = null)
 
         assertEquals("src-b", result[0].source.id)
         assertTrue(result[0].isFavorite)
@@ -161,10 +181,55 @@ class ComicKChapterResolverTest {
         }
         coEvery { sourceManager.getAll() } returns listOf(source)
 
-        resolver.findCandidates("comick-id-9", "Solo Leveling", "MANHWA", requestedChapterNumber = 1f)
-        resolver.findCandidates("comick-id-9", "Solo Leveling", "MANHWA", requestedChapterNumber = 2f)
+        resolver.findCandidates("comick-id-9", "u1", "Solo Leveling", "MANHWA", requestedChapterNumber = 1f)
+        resolver.findCandidates("comick-id-9", "u1", "Solo Leveling", "MANHWA", requestedChapterNumber = 2f)
 
         assertEquals(1, searchCalls)
+    }
+
+    @Test
+    fun `searches and matches using the ComicK default alt title when it differs from the stored title`() = runTest {
+        // Presne situace, ktera zpusobovala "zadny zdroj to nema" i kdyz zdroj existoval:
+        // ComicK titul je ulozeny pod "I am the only the one who levels up", ale zdroj
+        // (napr. Asura) ho eviduje pod "Solo Leveling" - to je zrovna alt. nazev s
+        // is_default=true, ktery getAlternateTitles vraci jako prvni.
+        coEvery { comicKSource.getAlternateTitles("u1") } returns listOf("Solo Leveling", "I Alone Level-Up")
+        val match = SManga(sourceId = "src-a", url = "u1", title = "Solo Leveling", coverUrl = null)
+        var searchedWith: String? = null
+        val source = object : MangaSource {
+            override val id = "src-a"
+            override val name = "Site A"
+            override val contentType = "MANHWA"
+            override suspend fun search(query: String, page: Int, filter: MangaFilter): List<SManga> {
+                searchedWith = query
+                return listOf(match)
+            }
+            override suspend fun getPopular(page: Int, filter: MangaFilter) = emptyList<SManga>()
+            override suspend fun getMangaDetails(manga: SManga) = manga
+            override suspend fun getChapterList(manga: SManga) = listOf(chapter(1f))
+            override suspend fun getPageList(chapter: SChapter) = emptyList<com.haise.jiyu.source.Page>()
+        }
+        coEvery { sourceManager.getAll() } returns listOf(source)
+
+        val result = resolver.findCandidates(
+            "comick-id-10", "u1", "I am the only the one who levels up", "MANHWA", requestedChapterNumber = null,
+        )
+
+        assertEquals("Solo Leveling", searchedWith)
+        assertEquals(1, result.size)
+        assertEquals("src-a", result[0].source.id)
+    }
+
+    @Test
+    fun `falls back to comicKTitle when fetching alternate titles fails`() = runTest {
+        coEvery { comicKSource.getAlternateTitles("u1") } throws RuntimeException("network down")
+        val match = SManga(sourceId = "src-a", url = "u1", title = "Solo Leveling", coverUrl = null)
+        val source = FakeSource("src-a", "Site A", "MANHWA", searchResults = listOf(match), chapters = listOf(chapter(1f)))
+        coEvery { sourceManager.getAll() } returns listOf(source)
+
+        val result = resolver.findCandidates("comick-id-11", "u1", "Solo Leveling", "MANHWA", requestedChapterNumber = null)
+
+        assertEquals(1, result.size)
     }
 
     private fun chapter(number: Float) = SChapter(

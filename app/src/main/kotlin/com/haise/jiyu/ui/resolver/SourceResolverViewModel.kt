@@ -65,9 +65,15 @@ class SourceResolverViewModel @Inject constructor(
                 if (manga == null) { _loading.value = false; return@launch }
                 _comicKTitle.value = manga.title
                 requestedChapterNumber = chapter.chapterNumber
-                _totalComicKChapters.value = repository.getAllChapters(chapter.mangaId).size
+                // ComicK eviduje jednu kapitolu vícekrát, jednou za každou skupinu, co ji
+                // přeložila - .size by tak počítal "3× Ch.890" jako 3, ne 1. Viz taky
+                // ComicKChapterResolver.matchedChapterCount (stejná oprava na druhé straně
+                // poměru, aby se srovnávalo jablko s jablkem).
+                _totalComicKChapters.value = repository.getAllChapters(chapter.mangaId)
+                    .map { it.chapterNumber }.distinct().size
                 _candidates.value = resolver.findCandidates(
                     comicKMangaId = manga.id,
+                    comicKMangaUrl = manga.url,
                     comicKTitle = manga.title,
                     comicKContentType = manga.contentType,
                     requestedChapterNumber = chapter.chapterNumber,

@@ -39,6 +39,7 @@ data class ResolvedCandidate(
 class ComicKChapterResolver @Inject constructor(
     private val sourceManager: SourceManager,
     private val settings: SettingsRepository,
+    private val comicKSource: ComicKSource,
 ) {
     private data class CachedCandidate(val source: MangaSource, val manga: SManga, val chapters: List<SChapter>)
 
@@ -46,17 +47,21 @@ class ComicKChapterResolver @Inject constructor(
 
     /**
      * @param comicKMangaId klíč pro cache (Room id ComicK manga entity)
+     * @param comicKMangaUrl url ComicK manga entity - použije se pro dotažení alternativních
+     *   názvů (viz [ComicKSource.getAlternateTitles]), protože `comicKTitle` sám o sobě
+     *   často nesedí s tím, jak titul jmenují ostatní zdroje (viz [searchAndFetch]).
      * @param requestedChapterNumber null = zajímá nás jen "existuje vůbec zdroj", jinak
      *   se navíc spočítá [ResolvedCandidate.hasRequestedChapter] pro tohle konkrétní číslo.
      */
     suspend fun findCandidates(
         comicKMangaId: String,
+        comicKMangaUrl: String,
         comicKTitle: String,
         comicKContentType: String,
         requestedChapterNumber: Float?,
     ): List<ResolvedCandidate> {
         val cached = cache[comicKMangaId]
-        val found = cached ?: searchAndFetch(comicKTitle, comicKContentType).also { result ->
+        val found = cached ?: searchAndFetch(comicKMangaUrl, comicKTitle, comicKContentType).also { result ->
             if (result.isNotEmpty()) cache[comicKMangaId] = result
         }
         val favorites = settings.favoriteSourceIds.first()
@@ -64,7 +69,7 @@ class ComicKChapterResolver @Inject constructor(
             ResolvedCandidate(
                 source = c.source,
                 manga = c.manga,
-                matchedChapterCount = c.chapters.size,
+                matchedChapterCount = c.chapters.map { it.chapterNumber }.distinct().size,
                 hasRequestedChapter = requestedChapterNumber == null ||
                     c.chapters.any { abs(it.chapterNumber - requestedChapterNumber) < 0.01f },
                 isFavorite = c.source.id in favorites,
@@ -72,10 +77,25 @@ class ComicKChapterResolver @Inject constructor(
         }.sortedWith(compareByDescending<ResolvedCandidate> { it.isFavorite }.thenByDescending { it.matchedChapterCount })
     }
 
-    private suspend fun searchAndFetch(comicKTitle: String, comicKContentType: String): List<CachedCandidate> =
+    /**
+     * `comicKTitle` je jen JEDEN z ComicK titulu md_titles - u řady titulů to není ten, pod
+     * kterým ho eviduje většina ostatních zdrojů (např. ComicK primárně eviduje Solo Leveling
+     * pod "I am the only the one who levels up", "Solo Leveling" je md_titles položka s
+     * `is_default: true`). Bez alternativních názvů by přesná shoda selhala úplně, i když
+     * reálný zdroj existuje. Dotažení alt. názvů je jen jeden extra request navíc (ne za
+     * zdroj), a pokud selže, spadneme zpátky na `comicKTitle` samotný.
+     */
+    private suspend fun searchAndFetch(comicKMangaUrl: String, comicKTitle: String, comicKContentType: String): List<CachedCandidate> =
         coroutineScope {
             val semaphore = Semaphore(5)
-            val normalizedTarget = normalizeMangaTitle(comicKTitle)
+            val alternateTitles = try {
+                comicKSource.getAlternateTitles(comicKMangaUrl)
+            } catch (e: Exception) {
+                e.report("comick:resolver:alternateTitles")
+                emptyList()
+            }
+            val searchTitle = alternateTitles.firstOrNull() ?: comicKTitle
+            val normalizedTargets = (alternateTitles + comicKTitle).map { normalizeMangaTitle(it) }.toSet()
             sourceManager.getAll()
                 .filter { it.id != "comick" && isSameContentGroup(it.contentType, comicKContentType) }
                 .map { source ->
@@ -83,8 +103,8 @@ class ComicKChapterResolver @Inject constructor(
                         semaphore.withPermit {
                             try {
                                 withTimeoutOrNull(8_000) {
-                                    val results = source.search(comicKTitle, 1, MangaFilter())
-                                    val match = results.firstOrNull { normalizeMangaTitle(it.title) == normalizedTarget }
+                                    val results = source.search(searchTitle, 1, MangaFilter())
+                                    val match = results.firstOrNull { normalizeMangaTitle(it.title) in normalizedTargets }
                                     match?.let { m -> CachedCandidate(source, m, source.getChapterList(m)) }
                                 }
                             } catch (e: Exception) {

@@ -184,6 +184,48 @@ class ComicKSourceTest {
     }
 
     @Test
+    fun `getAlternateTitles puts the md_titles entry flagged is_default first`() = runTest {
+        // Realny pripad, ktery zpusoboval "zadny zdroj to nema" v resolveru (Sub-projekt 3):
+        // ComicK.comic.title muze byt uplne jiny nazev, nez ten oznaceny is_default=true.
+        server.dispatcher = object : Dispatcher() {
+            override fun dispatch(request: RecordedRequest): MockResponse {
+                val path = request.path.orEmpty()
+                return when {
+                    path == "/comic/test-series" -> MockResponse().setBody(
+                        """{"comic": {"hid": "abcd", "title": "I am the only the one who levels up", "md_titles": [
+                            {"title": "I Alone Level-Up", "lang": "en", "is_default": false},
+                            {"title": "Solo Leveling", "lang": "en", "is_default": true},
+                            {"title": "سولو ليفيلنغ", "lang": "ar", "is_default": false}
+                        ]}}"""
+                    )
+                    else -> MockResponse().setResponseCode(404)
+                }
+            }
+        }
+        val titles = source.getAlternateTitles("https://api.comick.dev/comic/test-series")
+        assertEquals("Solo Leveling", titles[0])
+        assertTrue(titles.contains("I Alone Level-Up"))
+        assertTrue(titles.none { it.contains("سولو") })
+    }
+
+    @Test
+    fun `getAlternateTitles falls back to comic title when md_titles is absent`() = runTest {
+        server.dispatcher = object : Dispatcher() {
+            override fun dispatch(request: RecordedRequest): MockResponse {
+                val path = request.path.orEmpty()
+                return when {
+                    path == "/comic/test-series" -> MockResponse().setBody(
+                        """{"comic": {"hid": "abcd", "title": "Plain Title"}}"""
+                    )
+                    else -> MockResponse().setResponseCode(404)
+                }
+            }
+        }
+        val titles = source.getAlternateTitles("https://api.comick.dev/comic/test-series")
+        assertEquals(listOf("Plain Title"), titles)
+    }
+
+    @Test
     fun `getChapterList resolves hid first, then pages`() = runTest {
         val manga = source.getPopular(1).first()
         val chapters = source.getChapterList(manga)

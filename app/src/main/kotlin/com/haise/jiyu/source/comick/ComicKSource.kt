@@ -131,6 +131,35 @@ class ComicKSource @Inject constructor(
             )
         }
 
+    /**
+     * ComicK titulu vrátí seznam alternativních (anglických/přepsaných) názvů, nejdřív
+     * ten "is_default" - viz [ComicKChapterResolver], který jinak proti ostatním zdrojům
+     * hledá jen podle `comic.title`, což u řady titulů (např. Solo Leveling → ComicK
+     * primárně eviduje pod "I am the only the one who levels up", "Solo Leveling" je jen
+     * jeden z `md_titles`, ale s `is_default: true`) selže úplně - žádný zdroj nenajde,
+     * i když ho reálně máme.
+     */
+    suspend fun getAlternateTitles(mangaUrl: String): List<String> =
+        withContext(Dispatchers.IO) {
+            val slug = mangaUrl.substringAfterLast("/")
+            val json = getObject("$apiBase/comic/$slug")
+            val comic = json.getJSONObject("comic")
+
+            val fallbackTitle = if (comic.isNull("title")) null else comic.optString("title").ifBlank { null }
+            val titlesArr = comic.optJSONArray("md_titles")
+            val alternates = mutableListOf<Pair<String, Boolean>>()
+            if (titlesArr != null) {
+                for (i in 0 until titlesArr.length()) {
+                    val t = titlesArr.optJSONObject(i) ?: continue
+                    if (t.optString("lang") !in ROMANIZED_LANGS) continue
+                    val title = if (t.isNull("title")) null else t.optString("title").ifBlank { null }
+                    if (title != null) alternates.add(title to t.optBoolean("is_default", false))
+                }
+            }
+            val ordered = alternates.sortedByDescending { it.second }.map { it.first }
+            (ordered + listOfNotNull(fallbackTitle)).distinct()
+        }
+
     // ─── Kapitoly ────────────────────────────────────────────────────────────
 
     /**
@@ -317,5 +346,10 @@ class ComicKSource @Inject constructor(
         java.time.Instant.parse(iso).toEpochMilli()
     } catch (_: Exception) {
         System.currentTimeMillis()
+    }
+
+    private companion object {
+        /** Přepsané/anglické varianty md_titles - jiné skripty (ar, bn, ...) k porovnání s ostatními zdroji nejsou k ničemu. */
+        val ROMANIZED_LANGS = setOf("en", "ja-ro", "ko-ro", "zh-ro", "zh-hk-ro")
     }
 }
