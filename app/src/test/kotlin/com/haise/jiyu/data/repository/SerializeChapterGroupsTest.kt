@@ -26,6 +26,10 @@ class SerializeChapterGroupsTest {
     fun `a group without a slug serializes slug as JSON null`() {
         val json = serializeChapterGroups(listOf(SGroup(name = "Official", slug = null)))!!
         val parsed = JSONArray(json)
+        // Rozliseni od chybejiciho klice: org.json.JSONObject.put(String, Object) s null
+        // hodnotou klic ODEBERE misto zapisu JSON null - proto musime overit i has(),
+        // ne jen isNull() (ktere vraci true i pro chybejici klic).
+        assertEquals(true, parsed.getJSONObject(0).has("slug"))
         assertEquals(true, parsed.getJSONObject(0).isNull("slug"))
     }
 }

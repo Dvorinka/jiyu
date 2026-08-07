@@ -357,5 +357,7 @@ class MangaRepository @Inject constructor(
 /** JSON pole [{"name":...,"slug":...}] pro uložení SChapter.groups do ChapterEntity.groupsJson. */
 internal fun serializeChapterGroups(groups: List<SGroup>): String? =
     groups.takeIf { it.isNotEmpty() }?.let { list ->
-        JSONArray(list.map { JSONObject().apply { put("name", it.name); put("slug", it.slug) } }).toString()
+        // put(String, Object) s null hodnotou klic ODEBERE misto zapisu JSON null
+        // (org.json.JSONObject chovani) - proto explicitni JSONObject.NULL misto it.slug.
+        JSONArray(list.map { JSONObject().apply { put("name", it.name); put("slug", it.slug ?: JSONObject.NULL) } }).toString()
     }

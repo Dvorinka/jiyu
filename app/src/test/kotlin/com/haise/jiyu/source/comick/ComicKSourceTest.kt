@@ -9,6 +9,8 @@ import okhttp3.mockwebserver.Dispatcher
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import okhttp3.mockwebserver.RecordedRequest
+import org.json.JSONArray
+import org.json.JSONObject
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -247,6 +249,38 @@ class ComicKSourceTest {
     }
 
     @Test
+    fun `parseGroups guards against ComicK's JSON-null-becomes-string-null bug`() {
+        // Stejny bug jako u vol/title (viz komentar u chapterFromJson), ale v parseGroups:
+        // group_name[i] muze byt JSON null, a md_groups.title/md_groups.slug taky - bez
+        // isNull() kontroly by se do SGroup.name/slug dostal doslovny retezec "null".
+        //
+        // POZNAMKA: knihovna org.json:json (pouzita na testovacim JVM classpath - viz
+        // app/build.gradle.kts) tenhle bug na rozdil od realneho Androidu (AOSP libcore
+        // org.json) nereprodukuje - jeji optString() uz sama vraci "" pro JSON null,
+        // takze test postaveny na skutecnem parsovani JSON textu (pres MockWebServer)
+        // by prosel i bez isNull() guardu. AndroidBuggyJsonObject/-Array proto simuluji
+        // primo chovani AOSP optString(), aby test isNull() guardy skutecne overil.
+        val raw = JSONObject(
+            """{"group_name": [null, "Flame Scans"],
+                "md_chapters_groups": [
+                    {"md_groups": {"title": null, "slug": null}},
+                    {"md_groups": {"title": null, "slug": "flame-scans"}}
+                ]}"""
+        )
+        val buggyJson = AndroidBuggyJsonObject(raw)
+
+        val groups = source.parseGroups(buggyJson)
+
+        assertEquals(2, groups.size)
+        for (group in groups) {
+            assertTrue(group.name != "null")
+            assertTrue(group.slug != "null")
+        }
+        assertEquals("Flame Scans", groups[1].name)
+        assertEquals("flame-scans", groups[1].slug)
+    }
+
+    @Test
     fun `server error throws (no try-catch around ComicK network calls)`() = runTest {
         server.shutdown()
         server = MockWebServer()
@@ -261,4 +295,29 @@ class ComicKSourceTest {
         try { failingSource.getPopular(1) } catch (_: Exception) { threw = true }
         assertTrue(threw)
     }
+}
+
+/**
+ * Simuluje AOSP org.json chovani (optString() na JSON null vraci doslovny retezec "null" -
+ * viz komentar u ComicKSource.chapterFromJson/parseGroups), ktere referencni org.json:json
+ * knihovna pouzita na testovacim JVM classpath nema (ta uz sama vraci "" pro null). Slouzi
+ * jen k tomu, aby test parseGroups mel co realne overit - jinak by prosel i bez isNull() guardu.
+ */
+private class AndroidBuggyJsonObject(source: JSONObject) : JSONObject(source.toString()) {
+    override fun optString(key: String): String =
+        if (isNull(key)) "null" else super.optString(key)
+
+    override fun optJSONArray(key: String): JSONArray? =
+        super.optJSONArray(key)?.let { AndroidBuggyJsonArray(it) }
+
+    override fun optJSONObject(key: String): JSONObject? =
+        super.optJSONObject(key)?.let { AndroidBuggyJsonObject(it) }
+}
+
+private class AndroidBuggyJsonArray(source: JSONArray) : JSONArray(source.toString()) {
+    override fun optString(index: Int): String =
+        if (isNull(index)) "null" else super.optString(index)
+
+    override fun optJSONObject(index: Int): JSONObject? =
+        super.optJSONObject(index)?.let { AndroidBuggyJsonObject(it) }
 }

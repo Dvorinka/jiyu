@@ -272,16 +272,20 @@ class ComicKSource @Inject constructor(
      * ověřeno živě na API: může být kratší, nebo úplně `[]`, i když group_name
      * prázdné není (např. smazaná/anonymizovaná skupina u starší kapitoly).
      * Párujeme podle indexu; chybějící index = jen jméno z group_name bez slugu.
+     *
+     * Stejný bug jako u vol/title v [chapterFromJson]: "group_name[i]" i
+     * "md_groups.title"/"md_groups.slug" umí ComicK vracet jako JSON null, proto
+     * isNull() guard před optString() i tady. internal kvůli testu.
      */
-    private fun parseGroups(json: JSONObject): List<SGroup> {
+    internal fun parseGroups(json: JSONObject): List<SGroup> {
         val names = json.optJSONArray("group_name") ?: return emptyList()
         val mdGroups = json.optJSONArray("md_chapters_groups")
         return (0 until names.length()).map { i ->
-            val rawName = names.optString(i)
+            val rawName = if (names.isNull(i)) "" else names.optString(i)
             val mdGroup = mdGroups?.optJSONObject(i)?.optJSONObject("md_groups")
             SGroup(
-                name = mdGroup?.optString("title")?.ifBlank { null } ?: rawName,
-                slug = mdGroup?.optString("slug")?.ifBlank { null },
+                name = mdGroup?.takeIf { !it.isNull("title") }?.optString("title")?.ifBlank { null } ?: rawName,
+                slug = mdGroup?.takeIf { !it.isNull("slug") }?.optString("slug")?.ifBlank { null },
             )
         }
     }
