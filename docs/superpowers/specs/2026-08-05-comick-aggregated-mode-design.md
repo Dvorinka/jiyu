@@ -104,3 +104,55 @@ Sub-projekt 1 znovu-zaregistroval `ComicKSource` pro browse/metadata (viz výš)
 - `ComicKSourceTest`: test pro `isNull` větev (`"vol": null` v JSONu → `chapters[0].volume == null`, ne řetězec `"null"`); test pro `contentType` mapování (`country: "kr"` → `MANHWA` atd., 3 varianty + fallback); test pro `groups` parsování z `group_name` + `md_chapters_groups`; mutation-test ověření (dočasně vrátit bug, potvrdit že nový test spadne).
 - `AppDatabaseMigrationTest`: rozšířit o `MIGRATION_29_30` (stejný vzor jako existující testy pro předchozí migrace).
 - Manuální ověření na zařízení: otevřít titul v ComicK režimu, zkontrolovat že se u kapitol zobrazují jména skupin a datum bez "null", že chybí stahovací ikonka, a že klik na kapitolu ukáže srozumitelnou hlášku místo pádu do čtečky.
+
+---
+
+## Sub-projekt 3: Motor pro křížové vyhledání zdroje
+
+Tohle je jádro celé funkce — nahrazuje dočasnou hlášku „Čtení přes ComicK ještě nefunguje" (Sub-projekt 2) skutečným vyřešením na reálný, čitelný zdroj.
+
+### Kde se to spouští
+
+Nahrazuje DVĚ místa ze Sub-projektu 2, obě dnes jen zobrazují snackbar a nic dalšího nedělají:
+
+1. `MangaDetailScreen.kt`'s `openChapter(chapter, incognito)` helper (Task 7) — klik na konkrétní kapitolu/tlačítko "Číst" na detailu ComicK titulu.
+2. `ReaderViewModel.loadChapter()` (Task 8) — jediné místo, kterým prochází VŠECH 6 navigačních cest do čtečky (Knihovna, Seznam, Aktualizace, historie, detail titulu, inkognito) — ponechává se jako poslední pojistka i pro cesty, které Sub-projekt 3 explicitně neřeší (např. by teoreticky šlo obejít UI a nastartovat čtečku přímo).
+
+Obě místa místo snackbaru spustí resolveci popsanou níž a v případě úspěchu naviguji do nové obrazovky "Vyber zdroj" (viz UI), ne rovnou do čtečky — i kdyby vyšel jen jeden kandidát (klíčové rozhodnutí 3 z úvodu dokumentu).
+
+### Motor vyhledání
+
+1. **Zúžení podle typu obsahu** — `SourceManager` (Sub-projekt 1) už umí filtrovat zdroje podle `contentType`. Použije se stejný filtr, aby se u ComicK titulu s `contentType = MANHWA` prohledávaly jen manga/manhwa/manhua zdroje (~10-20 kandidátů), nikdy novelové/komiksové.
+2. **Paralelní živé hledání** — pro každého kandidáta zavolá jeho `search(query = comicKTitle, ...)` (stejná metoda, jakou dnes používá `GlobalSearchViewModel`), paralelně (`async`/`awaitAll`, stejný vzor jako `ChapterUpdateWorker`'s `Semaphore(5)` — omezit současný počet requestů, aby se neplácly desítky paralelních volání najednou).
+3. **Shoda názvu** — použije se existující `normalizeMangaTitle()` (dnes slouží k odhalení duplicit v knihovně, `MangaRepository.findLibraryMatchesByTitle`) k porovnání normalizovaného ComicK názvu s normalizovanými názvy výsledků hledání u každého kandidáta. Zdroj bez shody se zahodí.
+4. **Úplnost** — u každého zbylého kandidáta se stáhne celý seznam kapitol (`getChapterList`) a porovná jejich počet s celkovým počtem na ComicK (pole `comic.chapter_count` z `/comic/{slug}` — ComicK ho už posílá, žádné nové API volání navíc oproti tomu, co appka dělá při obohacení detailu). Zobrazí se jako `X/Y kapitol`.
+5. **Konkrétní kapitola** — pokud uživatel klikal na konkrétní kapitolu (ne obecné "Číst"), u každého kandidáta se navíc zkontroluje, jestli má kapitolu se stejným (nebo nejbližším) číslem — `chapterNumber` porovnání s tolerancí pro desetinná čísla (ComicK i zdroje používají `Float`).
+6. **Cache na úrovni titulu** — výsledek kroku 1-4 (seznam kandidátů + jejich staženétabulky kapitol) se uloží do in-memory cache (mapa `comicKMangaId -> List<CandidateSource>`), platná jen po dobu běhu appky (žádná Room tabulka). Další kliknutí na JINOU kapitolu STEJNÉHO titulu ve stejné session jen zkontroluje, jestli cachovaní kandidáti mají i tuhle novou kapitolu (bez nového `search()`/plného `getChapterList()`).
+
+### UI
+
+**Nová obrazovka "Vyber zdroj"** (`Routes.SOURCE_RESOLVER` nebo podobně, přesný název určí plán):
+- Loading stav během kroku 1-4 výše (může trvat pár sekund kvůli paralelnímu síťovému hledání).
+- Seznam nalezených kandidátů: název zdroje, `X/Y kapitol` vůči ComicK, hvězdička/zvýraznění pokud je zdroj v "Oblíbených zdrojích" (`SettingsKeys.FAVORITE_SOURCE_IDS`, klíčové rozhodnutí 5), případně indikátor že zdroj konkrétní požadovanou kapitolu má/nemá.
+- Tlačítko **"Hledat ručně"** — vždy dostupné (i když kandidáti vyšli), otevře normální `GlobalSearchScreen` s předvyplněným dotazem (název ComicK titulu) pro případ, že automatické hledání zdroj nenajde kvůli jinému názvu na zdroji, nebo že žádný z nalezených kandidátů není ve skutečnosti správný.
+- 0 kandidátů: obrazovka ukáže "Žádný zdroj tenhle titul nemá" + stejné tlačítko "Hledat ručně".
+
+### Chování po výběru
+
+Klik na kandidáta v seznamu: appka zavolá `repository.openPreview(resolvedSManga)` (stejná cesta jako dnešní klik na výsledek v Procházet/GlobalSearch — vytvoří/znovupoužije NE-knihovní `MangaEntity` pro ten reálný zdroj), synchronizuje jeho kapitoly (`refreshChapters`, kandidát už je má stažené z kroku 4 výše, není nutné je stahovat znovu) a rovnou naviguje do čtečky na `ChapterEntity`, jehož `chapterNumber` odpovídá požadované ComicK kapitole.
+
+Od tohohle okamžiku appka pracuje úplně normálně (klíčové rozhodnutí 1) — žádný trvalý "přišlo z ComicK" stav, žádné zvláštní chování v historii/pokračování ve čtení. Pokud si uživatel titul chce trvale sledovat přes tenhle reálný zdroj místo ComicK, může ho normálně přidat do knihovny tlačítkem na jeho detailu (stejně jako dnes u jakéhokoliv jiného zdroje) — to je oddělené rozhodnutí od ComicK knihovnní položky, obě mohou existovat vedle sebe.
+
+### Mimo rozsah (záměrně)
+
+- Perzistentní cache (Room) — jen in-memory, viz "Cache rozsah" rozhodnutí výše.
+- Automatické sloučení ComicK knihovní položky se zjištěným reálným zdrojem do jedné entity — zůstávají oddělené (klíčové rozhodnutí 1).
+- Klikací stránka skupiny (Sub-projekt 4).
+
+### Testování
+
+- Unit testy pro zúžení podle `contentType` (mock `SourceManager` s několika zdroji různých typů, ověřit že se prohledají jen odpovídající).
+- Unit testy pro `normalizeMangaTitle`-based shodu (existující i nová edge-case pokrytí — diakritika, velká/malá písmena, různé oddělovače).
+- Unit testy pro výpočet úplnosti (`X/Y`) a pro nalezení nejbližší odpovídající kapitoly podle čísla.
+- Unit test pro in-memory cache (druhé volání pro stejný titul nevolá znovu `search()`/plný `getChapterList()` u již objevených kandidátů).
+- Manuální ověření na zařízení: ComicK titul s jasnou shodou (např. Solo Leveling) → ověřit že se najdou správní kandidáti se správným poměrem kapitol; titul co žádný zdroj nemá → ověřit "Hledat ručně" cestu; klik na konkrétní starší kapitolu → ověřit že appka skočí rovnou na odpovídající kapitolu ve vybraném zdroji, ne na první.
