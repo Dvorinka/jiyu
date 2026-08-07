@@ -906,12 +906,17 @@ internal fun GlassChapterRow(
                     Text(text = date, color = TextSecondary.copy(alpha = 0.45f), fontSize = 10.sp)
                 }
             }
-            when (chapter.downloadStatus) {
-                DownloadStatus.DOWNLOADED  -> Icon(TablerIcons.CircleCheck, contentDescription = stringResource(R.string.detail_chapter_downloaded), tint = Cyan, modifier = Modifier.size(18.dp))
-                DownloadStatus.DOWNLOADING -> Text("↓", color = Violet, fontSize = 16.sp)
-                DownloadStatus.QUEUED      -> Text("⏳", fontSize = 14.sp)
-                DownloadStatus.ERROR       -> IconButton(onClick = onDownload, modifier = Modifier.size(32.dp)) { Icon(TablerIcons.Download, contentDescription = stringResource(R.string.common_retry), tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(18.dp)) }
-                else                       -> IconButton(onClick = onDownload, modifier = Modifier.size(32.dp)) { Icon(TablerIcons.Download, contentDescription = stringResource(R.string.common_download), tint = TextSecondary, modifier = Modifier.size(18.dp)) }
+            // ComicK je jen katalog/metadata (viz design doc) - stahovani dava smysl
+            // az po vyreseni skutecneho zdroje (Sub-projekt 3), do te doby se ikonka
+            // u ComicK kapitol vubec nevykresluje.
+            if (chapter.sourceId != "comick") {
+                when (chapter.downloadStatus) {
+                    DownloadStatus.DOWNLOADED  -> Icon(TablerIcons.CircleCheck, contentDescription = stringResource(R.string.detail_chapter_downloaded), tint = Cyan, modifier = Modifier.size(18.dp))
+                    DownloadStatus.DOWNLOADING -> Text("↓", color = Violet, fontSize = 16.sp)
+                    DownloadStatus.QUEUED      -> Text("⏳", fontSize = 14.sp)
+                    DownloadStatus.ERROR       -> IconButton(onClick = onDownload, modifier = Modifier.size(32.dp)) { Icon(TablerIcons.Download, contentDescription = stringResource(R.string.common_retry), tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(18.dp)) }
+                    else                       -> IconButton(onClick = onDownload, modifier = Modifier.size(32.dp)) { Icon(TablerIcons.Download, contentDescription = stringResource(R.string.common_download), tint = TextSecondary, modifier = Modifier.size(18.dp)) }
+                }
             }
         }
         DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
