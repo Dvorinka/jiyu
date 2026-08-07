@@ -96,6 +96,7 @@ class AppDatabaseMigrationTest {
                 AppDatabase.MIGRATION_27_28,
                 AppDatabase.MIGRATION_28_29,
                 AppDatabase.MIGRATION_29_30,
+                AppDatabase.MIGRATION_30_31,
             )
             .build()
 
@@ -115,6 +116,8 @@ class AppDatabaseMigrationTest {
         val manga = com.haise.jiyu.data.db.entity.MangaEntity(
             id = "m1", sourceId = "mangadex", url = "https://example.com/m1", title = "Test",
             coverUrl = null, description = null, status = null, inLibrary = true,
+            demographic = "Shounen", translationCompleted = true, hasAnime = true,
+            finalChapter = "Svazek 3, kapitola 200",
         )
         db.mangaDao().upsert(manga)
         db.mangaDao().setKitsuId("m1", "kitsu-1")
@@ -125,6 +128,13 @@ class AppDatabaseMigrationTest {
         assertEquals("kitsu-1", result.kitsuId)
         assertEquals(42L, result.mangaUpdatesId)
         assertEquals(5000L, result.readingTimeMs)
+
+        // MIGRATION_30_31: demographic/translationCompleted/hasAnime/finalChapter
+        // pridane na manga, musi prezit round-trip pres Room.
+        assertEquals("Shounen", result.demographic)
+        assertEquals(true, result.translationCompleted)
+        assertEquals(true, result.hasAnime)
+        assertEquals("Svazek 3, kapitola 200", result.finalChapter)
 
         // MIGRATION_29_30: groupsJson pridany na chapter, musi byt citelny (nullable, default null)
         // a musi prezit round-trip pres Room.

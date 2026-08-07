@@ -380,6 +380,11 @@
     <string name="detail_info_origination">Původ</string>
     <string name="detail_info_demographic">Demografie</string>
     <string name="detail_info_published">Vydáno</string>
+    <string name="detail_info_translation">Překlad</string>
+    <string name="detail_info_translation_completed">Dokončen</string>
+    <string name="detail_info_translation_ongoing">Probíhá</string>
+    <string name="detail_info_anime">Anime</string>
+    <string name="detail_info_final_chapter">Poslední kapitola</string>
     <string name="detail_continue_short">Pokračovat</string>
     <string name="detail_read_options">Možnosti čtení</string>
     <string name="detail_chapters_header">KAPITOLY</string>

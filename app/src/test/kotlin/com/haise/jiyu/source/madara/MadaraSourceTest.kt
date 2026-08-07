@@ -163,7 +163,7 @@ class MadaraSourceTest {
     fun `getPopular tags every item with the site's own content type immediately, not always MANGA`() = runTest {
         // Driv parseMangaList() nikdy nenastavovalo contentType, takze kazda polozka v
         // Prochazet/pri pridani do knihovny dostala vychozi "MANGA" z SManga() - bez ohledu
-        // na contentTypeOverride zdroje - dokud si ji uzivatel rucne neobnovil (refreshContentType).
+        // na contentTypeOverride zdroje - dokud si ji uzivatel rucne neobnovil (refreshMangaDetails).
         // Manhwa/manhua/novel zdroje tak vzdy ukazovaly spatny stitek, dokud nedoslo k refreshi.
         val manhuaSource = MadaraSource(
             id = "madara:test-manhua-list",

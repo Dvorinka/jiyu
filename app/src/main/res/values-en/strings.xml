@@ -362,6 +362,11 @@
     <string name="detail_info_origination">Origin</string>
     <string name="detail_info_demographic">Demographic</string>
     <string name="detail_info_published">Published</string>
+    <string name="detail_info_translation">Translation</string>
+    <string name="detail_info_translation_completed">Completed</string>
+    <string name="detail_info_translation_ongoing">Ongoing</string>
+    <string name="detail_info_anime">Anime</string>
+    <string name="detail_info_final_chapter">Final chapter</string>
     <string name="detail_continue_short">Continue</string>
     <string name="detail_read_options">Reading options</string>
     <string name="detail_chapters_header">CHAPTERS</string>

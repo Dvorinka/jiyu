@@ -28,7 +28,7 @@ class ComicKSourceTest {
     """.trimIndent()
 
     private val mangaDetailJson = """
-        {"comic": {"hid": "abcd", "desc": "A summary.", "status": 1, "year": 2020, "country": "kr"}, "authors": [{"name": "Jane"}], "genres": [{"name": "Action"}]}
+        {"demographic": "Shounen", "comic": {"hid": "abcd", "desc": "A summary.", "status": 1, "year": 2020, "country": "kr", "translation_completed": true, "has_anime": true, "final_chapter": "200", "final_volume": "3"}, "authors": [{"name": "Jane"}], "genres": [{"name": "Action"}]}
     """.trimIndent()
 
     private val chaptersJson = """
@@ -111,6 +111,71 @@ class ComicKSourceTest {
         assertEquals("Vychází", details.status)
         assertEquals("Jane", details.author)
         assertEquals(2020, details.year)
+    }
+
+    @Test
+    fun `getMangaDetails reads demographic directly as a resolved label string`() = runTest {
+        val manga = source.getPopular(1).first()
+        val details = source.getMangaDetails(manga)
+        assertEquals("Shounen", details.demographic)
+    }
+
+    @Test
+    fun `getMangaDetails reads translation_completed and has_anime booleans`() = runTest {
+        val manga = source.getPopular(1).first()
+        val details = source.getMangaDetails(manga)
+        assertEquals(true, details.translationCompleted)
+        assertEquals(true, details.hasAnime)
+    }
+
+    @Test
+    fun `getMangaDetails combines final_chapter and final_volume into one label`() = runTest {
+        val manga = source.getPopular(1).first()
+        val details = source.getMangaDetails(manga)
+        assertEquals("Svazek 3, kapitola 200", details.finalChapter)
+    }
+
+    @Test
+    fun `getMangaDetails leaves finalChapter null when the API provides no final_chapter`() = runTest {
+        server.dispatcher = object : Dispatcher() {
+            override fun dispatch(request: RecordedRequest): MockResponse {
+                val path = request.path.orEmpty()
+                return when {
+                    path.startsWith("/v1.0/search") -> MockResponse().setBody(searchArrayJson)
+                    path == "/comic/test-series" -> MockResponse().setBody(
+                        """{"demographic": "Seinen", "comic": {"hid": "abcd", "desc": "A summary.", "status": 1, "year": 2020, "country": "kr"}}"""
+                    )
+                    else -> MockResponse().setResponseCode(404)
+                }
+            }
+        }
+        val manga = source.getPopular(1).first()
+        val details = source.getMangaDetails(manga)
+        assertEquals(null, details.finalChapter)
+        assertEquals(false, details.translationCompleted)
+        assertEquals(false, details.hasAnime)
+    }
+
+    @Test
+    fun `getMangaDetails throws a friendly message when the ComicK detail endpoint 404s`() = runTest {
+        server.dispatcher = object : Dispatcher() {
+            override fun dispatch(request: RecordedRequest): MockResponse {
+                val path = request.path.orEmpty()
+                return when {
+                    path.startsWith("/v1.0/search") -> MockResponse().setBody(searchArrayJson)
+                    path == "/comic/test-series" -> MockResponse().setResponseCode(404)
+                    else -> MockResponse().setResponseCode(404)
+                }
+            }
+        }
+        val manga = source.getPopular(1).first()
+        var message: String? = null
+        try {
+            source.getMangaDetails(manga)
+        } catch (e: Exception) {
+            message = e.message
+        }
+        assertEquals("ComicK tenhle titul přes veřejné API neposkytuje (časté u 18+ obsahu)", message)
     }
 
     @Test

@@ -74,7 +74,10 @@ class ComicKSource @Inject constructor(
     override suspend fun getMangaDetails(manga: SManga): SManga =
         withContext(Dispatchers.IO) {
             val slug = manga.url.substringAfterLast("/")
-            val json = getObject("$apiBase/comic/$slug")
+            val json = getObject(
+                "$apiBase/comic/$slug",
+                notFoundMessage = "ComicK tenhle titul přes veřejné API neposkytuje (časté u 18+ obsahu)",
+            )
             val comic = json.getJSONObject("comic")
 
             val desc = comic.optString("desc").ifBlank { null }
@@ -102,6 +105,15 @@ class ComicKSource @Inject constructor(
                 }
             }
 
+            val demographic = json.optString("demographic").ifBlank { null }
+            val translationCompleted = comic.optBoolean("translation_completed", false)
+            val hasAnime = comic.optBoolean("has_anime", false)
+            val finalChapterRaw = comic.optString("final_chapter").ifBlank { null }
+            val finalVolumeRaw = comic.optString("final_volume").ifBlank { null }
+            val finalChapter = finalChapterRaw?.let { chap ->
+                if (finalVolumeRaw != null) "Svazek $finalVolumeRaw, kapitola $chap" else "Kapitola $chap"
+            }
+
             manga.copy(
                 description = desc,
                 status      = status,
@@ -109,6 +121,10 @@ class ComicKSource @Inject constructor(
                 genres      = genres,
                 year        = year,
                 contentType = contentTypeFromCountry(comic.optString("country")),
+                demographic = demographic,
+                translationCompleted = translationCompleted,
+                hasAnime = hasAnime,
+                finalChapter = finalChapter,
             )
         }
 
@@ -192,11 +208,15 @@ class ComicKSource @Inject constructor(
         }
     }
 
-    private fun getObject(url: String): JSONObject {
+    private fun getObject(url: String, notFoundMessage: String? = null): JSONObject {
         val request = requestBuilder(url).build()
         client.newCall(request).execute().use { response ->
             val body = response.body?.string().orEmpty()
-            check(response.isSuccessful) { "ComicK API chyba ${response.code}: $url" }
+            if (response.code == 404 && notFoundMessage != null) {
+                check(response.isSuccessful) { notFoundMessage }
+            } else {
+                check(response.isSuccessful) { "ComicK API chyba ${response.code}: $url" }
+            }
             return JSONObject(body)
         }
     }

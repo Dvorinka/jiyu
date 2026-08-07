@@ -52,4 +52,8 @@ data class MangaEntity(
     val mangaUpdatesId: Long? = null,
     val readingTimeMs: Long = 0L,
     val isFavorite: Boolean = false,
+    val demographic: String? = null,
+    val translationCompleted: Boolean? = null,
+    val hasAnime: Boolean? = null,
+    val finalChapter: String? = null,
 )

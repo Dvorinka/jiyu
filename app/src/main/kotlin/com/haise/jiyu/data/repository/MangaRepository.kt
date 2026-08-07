@@ -228,18 +228,40 @@ class MangaRepository @Inject constructor(
     suspend fun removeFromLibrary(mangaId: String) = mangaDao.setInLibrary(mangaId, false)
 
     /**
-     * Znovu zjistí typ obsahu (MANGA/MANHWA/MANHUA/NOVEL) z detailu mangy u zdroje a uloží
-     * ho, pokud se od uloženého liší - viz [MadaraSource.getMangaDetails], kde weby jako
-     * mangaread.org hostí smíchaný obsah a uvádí přesný typ u každého titulu zvlášť.
+     * Znovu dotáhne kompletní detail mangy ze zdroje (popis, stav, autor, žánry,
+     * typ obsahu, a u ComicK i demographic/translationCompleted/hasAnime/finalChapter)
+     * a uloží ho - viz [MadaraSource.getMangaDetails], kde weby jako mangaread.org
+     * hostí smíchaný obsah a uvádí přesný typ u každého titulu zvlášť.
      *
-     * Volá se jen z ručního refreshe (Knihovna pull-to-refresh, refresh na detailu), NE z
-     * [com.haise.jiyu.work.ChapterUpdateWorker] - ten běží tiše na pozadí nad celou knihovnou
-     * a stahovat kvůli kosmetickému štítku o web navíc denně by nebylo úměrné.
+     * Dřív se jmenovala refreshContentType a ukládala jen contentType - zbytek dat
+     * ze source.getMangaDetails() se tiše zahazoval, takže např. ComicK tituly
+     * nikdy nezobrazily popis/stav/žánry ani po ručním refreshi.
+     *
+     * Volá se jen z ručního refreshe (Knihovna pull-to-refresh, refresh na detailu,
+     * a od teď i jednorázově při prvním otevření ComicK titulu - viz
+     * MangaDetailViewModel.init), NE z [com.haise.jiyu.work.ChapterUpdateWorker] -
+     * ten běží tiše na pozadí nad celou knihovnou a stahovat kvůli kosmetickým
+     * detailům navíc denně by nebylo úměrné.
      */
-    suspend fun refreshContentType(mangaId: String, manga: SManga) {
+    suspend fun refreshMangaDetails(mangaId: String, manga: SManga) {
         val source = sourceManager.getById(manga.sourceId) ?: return
-        val detected = try { source.getMangaDetails(manga).contentType } catch (_: Exception) { return }
-        if (detected != manga.contentType) mangaDao.setContentType(mangaId, detected)
+        val detail = try { source.getMangaDetails(manga) } catch (_: Exception) { return }
+        val existing = mangaDao.getById(mangaId) ?: return
+        mangaDao.upsert(
+            existing.copy(
+                description = detail.description ?: existing.description,
+                status = detail.status ?: existing.status,
+                author = detail.author ?: existing.author,
+                artist = detail.artist ?: existing.artist,
+                genres = detail.genres.takeIf { it.isNotEmpty() }?.joinToString(",") ?: existing.genres,
+                year = detail.year ?: existing.year,
+                contentType = detail.contentType,
+                demographic = detail.demographic ?: existing.demographic,
+                translationCompleted = detail.translationCompleted ?: existing.translationCompleted,
+                hasAnime = detail.hasAnime ?: existing.hasAnime,
+                finalChapter = detail.finalChapter ?: existing.finalChapter,
+            )
+        )
     }
 
     /**

@@ -76,6 +76,18 @@ class MangaDetailViewModel @Inject constructor(
                 if (online && _errorMessage.value != null && !_isRefreshing.value) refreshChapters()
             }
         }
+        // ComicK detail endpoint doplňuje popis/stav/žánry/demographic/anime/final chapter,
+        // které se v rychlém výpisu (getPopular/search) nikdy neposílají - dotáhneme je jednou
+        // potichu na pozadí hned při prvním otevření titulu, aby uživatel neplatil "cenu"
+        // ručního pull-to-refreshe jen proto, aby viděl základní metadata. Fire-and-forget:
+        // refreshMangaDetails() sám ignoruje chyby, žádný loading indikátor se tu nezobrazuje.
+        viewModelScope.launch {
+            val current = repository.observeMangaById(mangaId).first { it != null }
+            if (current?.sourceId == "comick") {
+                val sManga = SManga(current.sourceId, current.url, current.title, current.coverUrl, current.description, current.status, contentType = current.contentType)
+                repository.refreshMangaDetails(mangaId, sManga)
+            }
+        }
     }
 
     val manga: StateFlow<MangaEntity?> = repository.observeMangaById(mangaId)
@@ -522,7 +534,7 @@ class MangaDetailViewModel @Inject constructor(
             try {
                 val sManga = SManga(current.sourceId, current.url, current.title, current.coverUrl, current.description, current.status, contentType = current.contentType)
                 repository.refreshChapters(mangaId, sManga)
-                repository.refreshContentType(mangaId, sManga)
+                repository.refreshMangaDetails(mangaId, sManga)
             } catch (e: Exception) {
                 _errorMessage.value = appContext.getString(R.string.detail_error_refresh_failed, e.toFriendlyMessage())
             } finally {

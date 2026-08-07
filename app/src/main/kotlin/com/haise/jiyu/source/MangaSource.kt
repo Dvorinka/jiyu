@@ -15,6 +15,10 @@ data class SManga(
     val genres: List<String> = emptyList(),
     val year: Int? = null,
     val contentType: String = "MANGA",
+    val demographic: String? = null,
+    val translationCompleted: Boolean? = null,
+    val hasAnime: Boolean? = null,
+    val finalChapter: String? = null,
 )
 
 data class MangaFilter(

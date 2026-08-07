@@ -241,7 +241,7 @@ class LibraryViewModel @Inject constructor(
                 try {
                     val sManga = SManga(manga.sourceId, manga.url, manga.title, manga.coverUrl, manga.description, manga.status, contentType = manga.contentType)
                     repository.refreshChapters(manga.id, sManga)
-                    repository.refreshContentType(manga.id, sManga)
+                    repository.refreshMangaDetails(manga.id, sManga)
                 } catch (e: Exception) {
                     errors += manga.title
                 }

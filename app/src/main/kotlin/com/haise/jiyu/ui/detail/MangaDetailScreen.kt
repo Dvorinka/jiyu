@@ -323,8 +323,21 @@ fun MangaDetailScreen(
                             }
                             Column(modifier = Modifier.padding(top = 6.dp)) {
                                 DetailInfoRow(stringResource(R.string.detail_info_origination), originationLabel(manga?.contentType))
-                                demographicGenre?.let { DetailInfoRow(stringResource(R.string.detail_info_demographic), it) }
+                                (manga?.demographic ?: demographicGenre)?.let { DetailInfoRow(stringResource(R.string.detail_info_demographic), it) }
                                 manga?.year?.takeIf { it > 0 }?.let { DetailInfoRow(stringResource(R.string.detail_info_published), it.toString()) }
+                                manga?.translationCompleted?.let {
+                                    DetailInfoRow(
+                                        stringResource(R.string.detail_info_translation),
+                                        if (it) stringResource(R.string.detail_info_translation_completed) else stringResource(R.string.detail_info_translation_ongoing),
+                                    )
+                                }
+                                manga?.hasAnime?.let {
+                                    DetailInfoRow(
+                                        stringResource(R.string.detail_info_anime),
+                                        if (it) stringResource(R.string.common_yes) else stringResource(R.string.common_no),
+                                    )
+                                }
+                                manga?.finalChapter?.let { DetailInfoRow(stringResource(R.string.detail_info_final_chapter), it) }
                             }
                             Spacer(modifier = Modifier.weight(1f))
                             val readCount = chapters.count { it.read }
