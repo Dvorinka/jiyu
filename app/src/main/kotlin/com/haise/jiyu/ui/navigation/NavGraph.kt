@@ -198,6 +198,7 @@ fun JiyuNavGraph(
                 onOpenChapterIncognito = { chapterId -> navController.navigate(Routes.reader(chapterId, incognito = true)) },
                 onOpenQr = { id, title -> navController.navigate(Routes.qr(id, title)) },
                 onOpenDetails = { mangaId?.let { navController.navigate(Routes.detailInfo(it)) } },
+                onResolveChapter = { chapterId, incognito -> navController.navigate(Routes.sourceResolver(chapterId, incognito)) },
             )
         }
 

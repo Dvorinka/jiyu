@@ -60,9 +60,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import kotlinx.coroutines.launch
 
 import android.content.Intent
 import androidx.compose.ui.Alignment
@@ -106,6 +104,7 @@ fun MangaDetailScreen(
     onOpenChapterIncognito: (String) -> Unit = {},
     onOpenQr: (mangaId: String, mangaTitle: String) -> Unit = { _, _ -> },
     onOpenDetails: () -> Unit = {},
+    onResolveChapter: (chapterId: String, incognito: Boolean) -> Unit = { _, _ -> },
     viewModel: MangaDetailViewModel = hiltViewModel(),
 ) {
     val manga            by viewModel.manga.collectAsState()
@@ -126,11 +125,9 @@ fun MangaDetailScreen(
     val context             = androidx.compose.ui.platform.LocalContext.current
     val navBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val snackbarHostState = remember { SnackbarHostState() }
-    val coroutineScope = rememberCoroutineScope()
-    val comickReadUnavailableMessage = stringResource(R.string.detail_comick_read_unavailable)
     fun openChapter(chapter: ChapterEntity, incognito: Boolean = false) {
         if (chapter.sourceId == "comick") {
-            coroutineScope.launch { snackbarHostState.showSnackbar(comickReadUnavailableMessage) }
+            onResolveChapter(chapter.id, incognito)
         } else if (incognito) {
             onOpenChapterIncognito(chapter.id)
         } else {
