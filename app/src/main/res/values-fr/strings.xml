@@ -384,6 +384,7 @@
     <string name="detail_all_groups">Tous les groupes</string>
     <string name="detail_no_volume">Sans volume</string>
     <string name="detail_volume_label">Volume %1$s</string>
+    <string name="detail_comick_read_unavailable">La lecture via ComicK ne fonctionne pas encore – la recherche de la source réelle arrivera dans une prochaine mise à jour.</string>
     <string name="detail_chapter_downloaded">Téléchargé</string>
     <string name="detail_mark_read_up_to">Marquer celui-ci et les plus anciens comme lus</string>
     <string name="detail_mark_all_older_read">Marquer tous les plus anciens comme lus</string>

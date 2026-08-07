@@ -405,6 +405,7 @@
     <string name="detail_all_groups">Všechny skupiny</string>
     <string name="detail_no_volume">Bez volumu</string>
     <string name="detail_volume_label">Volume %1$s</string>
+    <string name="detail_comick_read_unavailable">Čtení přes ComicK ještě nefunguje – hledání skutečného zdroje přidáme v příští aktualizaci.</string>
     <string name="detail_chapter_downloaded">Staženo</string>
     <string name="detail_mark_read_up_to">Označit toto i vše starší přečtené</string>
     <string name="detail_mark_all_older_read">Označit vše starší jako přečtené</string>

@@ -60,7 +60,9 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.launch
 
 import android.content.Intent
 import androidx.compose.ui.Alignment
@@ -124,6 +126,17 @@ fun MangaDetailScreen(
     val context             = androidx.compose.ui.platform.LocalContext.current
     val navBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val snackbarHostState = remember { SnackbarHostState() }
+    val coroutineScope = rememberCoroutineScope()
+    val comickReadUnavailableMessage = stringResource(R.string.detail_comick_read_unavailable)
+    fun openChapter(chapter: ChapterEntity, incognito: Boolean = false) {
+        if (chapter.sourceId == "comick") {
+            coroutineScope.launch { snackbarHostState.showSnackbar(comickReadUnavailableMessage) }
+        } else if (incognito) {
+            onOpenChapterIncognito(chapter.id)
+        } else {
+            onOpenChapter(chapter.id)
+        }
+    }
     val pullToRefreshState = rememberPullToRefreshState()
     var showChapterOverflowMenu by remember { mutableStateOf(false) }
     var showDownloadNDialog by remember { mutableStateOf(false) }
@@ -423,7 +436,7 @@ fun MangaDetailScreen(
                                 Row(
                                     modifier = Modifier
                                         .weight(1f)
-                                        .clickable { onOpenChapter(chapter.id) }
+                                        .clickable { openChapter(chapter) }
                                         .padding(horizontal = 16.dp, vertical = 12.dp),
                                     verticalAlignment = Alignment.CenterVertically,
                                 ) {
@@ -445,12 +458,12 @@ fun MangaDetailScreen(
                                         DropdownMenuItem(
                                             text = { Text(stringResource(R.string.action_read_normal)) },
                                             leadingIcon = { Icon(TablerIcons.PlayerPlay, contentDescription = null) },
-                                            onClick = { showReadMenu = false; onOpenChapter(chapter.id) },
+                                            onClick = { showReadMenu = false; openChapter(chapter) },
                                         )
                                         DropdownMenuItem(
                                             text = { Text(stringResource(R.string.action_read_incognito)) },
                                             leadingIcon = { Icon(TablerIcons.EyeOff, contentDescription = null) },
-                                            onClick = { showReadMenu = false; onOpenChapterIncognito(chapter.id) },
+                                            onClick = { showReadMenu = false; openChapter(chapter, incognito = true) },
                                         )
                                     }
                                 }
@@ -538,7 +551,7 @@ fun MangaDetailScreen(
                                     DropdownMenuItem(
                                         text = { Text(stringResource(R.string.detail_jump_first_unread)) },
                                         leadingIcon = { Icon(TablerIcons.PlayerSkipForward, contentDescription = null) },
-                                        onClick = { showChapterOverflowMenu = false; firstUnread?.let { onOpenChapter(it.id) } },
+                                        onClick = { showChapterOverflowMenu = false; firstUnread?.let { openChapter(it) } },
                                     )
                                 }
                                 DropdownMenuItem(
@@ -737,7 +750,7 @@ fun MangaDetailScreen(
                                         .clip(RoundedCornerShape(8.dp))
                                         .background(if (chapter.read) GlowCyan.copy(alpha = 0.08f) else GlowViolet.copy(alpha = 0.15f))
                                         .border(1.dp, if (chapter.read) GlowCyan.copy(alpha = 0.2f) else GlowViolet.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
-                                        .clickable { onOpenChapter(chapter.id) }
+                                        .clickable { openChapter(chapter) }
                                         .padding(6.dp),
                                     contentAlignment = Alignment.Center,
                                 ) {
@@ -776,7 +789,7 @@ fun MangaDetailScreen(
                         items(chs, key = { it.id }) { chapter ->
                             GlassChapterRow(
                                 chapter = chapter,
-                                onOpen = { onOpenChapter(chapter.id) },
+                                onOpen = { openChapter(chapter) },
                                 onDownload = { viewModel.downloadChapter(chapter) },
                                 onMarkReadUpTo = { viewModel.markReadUpTo(chapter.id) },
                                 onMarkAllOlderRead = { viewModel.markAllOlderAsRead(chapter) },
@@ -789,7 +802,7 @@ fun MangaDetailScreen(
                     items(chapters, key = { it.id }) { chapter ->
                         GlassChapterRow(
                             chapter = chapter,
-                            onOpen = { onOpenChapter(chapter.id) },
+                            onOpen = { openChapter(chapter) },
                             onDownload = { viewModel.downloadChapter(chapter) },
                             onMarkReadUpTo = { viewModel.markReadUpTo(chapter.id) },
                             onMarkAllOlderRead = { viewModel.markAllOlderAsRead(chapter) },
