@@ -56,7 +56,7 @@ class ComicKSource @Inject constructor(
     override suspend fun getPopular(page: Int, filter: MangaFilter): List<SManga> =
         withContext(Dispatchers.IO) {
             val sort = when (filter.sortBy) {
-                "latest" -> "date"
+                "latest" -> "uploaded"
                 "rating" -> "rating"
                 "title"  -> "title"
                 else     -> "follow"

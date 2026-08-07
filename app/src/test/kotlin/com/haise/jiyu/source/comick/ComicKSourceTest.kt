@@ -2,6 +2,7 @@ package com.haise.jiyu.source.comick
 
 import com.haise.jiyu.settings.FakeDataStore
 import com.haise.jiyu.settings.SettingsRepository
+import com.haise.jiyu.source.MangaFilter
 import com.haise.jiyu.source.redirectingClient
 import kotlinx.coroutines.test.runTest
 import okhttp3.mockwebserver.Dispatcher
@@ -67,6 +68,16 @@ class ComicKSourceTest {
         assertEquals(1, result.size)
         assertEquals("Test Series", result[0].title)
         assertTrue(result[0].coverUrl!!.endsWith("/cover.jpg"))
+    }
+
+    @Test
+    fun `getPopular maps latest sort to a sort value the ComicK API actually accepts`() = runTest {
+        // ComicK's /v1.0/search schema only allows sort in {view, created_at,
+        // uploaded, rating, average_rating, follow, user_follow_count, ""} -
+        // "date" (used until 2026-08-07) is rejected with HTTP 400.
+        source.getPopular(1, MangaFilter(sortBy = "latest"))
+        val request = server.takeRequest()
+        assertTrue(request.path!!.contains("sort=uploaded"))
     }
 
     @Test
