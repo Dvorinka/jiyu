@@ -532,6 +532,7 @@ class MangaDetailViewModel @Inject constructor(
     }
 
     fun downloadChapter(chapter: ChapterEntity) {
+        if (chapter.sourceId == "comick") return
         val mangaUrl = manga.value?.url ?: return
         viewModelScope.launch {
             repository.setDownloadStatus(chapter.id, DownloadStatus.QUEUED)
@@ -544,6 +545,7 @@ class MangaDetailViewModel @Inject constructor(
         viewModelScope.launch {
             chapters.value
                 .filter { it.downloadStatus == DownloadStatus.NOT_DOWNLOADED || it.downloadStatus == DownloadStatus.ERROR }
+                .filter { it.sourceId != "comick" }
                 .forEach { chapter ->
                     repository.setDownloadStatus(chapter.id, DownloadStatus.QUEUED)
                     downloadQueue.enqueue(chapter, mangaUrl)
@@ -556,6 +558,7 @@ class MangaDetailViewModel @Inject constructor(
         viewModelScope.launch {
             chapters.value
                 .filter { !it.read && (it.downloadStatus == DownloadStatus.NOT_DOWNLOADED || it.downloadStatus == DownloadStatus.ERROR) }
+                .filter { it.sourceId != "comick" }
                 .forEach { chapter ->
                     repository.setDownloadStatus(chapter.id, DownloadStatus.QUEUED)
                     downloadQueue.enqueue(chapter, mangaUrl)
@@ -590,6 +593,7 @@ class MangaDetailViewModel @Inject constructor(
         viewModelScope.launch {
             chapters.value
                 .filter { !it.read && (it.downloadStatus == DownloadStatus.NOT_DOWNLOADED || it.downloadStatus == DownloadStatus.ERROR) }
+                .filter { it.sourceId != "comick" }
                 .sortedBy { it.chapterNumber }
                 .take(n)
                 .forEach { chapter ->

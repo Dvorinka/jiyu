@@ -56,6 +56,7 @@ import kotlinx.coroutines.delay
 @Composable
 fun ReaderScreen(viewModel: ReaderViewModel = hiltViewModel()) {
     val pages               by viewModel.pages.collectAsState()
+    val comickUnavailable   by viewModel.comickUnavailable.collectAsState()
     val loading             by viewModel.loading.collectAsState()
     val translateMode       by viewModel.translateMode.collectAsState()
     val translationProgress by viewModel.translationProgress.collectAsState()
@@ -224,6 +225,7 @@ fun ReaderScreen(viewModel: ReaderViewModel = hiltViewModel()) {
                 onAddGlossaryEntry = { source, target -> viewModel.addGlossaryEntry(source, target) },
                 onRemoveGlossaryEntry = { viewModel.removeGlossaryEntry(it) },
             )
+            comickUnavailable -> Text(stringResource(R.string.detail_comick_read_unavailable), color = Color.White)
             pages.isEmpty() -> Text(stringResource(R.string.reader_chapter_load_failed), color = Color.White)
             else -> ReaderContent(
                 pages = pages,

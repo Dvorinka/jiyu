@@ -52,7 +52,7 @@ class ChapterUpdateWorker @AssistedInject constructor(
                                 if (newChapters.isNotEmpty()) {
                                     updatedManga.add(manga.title to (manga.id to newChapters.size))
                                 }
-                                if (manga.autoDownload && newChapters.isNotEmpty()) {
+                                if (manga.autoDownload && newChapters.isNotEmpty() && manga.sourceId != "comick") {
                                     newChapters.forEach { ch ->
                                         repository.setDownloadStatus(ch.id, DownloadStatus.QUEUED)
                                         downloadQueue.enqueue(ch, manga.url)

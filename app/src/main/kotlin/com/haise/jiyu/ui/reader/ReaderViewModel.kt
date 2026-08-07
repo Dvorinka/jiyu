@@ -81,6 +81,9 @@ class ReaderViewModel @Inject constructor(
     private val _pages = MutableStateFlow<List<String>>(emptyList())
     val pages: StateFlow<List<String>> = _pages.asStateFlow()
 
+    private val _comickUnavailable = MutableStateFlow(false)
+    val comickUnavailable: StateFlow<Boolean> = _comickUnavailable.asStateFlow()
+
     private val _loading = MutableStateFlow(true)
     val loading: StateFlow<Boolean> = _loading.asStateFlow()
 
@@ -560,7 +563,16 @@ class ReaderViewModel @Inject constructor(
         _currentMangaId.value = mangaForDir?.id
         _mangaDirectionOverride.value = mangaForDir?.readerDirectionOverride
 
-        if (chapter.downloadStatus == DownloadStatus.DOWNLOADED && chapter.localPath != null) {
+        if (chapter.sourceId == "comick") {
+            // ComicK je zatim jen metadatovy katalog - nikdy nedokaze poskytnout stranky kapitoly.
+            // Blokujeme na urovni ctecky (nejen v detailu titulu), aby se nezobrazoval prazdny/chybovy stav.
+            _pages.value = emptyList()
+            _isOfflineChapter.value = false
+            _isNovelSource.value = false
+            _spreadPageIndices.value = emptySet()
+            _comickUnavailable.value = true
+        } else if (chapter.downloadStatus == DownloadStatus.DOWNLOADED && chapter.localPath != null) {
+            _comickUnavailable.value = false
             val pageUrls = ChapterStorage.listPageUrls(context, chapter.localPath)
             _pages.value = pageUrls
             _isOfflineChapter.value = true
@@ -584,6 +596,7 @@ class ReaderViewModel @Inject constructor(
                 _spreadPageIndices.value = spread
             }
         } else {
+            _comickUnavailable.value = false
             _isOfflineChapter.value = false
             _spreadPageIndices.value = emptySet()
             val cached = nextChapterCache.remove(chapter.id)
