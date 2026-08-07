@@ -51,8 +51,11 @@ object SettingsKeys {
     val FAVORITE_SOURCE_IDS    = stringSetPreferencesKey("favorite_source_ids")
     /**
      * Klasický režim (výběr ze všech zdrojů) vs. ComicK agregovaný režim (ComicK jako
-     * jediný katalog, čtení se automaticky přeloží na skutečný zdroj) - viz
-     * docs/superpowers/specs/2026-08-05-comick-aggregated-mode-design.md.
+     * jediný katalog). Cílový stav dle designu (viz
+     * docs/superpowers/specs/2026-08-05-comick-aggregated-mode-design.md) je, že se čtení
+     * v ComicK režimu automaticky přeloží na skutečný zdroj - to zatím NENÍ implementované
+     * (Sub-projekt 1 řeší jen katalog/Procházet/skupiny), takže se čtení kapitol v tomto
+     * režimu zatím vyhýbá slibovat funkčnost, kterou appka ještě nemá.
      */
     val APP_MODE = stringPreferencesKey("app_mode")
     val SHOW_ADULT_SOURCES     = booleanPreferencesKey("show_adult_sources")

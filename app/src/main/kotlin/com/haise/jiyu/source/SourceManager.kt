@@ -452,17 +452,26 @@ class SourceManager @Inject constructor(
 
     /**
      * Zdroje pro OBJEVOVÁNÍ (Procházet mřížka, GlobalSearch) - respektuje
-     * [SettingsRepository.showAdultSources]. Záměrně NEPOUŽÍVÁ [getById] (ten zůstává
-     * nefiltrovaný), aby vypnutí adult zdrojů neschovalo/nerozbilo mangu, kterou uživatel
-     * už má v knihovně z dřívějška - jen ji skryje z NOVÉHO objevování.
+     * [SettingsRepository.showAdultSources] a v Klasickém režimu skrývá ComicK
+     * (viz [SettingsRepository.appMode]) - ComicK se sice pořád registruje (aby
+     * fungoval getById i v Klasickém režimu), ale jako řádný zdroj do Procházet/
+     * hledání patří jen v ComicK agregovaném režimu; jinak by šlo omylem otevřít
+     * titul, který neumí přečíst žádnou kapitolu. Záměrně NEPOUŽÍVÁ [getById]
+     * (ten zůstává nefiltrovaný), aby vypnutí adult zdrojů/přepnutí režimu
+     * neschovalo/nerozbilo mangu, kterou uživatel už má v knihovně z dřívějška -
+     * jen ji skryje z NOVÉHO objevování.
      */
-    fun observeAll(): Flow<List<MangaSource>> = combine(_cache, settings.showAdultSources) { all, showAdult ->
-        if (showAdult) all else all.filterNot { it.isAdult }
-    }
+    fun observeAll(): Flow<List<MangaSource>> =
+        combine(_cache, settings.showAdultSources, settings.appMode) { all, showAdult, appMode ->
+            all
+                .let { if (showAdult) it else it.filterNot { s -> s.isAdult } }
+                .let { if (appMode == com.haise.jiyu.settings.AppMode.COMICK) it else it.filterNot { s -> s.id == "comick" } }
+        }
 
     suspend fun getAll(): List<MangaSource> {
         val all = rawSources()
-        return if (settings.showAdultSources.first()) all else all.filterNot { it.isAdult }
+        val adultFiltered = if (settings.showAdultSources.first()) all else all.filterNot { it.isAdult }
+        return if (settings.appMode.first() == com.haise.jiyu.settings.AppMode.COMICK) adultFiltered else adultFiltered.filterNot { it.id == "comick" }
     }
 
     /** Nefiltrované podle isAdult - viz komentář u [observeAll]. */

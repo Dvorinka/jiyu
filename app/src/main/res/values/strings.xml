@@ -113,7 +113,7 @@
     <string name="settings_sources_adult_toggle_desc">Vypnutím zmizí zdroje s 18+ obsahem z Procházet a hledání (už přidaná manga z nich zůstane čitelná)</string>
     <string name="settings_sources_mode_section_title">Režim appky</string>
     <string name="settings_sources_mode_toggle_title">ComicK agregovaný režim</string>
-    <string name="settings_sources_mode_toggle_desc">Místo výběru ze všech zdrojů appka nabídne jen ComicK jako katalog - u titulu i kapitol uvidíš překladatelské skupiny přesně jako na ComicK. Čtení appka automaticky přeloží na skutečný zdroj, který danou kapitolu má.</string>
+    <string name="settings_sources_mode_toggle_desc">Místo výběru ze všech zdrojů appka nabídne jen ComicK jako katalog - u titulu i kapitol uvidíš překladatelské skupiny přesně jako na ComicK. Čtení kapitol přes tenhle režim zatím nefunguje, přidává se postupně.</string>
     <string name="settings_sources_madara_section_title">Vlastní zdroje (Madara)</string>
     <string name="settings_sources_madara_description">Generický zdroj pro weby postavené na Madara šabloně. Zadej název a adresu webu - appka proti ní zkusí parsovat standardní Madara markup.</string>
     <string name="settings_sources_add_button">Přidat zdroj</string>

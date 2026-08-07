@@ -779,7 +779,7 @@
     <string name="settings_sources_adult_toggle_desc">En le désactivant, les sources au contenu 18+ disparaissent de Parcourir et de la recherche (les mangas déjà ajoutés depuis celles-ci restent lisibles)</string>
     <string name="settings_sources_mode_section_title">Mode de l\'application</string>
     <string name="settings_sources_mode_toggle_title">Mode agrégé ComicK</string>
-    <string name="settings_sources_mode_toggle_desc">Au lieu de choisir parmi toutes les sources, l\'application n\'affiche que ComicK comme catalogue - vous verrez les groupes de scan par titre et par chapitre exactement comme sur ComicK. La lecture est automatiquement redirigée vers une vraie source qui possède ce chapitre.</string>
+    <string name="settings_sources_mode_toggle_desc">Au lieu de choisir parmi toutes les sources, l\'application n\'affiche que ComicK comme catalogue - vous verrez les groupes de scan par titre et par chapitre exactement comme sur ComicK. La lecture des chapitres via ce mode ne fonctionne pas encore - elle est ajoutée progressivement.</string>
 
     <string name="settings_reader_preload_novel_title">Précharger la traduction du chapitre suivant (light novel)</string>
     <string name="settings_reader_preload_novel_desc">Une fois le chapitre actuel traduit, le suivant est traduit en arrière-plan pour être prêt immédiatement</string>

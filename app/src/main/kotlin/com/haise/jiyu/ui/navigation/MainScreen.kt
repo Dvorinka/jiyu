@@ -94,7 +94,13 @@ fun MainScreen(
                     tonalElevation = 0.dp,
                 ) {
                     tabs.forEach { tab ->
-                        val selected = currentDest?.hierarchy?.any { it.route == tab.route } == true
+                        val selected = if (tab.route.startsWith(Routes.SOURCE_BROWSE.substringBefore("{"))) {
+                            val expectedSourceId = tab.route.substringAfterLast("/")
+                            currentDest?.hierarchy?.any { it.route == Routes.SOURCE_BROWSE } == true &&
+                                navBackStack?.arguments?.getString("sourceId") == expectedSourceId
+                        } else {
+                            currentDest?.hierarchy?.any { it.route == tab.route } == true
+                        }
                         NavigationBarItem(
                             selected = selected,
                             onClick = {
