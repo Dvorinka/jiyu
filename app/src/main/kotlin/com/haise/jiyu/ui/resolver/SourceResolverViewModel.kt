@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import kotlin.math.abs
+import kotlin.math.floor
 
 @HiltViewModel
 class SourceResolverViewModel @Inject constructor(
@@ -66,11 +67,12 @@ class SourceResolverViewModel @Inject constructor(
                 _comicKTitle.value = manga.title
                 requestedChapterNumber = chapter.chapterNumber
                 // ComicK eviduje jednu kapitolu vícekrát, jednou za každou skupinu, co ji
-                // přeložila - .size by tak počítal "3× Ch.890" jako 3, ne 1. Viz taky
-                // ComicKChapterResolver.matchedChapterCount (stejná oprava na druhé straně
-                // poměru, aby se srovnávalo jablko s jablkem).
+                // přeložila - .size by tak počítal "3× Ch.890" jako 3, ne 1. floor() navíc
+                // sjednocuje granularitu s ComicKChapterResolver.matchedChapterCount (některé
+                // zdroje dělí jeden překlad na X, X.1, X.2 - bez floor() by šel poměr přes
+                // 100 %, viz komentář tam).
                 _totalComicKChapters.value = repository.getAllChapters(chapter.mangaId)
-                    .map { it.chapterNumber }.distinct().size
+                    .map { floor(it.chapterNumber).toInt() }.distinct().size
                 _candidates.value = resolver.findCandidates(
                     comicKMangaId = manga.id,
                     comicKMangaUrl = manga.url,

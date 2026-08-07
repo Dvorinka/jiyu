@@ -18,6 +18,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.math.abs
+import kotlin.math.floor
 
 /** Jeden nalezený reálný zdroj, který ComicK titul také má. */
 data class ResolvedCandidate(
@@ -66,10 +67,15 @@ class ComicKChapterResolver @Inject constructor(
         }
         val favorites = settings.favoriteSourceIds.first()
         return found.map { c ->
+            // floor(), ne primy distinct(chapterNumber): nektere zdroje (napr. MangaPark) delci
+            // jeden "logicky" preklad na vic zapisu s cisly X, X.1, X.2 - bez floor() by to
+            // v pomeru vypadalo jako "242/209 kapitol" (vic nez 100 %), overeno zive na
+            // MangaPark API pro Solo Leveling. floor() je stejna transformace jako u
+            // SourceResolverViewModel.totalComicKChapters, takze pomer zustava srovnatelny.
             ResolvedCandidate(
                 source = c.source,
                 manga = c.manga,
-                matchedChapterCount = c.chapters.map { it.chapterNumber }.distinct().size,
+                matchedChapterCount = c.chapters.map { floor(it.chapterNumber).toInt() }.distinct().size,
                 hasRequestedChapter = requestedChapterNumber == null ||
                     c.chapters.any { abs(it.chapterNumber - requestedChapterNumber) < 0.01f },
                 isFavorite = c.source.id in favorites,

@@ -105,7 +105,9 @@ class ComicKChapterResolverTest {
 
         assertEquals(1, result.size)
         assertTrue(result[0].hasRequestedChapter)
-        assertEquals(3, result[0].matchedChapterCount)
+        // floor(5f) a floor(5.5f) jsou obe 5 - matchedChapterCount pocita cele kapitoly (viz
+        // test "floors fractional chapter numbers" nize), takze tady je to 2, ne 3.
+        assertEquals(2, result[0].matchedChapterCount)
     }
 
     @Test
@@ -119,6 +121,21 @@ class ComicKChapterResolverTest {
         coEvery { sourceManager.getAll() } returns listOf(source)
 
         val result = resolver.findCandidates("comick-id-5b", "u1", "Solo Leveling", "MANHWA", requestedChapterNumber = null)
+
+        assertEquals(3, result[0].matchedChapterCount)
+    }
+
+    @Test
+    fun `matchedChapterCount floors fractional chapter numbers so split-raw sources aren't counted above 100 percent`() = runTest {
+        // Overeno zive na MangaPark API pro Solo Leveling: 242 radku s cisly 0, 0.1, 1, 1.1,
+        // 2, 2.1 ... (kazdy preklad rozdeleny na vic casti), zatimco ComicK ma pro stejny
+        // titul jen 209 unikatnich cisel. Bez floor() by pomer v UI ukazoval "242/209 kapitol".
+        val match = SManga(sourceId = "src-a", url = "u1", title = "Solo Leveling", coverUrl = null)
+        val splitRaws = listOf(chapter(1f), chapter(1.1f), chapter(2f), chapter(2.1f), chapter(2.2f), chapter(3f))
+        val source = FakeSource("src-a", "Site A", "MANHWA", searchResults = listOf(match), chapters = splitRaws)
+        coEvery { sourceManager.getAll() } returns listOf(source)
+
+        val result = resolver.findCandidates("comick-id-5c", "u1", "Solo Leveling", "MANHWA", requestedChapterNumber = null)
 
         assertEquals(3, result[0].matchedChapterCount)
     }
