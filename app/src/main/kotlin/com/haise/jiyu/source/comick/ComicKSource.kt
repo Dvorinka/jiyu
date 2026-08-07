@@ -101,7 +101,14 @@ class ComicKSource @Inject constructor(
                 }
             }
 
-            manga.copy(description = desc, status = status, author = author, genres = genres, year = year)
+            manga.copy(
+                description = desc,
+                status      = status,
+                author      = author,
+                genres      = genres,
+                year        = year,
+                contentType = contentTypeFromCountry(comic.optString("country")),
+            )
         }
 
     // ─── Kapitoly ────────────────────────────────────────────────────────────
@@ -210,12 +217,21 @@ class ComicKSource @Inject constructor(
                 ?.let { b2key -> "$coverBase/$b2key" }
 
             SManga(
-                sourceId = id,
-                url      = "$apiBase/comic/$slug",
-                title    = title,
-                coverUrl = coverUrl,
+                sourceId    = id,
+                url         = "$apiBase/comic/$slug",
+                title       = title,
+                coverUrl    = coverUrl,
+                contentType = contentTypeFromCountry(comic.optString("country")),
             )
         }
+
+    /** ComicK nema vlastni "contentType" pole - odvozujeme ho z puvodu (jp/kr/cn). internal kvuli testu. */
+    internal fun contentTypeFromCountry(country: String): String = when (country) {
+        "jp"  -> "MANGA"
+        "kr"  -> "MANHWA"
+        "cn"  -> "MANHUA"
+        else  -> "MANGA"
+    }
 
     /** Převede jeden objekt kapitoly na SChapter, nebo null pokud chybí hid. */
     private fun chapterFromJson(json: JSONObject, mangaUrl: String): SChapter? {

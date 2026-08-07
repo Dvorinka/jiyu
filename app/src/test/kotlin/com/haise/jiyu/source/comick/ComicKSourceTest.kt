@@ -22,11 +22,11 @@ class ComicKSourceTest {
     private lateinit var source: ComicKSource
 
     private val searchArrayJson = """
-        [ {"title": "Test Series", "slug": "test-series", "md_covers": [{"b2key": "cover.jpg"}]} ]
+        [ {"title": "Test Series", "slug": "test-series", "country": "kr", "md_covers": [{"b2key": "cover.jpg"}]} ]
     """.trimIndent()
 
     private val mangaDetailJson = """
-        {"comic": {"hid": "abcd", "desc": "A summary.", "status": 1, "year": 2020}, "authors": [{"name": "Jane"}], "genres": [{"name": "Action"}]}
+        {"comic": {"hid": "abcd", "desc": "A summary.", "status": 1, "year": 2020, "country": "kr"}, "authors": [{"name": "Jane"}], "genres": [{"name": "Action"}]}
     """.trimIndent()
 
     private val chaptersJson = """
@@ -68,6 +68,27 @@ class ComicKSourceTest {
         assertEquals(1, result.size)
         assertEquals("Test Series", result[0].title)
         assertTrue(result[0].coverUrl!!.endsWith("/cover.jpg"))
+    }
+
+    @Test
+    fun `getPopular maps country to contentType (kr to MANHWA)`() = runTest {
+        val result = source.getPopular(1)
+        assertEquals("MANHWA", result[0].contentType)
+    }
+
+    @Test
+    fun `getMangaDetails re-maps contentType from the detail endpoint's country field too`() = runTest {
+        val manga = source.getPopular(1).first().copy(contentType = "MANGA")
+        val details = source.getMangaDetails(manga)
+        assertEquals("MANHWA", details.contentType)
+    }
+
+    @Test
+    fun `contentTypeFromCountry maps jp to MANGA, cn to MANHUA, and anything unknown to MANGA`() {
+        assertEquals("MANGA", source.contentTypeFromCountry("jp"))
+        assertEquals("MANHUA", source.contentTypeFromCountry("cn"))
+        assertEquals("MANGA", source.contentTypeFromCountry("xx"))
+        assertEquals("MANGA", source.contentTypeFromCountry(""))
     }
 
     @Test
