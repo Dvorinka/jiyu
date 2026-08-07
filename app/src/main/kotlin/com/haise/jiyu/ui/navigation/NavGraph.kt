@@ -66,6 +66,7 @@ internal object Routes {
     const val DUPLICATES    = "duplicates"
     const val TAP_ZONES     = "tap_zones"
     const val QR            = "qr/{mangaId}?title={mangaTitle}"
+    const val SOURCE_RESOLVER = "source_resolver/{chapterId}?incognito={incognito}"
 
     // ── Podstránky Nastavení (kategorie) ─────────────────────────────────
     const val SETTINGS_APPEARANCE   = "settings_appearance"
@@ -97,6 +98,8 @@ internal object Routes {
         if (appMode == com.haise.jiyu.settings.AppMode.COMICK) sourceBrowse("comick") else BROWSE
     fun reader(chapterId: String, incognito: Boolean = false) =
         "reader/${android.net.Uri.encode(chapterId)}?incognito=$incognito"
+    fun sourceResolver(chapterId: String, incognito: Boolean = false) =
+        "source_resolver/${android.net.Uri.encode(chapterId)}?incognito=$incognito"
     fun qr(mangaId: String, mangaTitle: String) =
         "qr/${android.net.Uri.encode(mangaId)}?title=${android.net.Uri.encode(mangaTitle)}"
 }

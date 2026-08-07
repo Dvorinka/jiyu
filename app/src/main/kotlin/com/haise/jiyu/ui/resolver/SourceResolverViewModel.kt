@@ -1,0 +1,90 @@
+package com.haise.jiyu.ui.resolver
+
+import androidx.lifecycle.SavedStateHandle
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.haise.jiyu.data.repository.MangaRepository
+import com.haise.jiyu.source.SManga
+import com.haise.jiyu.source.comick.ComicKChapterResolver
+import com.haise.jiyu.source.comick.ResolvedCandidate
+import com.haise.jiyu.util.report
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+import javax.inject.Inject
+import kotlin.math.abs
+
+@HiltViewModel
+class SourceResolverViewModel @Inject constructor(
+    savedStateHandle: SavedStateHandle,
+    private val resolver: ComicKChapterResolver,
+    private val repository: MangaRepository,
+) : ViewModel() {
+
+    private val chapterId: String = checkNotNull(savedStateHandle["chapterId"])
+    val incognito: Boolean = savedStateHandle.get<String>("incognito")?.toBoolean() ?: false
+
+    private var requestedChapterNumber: Float? = null
+
+    private val _loading = MutableStateFlow(true)
+    val loading: StateFlow<Boolean> = _loading.asStateFlow()
+
+    private val _comicKTitle = MutableStateFlow("")
+    val comicKTitle: StateFlow<String> = _comicKTitle.asStateFlow()
+
+    private val _candidates = MutableStateFlow<List<ResolvedCandidate>>(emptyList())
+    val candidates: StateFlow<List<ResolvedCandidate>> = _candidates.asStateFlow()
+
+    private val _totalComicKChapters = MutableStateFlow(0)
+    val totalComicKChapters: StateFlow<Int> = _totalComicKChapters.asStateFlow()
+
+    private val _resolving = MutableStateFlow(false)
+    val resolving: StateFlow<Boolean> = _resolving.asStateFlow()
+
+    private val _openedChapterId = MutableStateFlow<String?>(null)
+    val openedChapterId: StateFlow<String?> = _openedChapterId.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            try {
+                val chapter = repository.getChapter(chapterId)
+                if (chapter == null) { _loading.value = false; return@launch }
+                val manga = repository.getManga(chapter.mangaId)
+                if (manga == null) { _loading.value = false; return@launch }
+                _comicKTitle.value = manga.title
+                requestedChapterNumber = chapter.chapterNumber
+                _totalComicKChapters.value = repository.getAllChapters(chapter.mangaId).size
+                _candidates.value = resolver.findCandidates(
+                    comicKMangaId = manga.id,
+                    comicKTitle = manga.title,
+                    comicKContentType = manga.contentType,
+                    requestedChapterNumber = chapter.chapterNumber,
+                )
+            } catch (e: Exception) {
+                e.report("resolver:findCandidates")
+            } finally {
+                _loading.value = false
+            }
+        }
+    }
+
+    fun selectCandidate(candidate: ResolvedCandidate) {
+        val target = requestedChapterNumber ?: return
+        _resolving.value = true
+        viewModelScope.launch {
+            try {
+                val mangaId = repository.openPreview(candidate.manga)
+                repository.refreshChapters(mangaId, candidate.manga)
+                val resolvedChapters = repository.getAllChapters(mangaId)
+                val bestMatch = resolvedChapters.minByOrNull { abs(it.chapterNumber - target) }
+                _openedChapterId.value = bestMatch?.id
+            } catch (e: Exception) {
+                e.report("resolver:selectCandidate")
+            } finally {
+                _resolving.value = false
+            }
+        }
+    }
+}
