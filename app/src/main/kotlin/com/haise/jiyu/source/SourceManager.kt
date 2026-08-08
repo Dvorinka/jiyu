@@ -56,6 +56,7 @@ import com.haise.jiyu.source.kingofshojo.KingofshojoSource
 import com.haise.jiyu.source.manga18fx.Manga18fxSource
 import com.haise.jiyu.source.hentai20.Hentai20Source
 import com.haise.jiyu.source.demonicscans.DemonicScansSource
+import com.haise.jiyu.source.likemanga.LikeMangaSource
 import com.haise.jiyu.source.comick.ComicKSource
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -132,6 +133,7 @@ class SourceManager @Inject constructor(
     manhuaBuddySource: ManhuaBuddySource,
     woopReadSource: WoopReadSource,
     mangaDeniziSource: MangaDeniziSource,
+    likeMangaSource: LikeMangaSource,
     private val customSourceDao: CustomSourceDao,
     private val client: OkHttpClient,
     private val settings: com.haise.jiyu.settings.SettingsRepository,
@@ -365,6 +367,9 @@ class SourceManager @Inject constructor(
         // komentar u tridy) - vcetne rozskladani zamichanych "tiled-v1"
         // dlazdic, viz TileScramble/TileScrambleBitmap.
         mangaDeniziSource,
+        // LikeManga (likemanga.ink) - vlastni sablona (ne Madara), kapitoly
+        // strankovane pres AJAX (load_list_chapter), obrazky na like.mgread.io.
+        likeMangaSource,
         // 2026-07-27 (čtvrté kolo auditu) - hromadné odstranění zdrojů se skutečnou,
         // architektonicky neřešitelnou Cloudflare Turnstile ochranou. Živě v appce
         // ověřeno na evilmanga: tichý WebView solve i viditelný interaktivní dialog
