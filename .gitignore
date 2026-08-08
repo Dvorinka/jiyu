@@ -6,6 +6,7 @@
 /captures
 .externalNativeBuild
 .cxx
+.kotlin
 
 # local.properties nese API klice (SUPABASE_*, MAL_*, ANILIST_*) - nesmi do repa.
 # Vzor pokryva i zalozni varianty (local.properties.bak, .orig, ...): jedna takova

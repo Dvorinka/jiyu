@@ -48,8 +48,11 @@ interface ChapterDao {
     @Query("UPDATE chapter SET downloadStatus = :status, localPath = :localPath, pageCount = :pageCount WHERE id = :id")
     suspend fun markDownloaded(id: String, status: DownloadStatus, localPath: String, pageCount: Int)
 
-    @Query("UPDATE chapter SET read = :read, lastPageRead = :lastPageRead WHERE id = :id")
-    suspend fun updateProgress(id: String, read: Boolean, lastPageRead: Int)
+    @Query("UPDATE chapter SET read = :read, lastPageRead = :lastPageRead, lastReadAt = :lastReadAt WHERE id = :id")
+    suspend fun updateProgress(id: String, read: Boolean, lastPageRead: Int, lastReadAt: Long)
+
+    @Query("UPDATE chapter SET lastScrollOffset = :offset, lastReadAt = :lastReadAt WHERE id = :id")
+    suspend fun updateScrollOffset(id: String, offset: Int, lastReadAt: Long)
 
     @Query("SELECT COUNT(*) FROM chapter WHERE mangaId = :mangaId")
     suspend fun countForManga(mangaId: String): Int

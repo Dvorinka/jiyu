@@ -47,6 +47,9 @@ import com.haise.jiyu.util.report
 
 data class TranslationProgress(val done: Int, val total: Int)
 
+/** Jak dlouho po poslednim cteni jeste ma smysl obnovovat presnou stranku/scroll - viz [ReaderViewModel.loadChapter]. */
+private const val POSITION_FRESHNESS_MS = 10L * 24 * 60 * 60 * 1000
+
 @HiltViewModel
 class ReaderViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
@@ -186,9 +189,6 @@ class ReaderViewModel @Inject constructor(
 
     fun setReaderOrientation(orientation: String) { viewModelScope.launch { settings.setReaderOrientation(orientation) } }
 
-    // ── Webtoon scroll memory (in-memory, per chapter, max 50 entries LRU) ──
-    private val webtoonPositions = mutableMapOf<String, Int>()
-
     // ── Přednačítání další kapitoly ──────────────────────────────────────────
     private val nextChapterCache = mutableMapOf<String, List<String>>()
     private var preloadJob: Job? = null
@@ -198,10 +198,21 @@ class ReaderViewModel @Inject constructor(
     private val _webtoonScrollOffset = MutableStateFlow(0)
     val webtoonScrollOffset: StateFlow<Int> = _webtoonScrollOffset.asStateFlow()
 
+    // Scroll ve webtoon rezimu emituje pozici na kazdy pixel behem flingu - zapis do DB
+    // na kazdou zmenu by appku zbytecne zatezoval. Misto toho se pri kazde zmene zrusi
+    // predchozi cekajici zapis a naplanuje novy o 600 ms pozdeji, takze se skutecne
+    // zapise az kdyz se scrollovani na chvili zastavi (presne tam, kde uzivatel realne
+    // skoncil cteni), ne prubezne behem pohybu.
+    private var scrollPersistJob: Job? = null
+
     fun saveWebtoonScrollOffset(offset: Int) {
-        val id = currentChapter?.id ?: return
-        webtoonPositions[id] = offset
-        if (webtoonPositions.size > 50) webtoonPositions.remove(webtoonPositions.keys.first())
+        val chapterId = currentChapter?.id ?: return
+        if (_incognitoMode.value) return
+        scrollPersistJob?.cancel()
+        scrollPersistJob = viewModelScope.launch {
+            delay(600L)
+            repository.updateScrollOffset(chapterId, offset, System.currentTimeMillis())
+        }
     }
 
     // ── Incognito mode ───────────────────────────────────────────────────────
@@ -548,9 +559,12 @@ class ReaderViewModel @Inject constructor(
         val chapter = repository.getChapter(id) ?: run { _loading.value = false; return }
         currentChapter = chapter
         _chapterTitle.value = chapter.name
-        _initialPage.value = chapter.lastPageRead.coerceAtLeast(0)
+        // Presna pozice (stranka + scroll) se pamatuje jen POSITION_FRESHNESS_MS od posledniho
+        // cteni - starsi otevreme rovnou od zacatku kapitoly, viz [POSITION_FRESHNESS_MS].
+        val positionIsFresh = System.currentTimeMillis() - chapter.lastReadAt <= POSITION_FRESHNESS_MS
+        _initialPage.value = if (positionIsFresh) chapter.lastPageRead.coerceAtLeast(0) else 0
         _currentPage.value = _initialPage.value
-        _webtoonScrollOffset.value = webtoonPositions[id] ?: 0
+        _webtoonScrollOffset.value = if (positionIsFresh) chapter.lastScrollOffset else 0
 
         allChapters = repository.getAllChapters(chapter.mangaId)
         _allChaptersFlow.value = allChapters
@@ -795,7 +809,7 @@ class ReaderViewModel @Inject constructor(
             // po anonymním přečtení tvářila jako přečtená a čas naskočil do Statistik.
             // Název "Číst anonymně" tím sliboval víc, než dělal.
             if (!incognito) {
-                repository.updateReadProgress(chapterId, read = isRead, lastPageRead = index)
+                repository.updateReadProgress(chapterId, read = isRead, lastPageRead = index, lastReadAt = now)
                 repository.updateLastReadChapter(chapter.mangaId, chapterId)
                 if (deltaMs > 0) {
                     settings.addReadingTime(deltaMs)

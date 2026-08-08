@@ -97,6 +97,7 @@ class AppDatabaseMigrationTest {
                 AppDatabase.MIGRATION_28_29,
                 AppDatabase.MIGRATION_29_30,
                 AppDatabase.MIGRATION_30_31,
+                AppDatabase.MIGRATION_31_32,
             )
             .build()
 
@@ -145,6 +146,15 @@ class AppDatabaseMigrationTest {
         )
         chapters.upsertAll(listOf(ch))
         assertEquals("""[{"name":"Asura","slug":"asura"}]""", chapters.getById("ch1")?.groupsJson)
+
+        // MIGRATION_31_32: lastReadAt/lastScrollOffset pridany na chapter (default 0),
+        // musi byt citelne a musi prezit round-trip pres Room.
+        chapters.updateProgress("ch1", read = false, lastPageRead = 12, lastReadAt = 999L)
+        chapters.updateScrollOffset("ch1", offset = 345, lastReadAt = 1000L)
+        val ch1After = chapters.getById("ch1")!!
+        assertEquals(12, ch1After.lastPageRead)
+        assertEquals(345, ch1After.lastScrollOffset)
+        assertEquals(1000L, ch1After.lastReadAt)
 
         db.close()
         context.deleteDatabase(dbName)

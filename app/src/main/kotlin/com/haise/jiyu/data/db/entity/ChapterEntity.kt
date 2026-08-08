@@ -28,6 +28,10 @@ data class ChapterEntity(
     val dateUpload: Long,
     val read: Boolean = false,
     val lastPageRead: Int = 0,
+    /** Kdy byla naposledy zapsána pozice čtení (lastPageRead/lastScrollOffset) - viz [com.haise.jiyu.ui.reader.ReaderViewModel] pro 10denní expiraci přesné pozice. */
+    val lastReadAt: Long = 0L,
+    /** Přesná pozice scrollu ve webtoon (svislém) čtecím režimu, v pixelech od horního okraje stránky [lastPageRead]. */
+    val lastScrollOffset: Int = 0,
     val downloadStatus: DownloadStatus = DownloadStatus.NOT_DOWNLOADED,
     /** Lokální složka se staženými stránkami (pokud downloadStatus == DOWNLOADED). */
     val localPath: String? = null,

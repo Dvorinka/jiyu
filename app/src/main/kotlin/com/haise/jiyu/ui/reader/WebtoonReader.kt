@@ -83,12 +83,23 @@ fun WebtoonReader(
         }
     }
 
-    LaunchedEffect(pages, initialPage) {
-        if (pages.isNotEmpty() && (initialPage > 0 || initialScrollOffset > 0)) {
-            listState.scrollToItem(
-                initialPage.coerceIn(0, pages.lastIndex),
-                initialScrollOffset,
-            )
+    // Dokud probiha programove obnoveni pozice (scrollToItem nize), snapshotFlow pod tim
+    // NESMI zapisovat do DB - jinak by se ulozena pozice cteni pri kazdem otevreni kapitoly
+    // vynulovala, presne to hlasil uzivatel ("vzdy se otevre od zacatku").
+    var isRestoringPosition by remember { mutableStateOf(initialPage > 0 || initialScrollOffset > 0) }
+    LaunchedEffect(pages) {
+        if (pages.isNotEmpty() && isRestoringPosition) {
+            val target = initialPage.coerceIn(0, pages.lastIndex)
+            // scrollToItem() hned po prvnim slozeni LazyColumn muze tise selhat a skoncit
+            // na indexu 0 - stranky jsou obrazky s neznamou vyskou predem, takze prvni
+            // layout pruchod jeste nemusi byt "usazeny" (overeno zive). Opakuje se tedy,
+            // dokud se skutecne netrefi, nebo dokud to po par pokusech nevzda.
+            for (attempt in 0 until 8) {
+                listState.scrollToItem(target, initialScrollOffset)
+                if (listState.firstVisibleItemIndex == target && listState.firstVisibleItemScrollOffset == initialScrollOffset) break
+                if (attempt < 7) delay(150L)
+            }
+            isRestoringPosition = false
         }
     }
 
@@ -96,6 +107,7 @@ fun WebtoonReader(
         snapshotFlow {
             listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset
         }.collect { (idx, offset) ->
+            if (isRestoringPosition) return@collect
             onPageChanged(idx)
             onScrollOffsetChanged(offset)
         }

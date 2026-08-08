@@ -312,8 +312,11 @@ class MangaRepository @Inject constructor(
     suspend fun markDownloaded(chapterEntityId: String, localPath: String, pageCount: Int) =
         chapterDao.markDownloaded(chapterEntityId, DownloadStatus.DOWNLOADED, localPath, pageCount)
 
-    suspend fun updateReadProgress(chapterEntityId: String, read: Boolean, lastPageRead: Int) =
-        chapterDao.updateProgress(chapterEntityId, read, lastPageRead)
+    suspend fun updateReadProgress(chapterEntityId: String, read: Boolean, lastPageRead: Int, lastReadAt: Long = 0L) =
+        chapterDao.updateProgress(chapterEntityId, read, lastPageRead, lastReadAt)
+
+    suspend fun updateScrollOffset(chapterEntityId: String, offset: Int, lastReadAt: Long) =
+        chapterDao.updateScrollOffset(chapterEntityId, offset, lastReadAt)
 
     suspend fun updateLastReadChapter(mangaId: String, chapterId: String) =
         mangaDao.updateLastReadChapterAndTime(mangaId, chapterId, System.currentTimeMillis())

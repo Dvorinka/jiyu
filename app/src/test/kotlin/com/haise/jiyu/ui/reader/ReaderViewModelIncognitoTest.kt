@@ -132,7 +132,7 @@ class ReaderViewModelIncognitoTest {
         val vm = viewModel(incognito = true)
         vm.onPageChanged(1)   // posledni stranka -> normalne by se oznacila prectena
 
-        coVerify(exactly = 0) { repository.updateReadProgress(any(), any(), any()) }
+        coVerify(exactly = 0) { repository.updateReadProgress(any(), any(), any(), any()) }
         coVerify(exactly = 0) { repository.updateLastReadChapter(any(), any()) }
     }
 
@@ -168,7 +168,7 @@ class ReaderViewModelIncognitoTest {
         val vm = viewModel(incognito = false)
         vm.onPageChanged(1)
 
-        coVerify(atLeast = 1) { repository.updateReadProgress("ch1", true, 1) }
+        coVerify(atLeast = 1) { repository.updateReadProgress("ch1", true, 1, any()) }
         coVerify(atLeast = 1) { repository.updateLastReadChapter("m1", "ch1") }
     }
 
