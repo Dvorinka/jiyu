@@ -24,3 +24,6 @@ CLAUDE.md
 # Docasne soubory pro dlouhe commit/release zpravy (viz release skripty)
 commitmsg.tmp
 relnotes.tmp
+
+# Superpowers brainstorming companion - dočasné mockupy, ne zdrojový kód
+.superpowers/

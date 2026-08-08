@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -44,10 +45,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -142,16 +145,18 @@ fun ExtendedStatsScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             item {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    StatCard(label = stringResource(R.string.stats_chapters_label), value = "${stats.chaptersRead}", modifier = Modifier.weight(1f))
-                    StatCard(label = stringResource(R.string.stats_pages_label), value = "${stats.pagesRead}", modifier = Modifier.weight(1f))
-                    StatCard(label = stringResource(R.string.stats_reading_time_label), value = formatTime(stats.readingTimeMs), modifier = Modifier.weight(1f))
-                    StatCard(label = stringResource(R.string.stats_streak_label), value = "${stats.readingStreak}🔥", modifier = Modifier.weight(1f))
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        StatCard(icon = TablerIcons.Book, label = stringResource(R.string.stats_chapters_label), value = "${stats.chaptersRead}", modifier = Modifier.weight(1f))
+                        StatCard(icon = TablerIcons.FileText, label = stringResource(R.string.stats_pages_label), value = "${stats.pagesRead}", modifier = Modifier.weight(1f))
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        StatCard(icon = TablerIcons.Clock, label = stringResource(R.string.stats_reading_time_label), value = formatTime(stats.readingTimeMs), modifier = Modifier.weight(1f))
+                        StatCard(icon = TablerIcons.Flame, label = stringResource(R.string.stats_streak_label), value = "${stats.readingStreak}", modifier = Modifier.weight(1f))
+                    }
                 }
             }
 
@@ -174,29 +179,7 @@ fun ExtendedStatsScreen(
                             modifier = Modifier.padding(vertical = 20.dp),
                         )
                     } else {
-                        Column {
-                            BarChart(
-                                data = stats.dailyCounts,
-                                modifier = Modifier.fillMaxWidth().height(140.dp),
-                            )
-                            Spacer(Modifier.height(4.dp))
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                            ) {
-                                val labels = stats.dailyCounts
-                                val step = (labels.size / 4).coerceAtLeast(1)
-                                listOf(0, step, step * 2, step * 3, labels.lastIndex.coerceAtLeast(0))
-                                    .distinct()
-                                    .forEach { i ->
-                                        Text(
-                                            text = labels.getOrNull(i)?.first ?: "",
-                                            color = TextSecondary,
-                                            fontSize = 9.sp,
-                                        )
-                                    }
-                            }
-                        }
+                        CalendarHeatmap(data = stats.dailyCounts, modifier = Modifier.fillMaxWidth())
                     }
                 }
             }
@@ -217,6 +200,7 @@ fun ExtendedStatsScreen(
                         val maxGenre = stats.topGenres.maxOfOrNull { it.second }?.coerceAtLeast(1) ?: 1
                         stats.topGenres.forEach { (genre, count) ->
                             HorizontalBar(
+                                icon = TablerIcons.Tag,
                                 label = genre,
                                 value = count,
                                 fraction = count.toFloat() / maxGenre,
@@ -243,6 +227,7 @@ fun ExtendedStatsScreen(
                         val maxAuthor = stats.topAuthors.maxOfOrNull { it.second }?.coerceAtLeast(1) ?: 1
                         stats.topAuthors.forEach { (author, count) ->
                             HorizontalBar(
+                                icon = TablerIcons.User,
                                 label = author,
                                 value = count,
                                 fraction = count.toFloat() / maxAuthor,
@@ -266,13 +251,16 @@ fun ExtendedStatsScreen(
                     )
                     val statusColors = mapOf(
                         "READING"      to GlowCyan,
-                        "COMPLETED"    to androidx.compose.ui.graphics.Color(0xFF4FC3F7),
-                        "ON_HOLD"      to androidx.compose.ui.graphics.Color(0xFFFFB74D),
-                        "DROPPED"      to androidx.compose.ui.graphics.Color(0xFFEF5350),
+                        "COMPLETED"    to Color(0xFF4FC3F7),
+                        "ON_HOLD"      to Color(0xFFFFB74D),
+                        "DROPPED"      to Color(0xFFEF5350),
                         "PLAN_TO_READ" to GlowViolet,
                         "UNSET"        to TextSecondary,
                     )
-                    Column(
+                    val segments = stats.statusBreakdown.entries
+                        .sortedByDescending { it.value }
+                        .map { (key, count) -> Triple("${statusLabels[key] ?: key} ($count)", count, statusColors[key] ?: TextSecondary) }
+                    Box(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 16.dp)
@@ -280,20 +268,8 @@ fun ExtendedStatsScreen(
                             .background(glassGradient)
                             .border(1.dp, GlowViolet.copy(alpha = 0.2f), RoundedCornerShape(14.dp))
                             .padding(14.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
-                        val total = stats.totalInLibrary.coerceAtLeast(1)
-                        stats.statusBreakdown.entries
-                            .sortedByDescending { it.value }
-                            .forEach { (key, count) ->
-                                val color = statusColors[key] ?: TextSecondary
-                                HorizontalBar(
-                                    label = "${statusLabels[key] ?: key} ($count)",
-                                    value = count,
-                                    fraction = count.toFloat() / total,
-                                    color = Brush.horizontalGradient(listOf(color, color.copy(alpha = 0.6f))),
-                                )
-                            }
+                        DonutChart(segments = segments)
                     }
                 }
             }
@@ -309,16 +285,18 @@ fun ExtendedStatsScreen(
 }
 
 @Composable
-private fun StatCard(label: String, value: String, modifier: Modifier = Modifier) {
+private fun StatCard(icon: ImageVector, label: String, value: String, modifier: Modifier = Modifier) {
     Column(
         modifier = modifier
             .clip(RoundedCornerShape(14.dp))
             .background(glassGradient)
             .border(1.dp, GlowViolet.copy(alpha = 0.2f), RoundedCornerShape(14.dp))
-            .padding(12.dp),
+            .padding(14.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text(value, color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold)
+        Icon(icon, contentDescription = null, tint = GlowCyan, modifier = Modifier.size(20.dp))
+        Spacer(Modifier.height(6.dp))
+        Text(value, color = TextPrimary, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold)
         Text(label, color = TextSecondary, fontSize = 11.sp, modifier = Modifier.padding(top = 2.dp))
     }
 }
@@ -333,45 +311,91 @@ private fun SectionHeader(title: String, modifier: Modifier = Modifier) {
     )
 }
 
+/**
+ * Kalendářní mřížka (styl GitHub kontribučního grafu) - 10 sloupců × 3 řádky pro
+ * 30 dní, sytost barvy podle počtu přečtených kapitol ten den. Nahrazuje původní
+ * sloupcový graf, který bez os/popisků působil prázdně a nepřehledně.
+ */
 @Composable
-private fun BarChart(data: List<Pair<String, Int>>, modifier: Modifier = Modifier) {
+private fun CalendarHeatmap(data: List<Pair<String, Int>>, modifier: Modifier = Modifier) {
     val maxVal = data.maxOfOrNull { it.second }?.coerceAtLeast(1) ?: 1
-    Canvas(modifier = modifier) {
-        val count = data.size.coerceAtLeast(1)
-        val barWidth = size.width / count
-        val gap = 2.dp.toPx()
-        val chartHeight = size.height
+    val columns = 10
+    Column(modifier = modifier) {
+        data.chunked(columns).forEach { rowData ->
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                rowData.forEach { (_, count) ->
+                    val alpha = if (count == 0) 0.06f else 0.25f + 0.65f * (count.toFloat() / maxVal)
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .aspectRatio(1f)
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(GlowViolet.copy(alpha = alpha)),
+                    )
+                }
+            }
+        }
+        Spacer(Modifier.height(6.dp))
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text(data.firstOrNull()?.first.orEmpty(), color = TextSecondary, fontSize = 9.sp)
+            Text(data.lastOrNull()?.first.orEmpty(), color = TextSecondary, fontSize = 9.sp)
+        }
+    }
+}
 
-        data.forEachIndexed { i, (_, dayCount) ->
-            if (dayCount <= 0) return@forEachIndexed
-            val barH = (dayCount.toFloat() / maxVal) * chartHeight
-            val left = i * barWidth + gap
-            val top = chartHeight - barH
-            val w = (barWidth - gap * 2).coerceAtLeast(1f)
-
-            drawRoundRect(
-                brush = Brush.verticalGradient(
-                    colors = listOf(GlowCyan.copy(alpha = 0.9f), GlowViolet.copy(alpha = 0.8f)),
-                    startY = top,
-                    endY = chartHeight,
-                ),
-                topLeft = Offset(left, top),
-                size = Size(w, barH),
-                cornerRadius = CornerRadius(3.dp.toPx()),
-            )
+/** Prstencový graf pro poměr stavů čtení - segmenty jako (popisek, hodnota, barva). */
+@Composable
+private fun DonutChart(segments: List<Triple<String, Int, Color>>, modifier: Modifier = Modifier) {
+    val total = segments.sumOf { it.second }.coerceAtLeast(1)
+    Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
+        Canvas(modifier = Modifier.size(64.dp)) {
+            val strokeWidth = size.minDimension * 0.28f
+            var startAngle = -90f
+            segments.forEach { (_, value, color) ->
+                val sweep = 360f * value / total
+                if (value > 0) {
+                    drawArc(
+                        color = color,
+                        startAngle = startAngle,
+                        sweepAngle = sweep,
+                        useCenter = false,
+                        topLeft = Offset(strokeWidth / 2, strokeWidth / 2),
+                        size = androidx.compose.ui.geometry.Size(size.width - strokeWidth, size.height - strokeWidth),
+                        style = Stroke(width = strokeWidth, cap = StrokeCap.Butt),
+                    )
+                }
+                startAngle += sweep
+            }
+        }
+        Spacer(Modifier.width(14.dp))
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            segments.filter { it.second > 0 }.forEach { (label, _, color) ->
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(modifier = Modifier.size(8.dp).clip(RoundedCornerShape(50)).background(color))
+                    Spacer(Modifier.width(6.dp))
+                    Text(label, color = TextPrimary, fontSize = 12.sp)
+                }
+            }
         }
     }
 }
 
 @Composable
-private fun HorizontalBar(label: String, value: Int, fraction: Float, color: Brush) {
+private fun HorizontalBar(icon: ImageVector, label: String, value: Int, fraction: Float, color: Brush) {
     Column {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(label, color = TextPrimary, fontSize = 13.sp, modifier = Modifier.weight(1f))
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                Icon(icon, contentDescription = null, tint = Violet, modifier = Modifier.size(14.dp))
+                Spacer(Modifier.width(6.dp))
+                Text(label, color = TextPrimary, fontSize = 13.sp)
+            }
             Text("$value", color = TextSecondary, fontSize = 12.sp)
         }
         Spacer(Modifier.height(4.dp))
