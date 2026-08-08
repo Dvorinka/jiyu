@@ -367,6 +367,7 @@
     <string name="detail_continue_short">Continuer</string>
     <string name="detail_read_options">Options de lecture</string>
     <string name="detail_chapters_header">CHAPITRES</string>
+    <string name="detail_description_header">DESCRIPTION</string>
     <string name="detail_search_chapter">Rechercher un chapitre</string>
     <string name="detail_sort">Trier</string>
     <string name="detail_sort_oldest">Plus anciens</string>

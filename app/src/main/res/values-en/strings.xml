@@ -370,6 +370,7 @@
     <string name="detail_continue_short">Continue</string>
     <string name="detail_read_options">Reading options</string>
     <string name="detail_chapters_header">CHAPTERS</string>
+    <string name="detail_description_header">DESCRIPTION</string>
     <string name="detail_search_chapter">Search chapter</string>
     <string name="detail_sort">Sort</string>
     <string name="detail_sort_oldest">Oldest</string>

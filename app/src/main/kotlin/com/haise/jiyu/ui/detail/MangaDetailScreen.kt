@@ -229,7 +229,18 @@ fun MangaDetailScreen(
                     }
                 }
 
-                // ── Kompaktní hlavička (cover + info) ───────────────────────────
+                // ── Název (přes celou šířku, ComicK styl) ────────────────────────
+                item {
+                    Text(
+                        text = manga?.title ?: "",
+                        style = TextStyle(brush = titleGradient, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, lineHeight = 26.sp),
+                        maxLines = 3,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+                    )
+                }
+
+                // ── Obálka + metadata ───────────────────────────────────────────
                 item {
                     Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)) {
                         Box(
@@ -268,12 +279,6 @@ fun MangaDetailScreen(
                             }
                         }
                         Column(modifier = Modifier.weight(1f).padding(start = 14.dp)) {
-                            Text(
-                                text = manga?.title ?: "",
-                                style = TextStyle(brush = titleGradient, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold, lineHeight = 22.sp),
-                                maxLines = 3,
-                                overflow = TextOverflow.Ellipsis,
-                            )
                             manga?.author?.let { author ->
                                 Text(text = author, color = TextSecondary, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 3.dp))
                             }
@@ -384,6 +389,13 @@ fun MangaDetailScreen(
                         ) {
                             Column {
                                 Text(
+                                    text = stringResource(R.string.detail_description_header),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = Violet,
+                                    letterSpacing = 2.sp,
+                                    modifier = Modifier.padding(bottom = 6.dp),
+                                )
+                                Text(
                                     text = manga?.description ?: "",
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = TextSecondary,
@@ -438,28 +450,28 @@ fun MangaDetailScreen(
                             var showReadMenu by remember { mutableStateOf(false) }
                             Row(
                                 modifier = Modifier
-                                    .weight(1f)
-                                    .clip(RoundedCornerShape(14.dp))
-                                    .background(Brush.linearGradient(listOf(GlowViolet.copy(alpha = 0.85f), GlowCyan.copy(alpha = 0.6f)))),
+                                    .weight(2f)
+                                    .clip(RoundedCornerShape(16.dp))
+                                    .background(Brush.linearGradient(listOf(GlowViolet, GlowCyan.copy(alpha = 0.9f)))),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
                                 Row(
                                     modifier = Modifier
                                         .weight(1f)
                                         .clickable { openChapter(chapter) }
-                                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                                        .padding(horizontal = 18.dp, vertical = 16.dp),
                                     verticalAlignment = Alignment.CenterVertically,
                                 ) {
-                                    Icon(TablerIcons.PlayerPlay, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
+                                    Icon(TablerIcons.PlayerPlay, contentDescription = null, tint = Color.White, modifier = Modifier.size(22.dp))
                                     Column(modifier = Modifier.padding(start = 10.dp)) {
-                                        Text(text = if (hasHistory) stringResource(R.string.detail_continue_short) else stringResource(R.string.action_start_reading), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                        Text(text = if (hasHistory) stringResource(R.string.detail_continue_short) else stringResource(R.string.action_start_reading), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp)
                                         Text(
                                             text = if (hasHistory) "${chapter.name} · str. ${chapter.lastPageRead + 1}" else chapter.name,
-                                            color = Color.White.copy(alpha = 0.75f), fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                                            color = Color.White.copy(alpha = 0.8f), fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
                                         )
                                     }
                                 }
-                                Box(modifier = Modifier.width(1.dp).height(36.dp).background(Color.White.copy(alpha = 0.25f)))
+                                Box(modifier = Modifier.width(1.dp).height(40.dp).background(Color.White.copy(alpha = 0.25f)))
                                 Box {
                                     IconButton(onClick = { showReadMenu = true }, modifier = Modifier.padding(horizontal = 2.dp)) {
                                         Icon(TablerIcons.ChevronDown, contentDescription = stringResource(R.string.detail_read_options), tint = Color.White)
@@ -480,14 +492,16 @@ fun MangaDetailScreen(
                             }
                         }
 
-                        Box {
+                        Box(modifier = Modifier.weight(1f)) {
                             Row(
                                 modifier = Modifier
-                                    .clip(RoundedCornerShape(14.dp))
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(16.dp))
                                     .background(statusColor.copy(alpha = 0.15f))
-                                    .border(1.dp, statusColor.copy(alpha = 0.4f), RoundedCornerShape(14.dp))
+                                    .border(1.dp, statusColor.copy(alpha = 0.4f), RoundedCornerShape(16.dp))
                                     .clickable { statusDropdownExpanded = true }
-                                    .padding(horizontal = 12.dp, vertical = 12.dp),
+                                    .padding(horizontal = 12.dp, vertical = 16.dp),
+                                horizontalArrangement = Arrangement.Center,
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
                                 Text(statusLabel, color = statusColor, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
