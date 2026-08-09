@@ -66,6 +66,9 @@ import com.haise.jiyu.source.weloma.WeLoMaSource
 import com.haise.jiyu.source.mangadoom.MangaDoomSource
 import com.haise.jiyu.source.projectsuki.ProjectSukiSource
 import com.haise.jiyu.source.rokaricomics.RokariComicsSource
+import com.haise.jiyu.source.silentquill.KDTScansSource
+import com.haise.jiyu.source.mangamikan.MangaMikanSource
+import com.haise.jiyu.source.mangacherri.MangaCherriSource
 import com.haise.jiyu.source.comick.ComicKSource
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -152,6 +155,9 @@ class SourceManager @Inject constructor(
     mangaDoomSource: MangaDoomSource,
     projectSukiSource: ProjectSukiSource,
     rokariComicsSource: RokariComicsSource,
+    kdtScansSource: KDTScansSource,
+    mangaMikanSource: MangaMikanSource,
+    mangaCherriSource: MangaCherriSource,
     private val customSourceDao: CustomSourceDao,
     private val client: OkHttpClient,
     private val settings: com.haise.jiyu.settings.SettingsRepository,
@@ -434,6 +440,13 @@ class SourceManager @Inject constructor(
         // sablona jako GalaxyMangaSource/RawKumaSource, ale status/typ jsou v
         // <table><tr><td> radcich misto div.imptdt.
         rokariComicsSource,
+        kdtScansSource,
+        // MangaMikan a MangaCherri - vlastni sablony (2026-08-09 kolo).
+        // MangaMikan obrazky maji uz hotovy podepsany token primo v HTML.
+        // MangaCherri odkazy na kapitoly jsou relativni BEZ uvodniho lomitka -
+        // Jsoup.parse se proto vola s explicitni base URI (viz komentar ve tride).
+        mangaMikanSource,
+        mangaCherriSource,
         // 2026-07-27 (čtvrté kolo auditu) - hromadné odstranění zdrojů se skutečnou,
         // architektonicky neřešitelnou Cloudflare Turnstile ochranou. Živě v appce
         // ověřeno na evilmanga: tichý WebView solve i viditelný interaktivní dialog
