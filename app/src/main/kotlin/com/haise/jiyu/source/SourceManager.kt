@@ -65,6 +65,7 @@ import com.haise.jiyu.source.mangarawbest.MangaRawBestSource
 import com.haise.jiyu.source.weloma.WeLoMaSource
 import com.haise.jiyu.source.mangadoom.MangaDoomSource
 import com.haise.jiyu.source.projectsuki.ProjectSukiSource
+import com.haise.jiyu.source.rokaricomics.RokariComicsSource
 import com.haise.jiyu.source.comick.ComicKSource
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -150,6 +151,7 @@ class SourceManager @Inject constructor(
     weLoMaSource: WeLoMaSource,
     mangaDoomSource: MangaDoomSource,
     projectSukiSource: ProjectSukiSource,
+    rokariComicsSource: RokariComicsSource,
     private val customSourceDao: CustomSourceDao,
     private val client: OkHttpClient,
     private val settings: com.haise.jiyu.settings.SettingsRepository,
@@ -428,6 +430,10 @@ class SourceManager @Inject constructor(
         // odpovi redirectem na skutecnou posledni stranku.
         mangaDoomSource,
         projectSukiSource,
+        // Rokari Comics (rokaricomics.com) - stejna Mangathemesia/"Mangastream"
+        // sablona jako GalaxyMangaSource/RawKumaSource, ale status/typ jsou v
+        // <table><tr><td> radcich misto div.imptdt.
+        rokariComicsSource,
         // 2026-07-27 (čtvrté kolo auditu) - hromadné odstranění zdrojů se skutečnou,
         // architektonicky neřešitelnou Cloudflare Turnstile ochranou. Živě v appce
         // ověřeno na evilmanga: tichý WebView solve i viditelný interaktivní dialog
