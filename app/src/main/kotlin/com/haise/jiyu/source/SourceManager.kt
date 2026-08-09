@@ -57,6 +57,9 @@ import com.haise.jiyu.source.manga18fx.Manga18fxSource
 import com.haise.jiyu.source.hentai20.Hentai20Source
 import com.haise.jiyu.source.demonicscans.DemonicScansSource
 import com.haise.jiyu.source.likemanga.LikeMangaSource
+import com.haise.jiyu.source.mangageko.MangaGekoSource
+import com.haise.jiyu.source.hachiraw.HachirawSource
+import com.haise.jiyu.source.fanfox.FanFoxSource
 import com.haise.jiyu.source.comick.ComicKSource
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -134,6 +137,9 @@ class SourceManager @Inject constructor(
     woopReadSource: WoopReadSource,
     mangaDeniziSource: MangaDeniziSource,
     likeMangaSource: LikeMangaSource,
+    mangaGekoSource: MangaGekoSource,
+    hachirawSource: HachirawSource,
+    fanFoxSource: FanFoxSource,
     private val customSourceDao: CustomSourceDao,
     private val client: OkHttpClient,
     private val settings: com.haise.jiyu.settings.SettingsRepository,
@@ -277,6 +283,9 @@ class SourceManager @Inject constructor(
         MadaraSource("mangasushi",    "Mangasushi",         "https://mangasushi.org",       client, contentTypeOverride = "MANGA"),
         MadaraSource("manhwatoon",    "Manhwatoon",         "https://www.manhwatoon.me",    client, contentTypeOverride = "MANHWA"),
         // mangalink.site vraci Cloudflare 522 (origin nedostupny) - mrtvy web, nepridavat.
+        // Mangalink (linkmanga.com, jina domena nez vyse) - genuine Madara, vychozi cesty
+        // funguji beze zmeny (/manga/{slug}/, wp-json, manga_get_chapters ajax).
+        MadaraSource("linkmanga",     "Mangalink",          "https://linkmanga.com",        client, contentTypeOverride = "MANGA"),
         // pawmanga (pawmanga.com) odstraněno 2026-08-04 - doména je zaparkovaná
         // (FingerprintJS tracking/redirect skript, žádný manga obsah).
         // LikeManga (mgread.io) NENÍ Madara - "madara207" v HTML je jen jméno
@@ -370,6 +379,20 @@ class SourceManager @Inject constructor(
         // LikeManga (likemanga.ink) - vlastni sablona (ne Madara), kapitoly
         // strankovane pres AJAX (load_list_chapter), obrazky na like.mgread.io.
         likeMangaSource,
+        // MangaGeko (mgeko.cc) - vlastni sablona, katalog na /jumbo/manga/?results=N
+        // (ne standardni "page" parametr), primo obrazky bez tokenu na imgsrv5.com.
+        mangaGekoSource,
+        // Hachiraw (hachiraw.win) - WordPress, RAW (japonske) manga bez prekladu.
+        // Kapitoly v <table class="table-hover">, obrazky pres data-src lazy-load
+        // (hostovane na TikTok CDN, primo bez tokenu).
+        hachirawSource,
+        // FanFox (fanfox.net, drive mangafox.me) - velka zavedena knihovna, katalog
+        // i seznam kapitol plne server-rendered. Skutecne URL obrazku jsou za
+        // chapterfun.ashx endpointem vracejicim JS obfuskovany pres Dean Edwards
+        // "packer" - viz JsPacker.kt. Kazda stranka kapitoly = samostatny
+        // chapterfun.ashx pozadavek (stejne jako u realneho webu), proto se resi
+        // lazy pres getImageUrl, ne najednou v getPageList.
+        fanFoxSource,
         // 2026-07-27 (čtvrté kolo auditu) - hromadné odstranění zdrojů se skutečnou,
         // architektonicky neřešitelnou Cloudflare Turnstile ochranou. Živě v appce
         // ověřeno na evilmanga: tichý WebView solve i viditelný interaktivní dialog
