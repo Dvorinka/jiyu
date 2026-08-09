@@ -60,6 +60,9 @@ import com.haise.jiyu.source.likemanga.LikeMangaSource
 import com.haise.jiyu.source.mangageko.MangaGekoSource
 import com.haise.jiyu.source.hachiraw.HachirawSource
 import com.haise.jiyu.source.fanfox.FanFoxSource
+import com.haise.jiyu.source.mangaraw4u.MangaRaw4uSource
+import com.haise.jiyu.source.mangarawbest.MangaRawBestSource
+import com.haise.jiyu.source.weloma.WeLoMaSource
 import com.haise.jiyu.source.comick.ComicKSource
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -140,6 +143,9 @@ class SourceManager @Inject constructor(
     mangaGekoSource: MangaGekoSource,
     hachirawSource: HachirawSource,
     fanFoxSource: FanFoxSource,
+    mangaRaw4uSource: MangaRaw4uSource,
+    mangaRawBestSource: MangaRawBestSource,
+    weLoMaSource: WeLoMaSource,
     private val customSourceDao: CustomSourceDao,
     private val client: OkHttpClient,
     private val settings: com.haise.jiyu.settings.SettingsRepository,
@@ -393,6 +399,14 @@ class SourceManager @Inject constructor(
         // chapterfun.ashx pozadavek (stejne jako u realneho webu), proto se resi
         // lazy pres getImageUrl, ne najednou v getPageList.
         fanFoxSource,
+        // Dalsi kolo RAW zdroju (2026-08-09): MangaRaw4u a WeLoMa jsou plne
+        // server-rendered vcetne cteni (WeLoMa navic base64 koduje primo URL
+        // obrazku v data-img, ne token - viz WeLoMaSource.kt). MangaRawBest ma
+        // stejne primo cteni, ale Alpine.js frontend neexponuje zanr/autora/
+        // hledani zadnym staticky parsovatelnym zpusobem.
+        mangaRaw4uSource,
+        mangaRawBestSource,
+        weLoMaSource,
         // 2026-07-27 (čtvrté kolo auditu) - hromadné odstranění zdrojů se skutečnou,
         // architektonicky neřešitelnou Cloudflare Turnstile ochranou. Živě v appce
         // ověřeno na evilmanga: tichý WebView solve i viditelný interaktivní dialog
