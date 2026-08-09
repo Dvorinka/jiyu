@@ -69,6 +69,12 @@ import com.haise.jiyu.source.rokaricomics.RokariComicsSource
 import com.haise.jiyu.source.silentquill.KDTScansSource
 import com.haise.jiyu.source.mangamikan.MangaMikanSource
 import com.haise.jiyu.source.mangacherri.MangaCherriSource
+import com.haise.jiyu.source.todaymanga.TodaymangaSource
+import com.haise.jiyu.source.mangack.MangackSource
+import com.haise.jiyu.source.luacomic.LuaComicSource
+import com.haise.jiyu.source.raw1001.Raw1001Source
+import com.haise.jiyu.source.twmanga.TwmangaSource
+import com.haise.jiyu.source.dankemoe.DankeMoeSource
 import com.haise.jiyu.source.comick.ComicKSource
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -158,6 +164,12 @@ class SourceManager @Inject constructor(
     kdtScansSource: KDTScansSource,
     mangaMikanSource: MangaMikanSource,
     mangaCherriSource: MangaCherriSource,
+    todaymangaSource: TodaymangaSource,
+    mangackSource: MangackSource,
+    luaComicSource: LuaComicSource,
+    raw1001Source: Raw1001Source,
+    twmangaSource: TwmangaSource,
+    dankeMoeSource: DankeMoeSource,
     private val customSourceDao: CustomSourceDao,
     private val client: OkHttpClient,
     private val settings: com.haise.jiyu.settings.SettingsRepository,
@@ -447,6 +459,15 @@ class SourceManager @Inject constructor(
         // Jsoup.parse se proto vola s explicitni base URI (viz komentar ve tride).
         mangaMikanSource,
         mangaCherriSource,
+        // Druhe kolo revize "nedokoncenych" zdroju (2026-08-09) - vetsina z nich
+        // se ukazala byt zpusobena chybami v drivejsim zkoumani (neuvozene
+        // atributy, chybejici URL-encoding), ne skutecnou technickou prekazkou.
+        todaymangaSource,
+        mangackSource,
+        luaComicSource,
+        raw1001Source,
+        twmangaSource,
+        dankeMoeSource,
         // 2026-07-27 (čtvrté kolo auditu) - hromadné odstranění zdrojů se skutečnou,
         // architektonicky neřešitelnou Cloudflare Turnstile ochranou. Živě v appce
         // ověřeno na evilmanga: tichý WebView solve i viditelný interaktivní dialog
