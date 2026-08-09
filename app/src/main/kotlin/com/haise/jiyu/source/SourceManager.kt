@@ -63,6 +63,8 @@ import com.haise.jiyu.source.fanfox.FanFoxSource
 import com.haise.jiyu.source.mangaraw4u.MangaRaw4uSource
 import com.haise.jiyu.source.mangarawbest.MangaRawBestSource
 import com.haise.jiyu.source.weloma.WeLoMaSource
+import com.haise.jiyu.source.mangadoom.MangaDoomSource
+import com.haise.jiyu.source.projectsuki.ProjectSukiSource
 import com.haise.jiyu.source.comick.ComicKSource
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -146,6 +148,8 @@ class SourceManager @Inject constructor(
     mangaRaw4uSource: MangaRaw4uSource,
     mangaRawBestSource: MangaRawBestSource,
     weLoMaSource: WeLoMaSource,
+    mangaDoomSource: MangaDoomSource,
+    projectSukiSource: ProjectSukiSource,
     private val customSourceDao: CustomSourceDao,
     private val client: OkHttpClient,
     private val settings: com.haise.jiyu.settings.SettingsRepository,
@@ -292,6 +296,15 @@ class SourceManager @Inject constructor(
         // Mangalink (linkmanga.com, jina domena nez vyse) - genuine Madara, vychozi cesty
         // funguji beze zmeny (/manga/{slug}/, wp-json, manga_get_chapters ajax).
         MadaraSource("linkmanga",     "Mangalink",          "https://linkmanga.com",        client, contentTypeOverride = "MANGA"),
+        // Lilymanga (lilymanga.net) - GL/Yuri zamerene, genuine Madara ale vlastni
+        // permalink "/gl/{slug}/" misto "/manga/{slug}/" - proto vlastni popularUrl.
+        // Vychozi WP hledani (?s=) vraci prazdno pro vetsinu dotazu (na strane webu,
+        // ne chyba selektoru) - browse/cteni funguji spolehlive.
+        MadaraSource(
+            "lilymanga", "Lilymanga", "https://lilymanga.net", client,
+            contentTypeOverride = "MANGA",
+            popularUrl = { root, page, orderby -> "$root/gl/page/$page/?m_orderby=$orderby" },
+        ),
         // pawmanga (pawmanga.com) odstraněno 2026-08-04 - doména je zaparkovaná
         // (FingerprintJS tracking/redirect skript, žádný manga obsah).
         // LikeManga (mgread.io) NENÍ Madara - "madara207" v HTML je jen jméno
@@ -407,6 +420,14 @@ class SourceManager @Inject constructor(
         mangaRaw4uSource,
         mangaRawBestSource,
         weLoMaSource,
+        // Ctvrte kolo everythingmoe auditu (2026-08-09): Lilymanga registrovana
+        // vyse jako MadaraSource. MangaDoom a Project Suki - obe maji reader
+        // stránkovany po jedne obrazku na pozadavek (presne jak funguje web),
+        // Project Suki navic nema zadny "pocet stranek" indikator primo na
+        // strance - resi se pozadavkem na vysoke cislo stranky (9999), web
+        // odpovi redirectem na skutecnou posledni stranku.
+        mangaDoomSource,
+        projectSukiSource,
         // 2026-07-27 (čtvrté kolo auditu) - hromadné odstranění zdrojů se skutečnou,
         // architektonicky neřešitelnou Cloudflare Turnstile ochranou. Živě v appce
         // ověřeno na evilmanga: tichý WebView solve i viditelný interaktivní dialog

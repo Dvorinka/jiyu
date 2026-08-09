@@ -111,6 +111,9 @@ private val hotlinkRefererSuffixes = mapOf(
     // Comizy (drive MangaBuddy) servi obrazky na x{N}.cmzcdn.org, cislo subdomeny
     // se meni chapter od chapteru - suffix match pokryje vsechny varianty.
     "cmzcdn.org" to "https://comizy.io/",
+    // MangaDoom servi obrazky na nahodne pojmenovanych subdomenach redirectto.cc
+    // (napr. 9giiu0g54k8c.redirectto.cc) - suffix match pokryje vsechny varianty.
+    "redirectto.cc" to "https://manga-doom.com/",
 )
 
 // MangaK servi obrazky na rx.{nahodne-slovo}.org - CELA druha uroven domeny
