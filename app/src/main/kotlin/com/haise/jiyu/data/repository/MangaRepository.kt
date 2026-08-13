@@ -388,3 +388,20 @@ internal fun serializeChapterGroups(groups: List<SGroup>): String? =
         // (org.json.JSONObject chovani) - proto explicitni JSONObject.NULL misto it.slug.
         JSONArray(list.map { JSONObject().apply { put("name", it.name); put("slug", it.slug ?: JSONObject.NULL) } }).toString()
     }
+
+/** Protějšek [serializeChapterGroups] - přečte `ChapterEntity.groupsJson` zpátky do [SGroup] seznamu. */
+internal fun deserializeChapterGroups(json: String?): List<SGroup> {
+    if (json.isNullOrBlank()) return emptyList()
+    return try {
+        val arr = JSONArray(json)
+        (0 until arr.length()).map { i ->
+            val obj = arr.getJSONObject(i)
+            SGroup(
+                name = obj.optString("name"),
+                slug = if (obj.isNull("slug")) null else obj.optString("slug").ifBlank { null },
+            )
+        }
+    } catch (_: Exception) {
+        emptyList()
+    }
+}

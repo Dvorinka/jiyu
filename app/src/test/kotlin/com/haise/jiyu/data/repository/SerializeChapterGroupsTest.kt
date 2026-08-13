@@ -32,4 +32,22 @@ class SerializeChapterGroupsTest {
         assertEquals(true, parsed.getJSONObject(0).has("slug"))
         assertEquals(true, parsed.getJSONObject(0).isNull("slug"))
     }
+
+    @Test
+    fun `deserializeChapterGroups returns empty list for null or blank input`() {
+        assertEquals(emptyList<SGroup>(), deserializeChapterGroups(null))
+        assertEquals(emptyList<SGroup>(), deserializeChapterGroups(""))
+    }
+
+    @Test
+    fun `deserializeChapterGroups round-trips what serializeChapterGroups produced`() {
+        val original = listOf(SGroup(name = "Asura", slug = "asura"), SGroup(name = "Official", slug = null))
+        val json = serializeChapterGroups(original)
+        assertEquals(original, deserializeChapterGroups(json))
+    }
+
+    @Test
+    fun `deserializeChapterGroups returns empty list for malformed JSON instead of throwing`() {
+        assertEquals(emptyList<SGroup>(), deserializeChapterGroups("not json"))
+    }
 }
