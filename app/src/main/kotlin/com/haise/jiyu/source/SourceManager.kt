@@ -76,6 +76,23 @@ import com.haise.jiyu.source.raw1001.Raw1001Source
 import com.haise.jiyu.source.twmanga.TwmangaSource
 import com.haise.jiyu.source.dankemoe.DankeMoeSource
 import com.haise.jiyu.source.comick.ComicKSource
+import com.haise.jiyu.source.toongod.ToongodSource
+import com.haise.jiyu.source.webtooni.WebtooniSource
+import com.haise.jiyu.source.manhwabuddy.ManhwaBuddySource
+import com.haise.jiyu.source.manhwaraw18.ManhwaRaw18Source
+import com.haise.jiyu.source.manga18club.Manga18ClubSource
+import com.haise.jiyu.source.manhwasusu.ManhwaSusuSource
+import com.haise.jiyu.source.ehentai.EHentaiSource
+import com.haise.jiyu.source.asmhentai.AsmHentaiSource
+import com.haise.jiyu.source.hentainexus.HentaiNexusSource
+import com.haise.jiyu.source.pururin.PururinSource
+import com.haise.jiyu.source.hdoujin.HDoujinSource
+import com.haise.jiyu.source.hentaihand.HentaiHandSource
+import com.haise.jiyu.source.hentai3.Hentai3Source
+import com.haise.jiyu.source.cinguru.CinGuruSource
+import com.haise.jiyu.source.hentaifox.HentaiFoxSource
+import com.haise.jiyu.source.imhentai.ImHentaiSource
+import com.haise.jiyu.source.yaoimangaonline.YaoiMangaOnlineSource
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -170,6 +187,23 @@ class SourceManager @Inject constructor(
     raw1001Source: Raw1001Source,
     twmangaSource: TwmangaSource,
     dankeMoeSource: DankeMoeSource,
+    toongodSource: ToongodSource,
+    webtooniSource: WebtooniSource,
+    manhwaBuddySource: ManhwaBuddySource,
+    manhwaRaw18Source: ManhwaRaw18Source,
+    manga18ClubSource: Manga18ClubSource,
+    manhwaSusuSource: ManhwaSusuSource,
+    eHentaiSource: EHentaiSource,
+    asmHentaiSource: AsmHentaiSource,
+    hentaiNexusSource: HentaiNexusSource,
+    pururinSource: PururinSource,
+    hDoujinSource: HDoujinSource,
+    hentaiHandSource: HentaiHandSource,
+    hentai3Source: Hentai3Source,
+    cinGuruSource: CinGuruSource,
+    hentaiFoxSource: HentaiFoxSource,
+    imHentaiSource: ImHentaiSource,
+    yaoiMangaOnlineSource: YaoiMangaOnlineSource,
     private val customSourceDao: CustomSourceDao,
     private val client: OkHttpClient,
     private val settings: com.haise.jiyu.settings.SettingsRepository,
@@ -523,6 +557,26 @@ class SourceManager @Inject constructor(
         // budoucím Madara NOVEL zdrojům), ale samotný ranovel odstraněn - stránky
         // KAPITOL (ne archiv/detail) jsou za stejnou neřešitelnou Cloudflare Turnstile
         // ochranou jako výše, čtení by tedy stejně nikdy nefungovalo.
+        //
+        // ── Dávka 2026-08-13 (rozsáhlý manhwa/hentai audit) - manhwa/webtoon ──────
+        toongodSource,
+        webtooniSource,
+        manhwaBuddySource,
+        manhwaRaw18Source,
+        manga18ClubSource,
+        manhwaSusuSource,
+        // ── Dávka 2026-08-13 - hentai/doujin zdroje (isAdult=true) ────────────────
+        eHentaiSource,
+        asmHentaiSource,
+        hentaiNexusSource,
+        pururinSource,
+        hDoujinSource,
+        hentaiHandSource,
+        hentai3Source,
+        cinGuruSource,
+        hentaiFoxSource,
+        imHentaiSource,
+        yaoiMangaOnlineSource,
     )
 
     init {
