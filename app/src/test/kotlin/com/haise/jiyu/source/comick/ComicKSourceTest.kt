@@ -425,6 +425,51 @@ class ComicKSourceTest {
         try { failingSource.getPopular(1) } catch (_: Exception) { threw = true }
         assertTrue(threw)
     }
+
+    @Test
+    fun `getGroup parses group info and reuses the search-result comic parser for comics`() = runTest {
+        server.dispatcher = object : Dispatcher() {
+            override fun dispatch(request: RecordedRequest): MockResponse {
+                val path = request.path.orEmpty()
+                return when {
+                    path == "/group/asura" -> MockResponse().setBody(
+                        """{"group": {"id": 12401, "title": "Asura", "slug": "asura", "follow_count": 51, "chapter_count": 30711},
+                            "comics": [{"title": "Lord Xueying", "slug": "lord-xue-ying", "country": "cn", "md_covers": [{"b2key": "cover.jpg"}]}],
+                            "chapters": [], "total": 30711, "limit": 1000}"""
+                    )
+                    else -> MockResponse().setResponseCode(404)
+                }
+            }
+        }
+        val info = source.getGroup("asura")
+        assertEquals("Asura", info.title)
+        assertEquals(51, info.followCount)
+        assertEquals(30711, info.chapterCount)
+        assertEquals(1, info.comics.size)
+        assertEquals("Lord Xueying", info.comics[0].title)
+        assertEquals("MANHUA", info.comics[0].contentType)
+        assertTrue(info.comics[0].coverUrl!!.endsWith("cover.jpg"))
+    }
+
+    @Test
+    fun `getGroup falls back to the slug as title and zero counts when the group object is missing fields`() = runTest {
+        server.dispatcher = object : Dispatcher() {
+            override fun dispatch(request: RecordedRequest): MockResponse {
+                val path = request.path.orEmpty()
+                return when {
+                    path == "/group/no-name" -> MockResponse().setBody(
+                        """{"group": {}, "comics": []}"""
+                    )
+                    else -> MockResponse().setResponseCode(404)
+                }
+            }
+        }
+        val info = source.getGroup("no-name")
+        assertEquals("no-name", info.title)
+        assertEquals(0, info.followCount)
+        assertEquals(0, info.chapterCount)
+        assertTrue(info.comics.isEmpty())
+    }
 }
 
 /**

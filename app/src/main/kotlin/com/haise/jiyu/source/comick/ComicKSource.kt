@@ -169,6 +169,23 @@ class ComicKSource @Inject constructor(
             )
         }
 
+    /**
+     * Vrátí metadata překladatelské skupiny + seznam titulů, které přeložila
+     * (viz [Sub-projekt 4 v design docu]). `comics[]` v odpovědi má stejný
+     * tvar jako položky `/v1.0/search`, proto se parsuje stejnou [parseComicList].
+     */
+    suspend fun getGroup(slug: String): GroupInfo =
+        withContext(Dispatchers.IO) {
+            val json = getObject("$apiBase/group/$slug")
+            val group = json.optJSONObject("group") ?: JSONObject()
+            GroupInfo(
+                title = group.optString("title").ifBlank { slug },
+                followCount = group.optInt("follow_count", 0),
+                chapterCount = group.optInt("chapter_count", 0),
+                comics = parseComicList(json.optJSONArray("comics") ?: JSONArray()),
+            )
+        }
+
     // ─── Kapitoly ────────────────────────────────────────────────────────────
 
     /**
@@ -367,4 +384,12 @@ class ComicKSource @Inject constructor(
 data class ComicKTitleInfo(
     val alternateTitles: List<String>,
     val contentRating: String?,
+)
+
+/** Výsledek [ComicKSource.getGroup] - metadata skupiny + tituly, které přeložila. */
+data class GroupInfo(
+    val title: String,
+    val followCount: Int,
+    val chapterCount: Int,
+    val comics: List<SManga>,
 )
