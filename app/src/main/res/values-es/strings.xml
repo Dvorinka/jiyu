@@ -401,6 +401,14 @@
     <string name="resolver_missing_chapter">No tiene este capítulo</string>
     <string name="resolver_opening">Abriendo…</string>
     <string name="resolver_chapter_missing_after_select">Esta fuente no tiene realmente ese capítulo.</string>
+
+    <!-- Pantalla de grupo -->
+    <string name="group_screen_loading">Cargando grupo…</string>
+    <string name="group_screen_load_failed">No se pudo cargar el grupo.</string>
+    <string name="group_screen_no_titles">Este grupo todavía no tiene títulos.</string>
+    <string name="group_screen_follow_count">%1$d seguidores</string>
+    <string name="group_screen_chapter_count">%1$d capítulos traducidos</string>
+
     <string name="detail_chapter_downloaded">Descargado</string>
     <string name="detail_mark_read_up_to">Marcar este y todos los anteriores como leídos</string>
     <string name="detail_mark_all_older_read">Marcar todos los anteriores como leídos</string>

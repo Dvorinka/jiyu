@@ -404,6 +404,14 @@
     <string name="resolver_missing_chapter">Doesn\'t have this chapter</string>
     <string name="resolver_opening">Opening…</string>
     <string name="resolver_chapter_missing_after_select">This source doesn\'t actually have that chapter.</string>
+
+    <!-- Group screen -->
+    <string name="group_screen_loading">Loading group…</string>
+    <string name="group_screen_load_failed">Failed to load the group.</string>
+    <string name="group_screen_no_titles">This group doesn\'t have any titles yet.</string>
+    <string name="group_screen_follow_count">%1$d followers</string>
+    <string name="group_screen_chapter_count">%1$d translated chapters</string>
+
     <string name="detail_chapter_downloaded">Downloaded</string>
     <string name="detail_mark_read_up_to">Mark this and all older as read</string>
     <string name="detail_mark_all_older_read">Mark all older as read</string>
