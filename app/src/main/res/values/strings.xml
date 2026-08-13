@@ -568,7 +568,6 @@
     <string name="mylist_add_to_category">Přidat do kategorie</string>
     <string name="mylist_remove_from_library">Odebrat z knihovny</string>
     <string name="mylist_importing_file">Importuji soubor…</string>
-    <string name="mylist_add_fab">+ Přidat</string>
     <string name="mylist_mark_all_read_title">Označit celou knihovnu jako přečtenou?</string>
     <string name="mylist_mark_all">Označit vše</string>
     <string name="library_remove_confirm_title">Odebrat „%1$s“ z knihovny?</string>

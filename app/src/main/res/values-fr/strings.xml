@@ -530,7 +530,6 @@
     <string name="mylist_add_to_category">Ajouter à une catégorie</string>
     <string name="mylist_remove_from_library">Retirer de la bibliothèque</string>
     <string name="mylist_importing_file">Import du fichier…</string>
-    <string name="mylist_add_fab">+ Ajouter</string>
     <string name="mylist_mark_all_read_title">Marquer toute la bibliothèque comme lue ?</string>
     <string name="mylist_mark_all">Tout marquer</string>
     <string name="library_remove_confirm_title">Retirer « %1$s » de la bibliothèque ?</string>

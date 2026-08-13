@@ -21,7 +21,6 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -50,7 +49,6 @@ import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
@@ -92,7 +90,6 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.TextStyle
@@ -115,7 +112,6 @@ import com.haise.jiyu.ui.theme.CyanLight
 import com.haise.jiyu.ui.theme.Danger
 import com.haise.jiyu.ui.theme.DeepSpace
 import com.haise.jiyu.ui.theme.Pink
-import com.haise.jiyu.ui.theme.GlowCyan
 import com.haise.jiyu.ui.theme.GlowViolet
 import com.haise.jiyu.ui.theme.CardBorder
 import com.haise.jiyu.ui.theme.NightBlue
@@ -124,7 +120,6 @@ import com.haise.jiyu.ui.theme.TextSecondary
 import com.haise.jiyu.ui.theme.VioletLight
 import com.haise.jiyu.ui.theme.glassBorder
 import com.haise.jiyu.ui.theme.screenGradient
-import com.haise.jiyu.ui.theme.violetGlow
 
 /** Celá filtrovaná knihovna (dřív hlavní Knihovna) - vlastní tab, dashboard Knihovna teď žije v LibraryScreen.kt. */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -556,31 +551,6 @@ fun MyListScreen(
                 onAddToCategory = { showBulkCategoryDialog = true },
                 onDelete = { viewModel.bulkRemoveFromLibrary() },
             )
-        }
-        AnimatedVisibility(
-            visible = !selectionMode,
-            modifier = Modifier.align(Alignment.BottomCenter),
-            enter = fadeIn(),
-            exit = fadeOut(),
-        ) {
-            Box(
-                modifier = Modifier
-                    .navigationBarsPadding()
-                    .padding(bottom = 20.dp)
-                    .size(56.dp)
-                    .violetGlow()
-                    .background(Brush.linearGradient(listOf(GlowViolet, GlowCyan.copy(alpha = 0.8f))), CircleShape)
-                    .clip(CircleShape)
-                    .pointerInput(Unit) { detectTapGestures(onTap = { onOpenBrowse() }) },
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    TablerIcons.Plus,
-                    contentDescription = stringResource(R.string.mylist_add_fab),
-                    tint = Color.White,
-                    modifier = Modifier.size(26.dp),
-                )
-            }
         }
     }
 
