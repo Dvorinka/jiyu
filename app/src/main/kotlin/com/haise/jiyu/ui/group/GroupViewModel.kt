@@ -26,8 +26,9 @@ class GroupViewModel @Inject constructor(
 
     private val slug: String = checkNotNull(savedStateHandle["slug"])
 
-    /** Název skupiny přijde jako nav argument (z `chapter.groups`), takže hlavička nemusí čekat na network round-trip. */
-    private val _title = MutableStateFlow(savedStateHandle.get<String>("title").orEmpty())
+    /** Název skupiny přijde jako nav argument (z `chapter.groups`), takže hlavička nemusí čekat na network round-trip.
+     * Pokud je prázdný (ComicK umí vrátit prázdné `group_name`), padne to na `slug` - ten je vždy neprázdný. */
+    private val _title = MutableStateFlow(savedStateHandle.get<String>("title")?.takeIf { it.isNotBlank() } ?: slug)
     val title: StateFlow<String> = _title.asStateFlow()
 
     private val _groupInfo = MutableStateFlow<GroupInfo?>(null)
@@ -46,7 +47,13 @@ class GroupViewModel @Inject constructor(
     val openError: StateFlow<String?> = _openError.asStateFlow()
 
     init {
+        load()
+    }
+
+    private fun load() {
         viewModelScope.launch {
+            _error.value = null
+            _loading.value = true
             try {
                 val info = comicKSource.getGroup(slug)
                 _groupInfo.value = info
@@ -59,6 +66,8 @@ class GroupViewModel @Inject constructor(
             }
         }
     }
+
+    fun retry() = load()
 
     fun openManga(manga: SManga, onOpened: (String) -> Unit) {
         if (_openingManga.value != null) return

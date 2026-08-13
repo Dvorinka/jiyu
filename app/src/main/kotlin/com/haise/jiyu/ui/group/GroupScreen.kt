@@ -28,6 +28,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -126,7 +127,7 @@ fun GroupScreen(
                 .background(screenGradient)
                 .padding(innerPadding),
         ) {
-            val comics = groupInfo?.comics.orEmpty()
+            val comics = groupInfo?.comics.orEmpty().distinctBy { it.url }
             when {
                 loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -135,7 +136,25 @@ fun GroupScreen(
                     }
                 }
                 error != null -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(stringResource(R.string.group_screen_load_failed), color = TextSecondary, fontSize = 14.sp)
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.padding(32.dp),
+                    ) {
+                        Text(
+                            text = stringResource(R.string.group_screen_load_failed),
+                            style = MaterialTheme.typography.titleMedium,
+                            color = TextSecondary,
+                        )
+                        Text(
+                            text = error ?: "",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = TextSecondary.copy(alpha = 0.6f),
+                            modifier = Modifier.padding(top = 4.dp, bottom = 16.dp),
+                        )
+                        OutlinedButton(onClick = { viewModel.retry() }) {
+                            Text(stringResource(R.string.common_retry), color = Violet)
+                        }
+                    }
                 }
                 comics.isEmpty() -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text(stringResource(R.string.group_screen_no_titles), color = TextSecondary, fontSize = 14.sp)

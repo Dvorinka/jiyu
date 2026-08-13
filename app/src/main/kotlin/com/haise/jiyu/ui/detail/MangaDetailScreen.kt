@@ -941,7 +941,7 @@ internal fun GlassChapterRow(
             Box(modifier = Modifier.size(6.dp).background(if (isRead) GlowCyan.copy(alpha = 0.4f) else GlowViolet, RoundedCornerShape(50)))
             Column(modifier = Modifier.weight(1f).padding(start = 12.dp)) {
                 Text(text = chapter.name, color = if (isRead) TextSecondary else TextPrimary, fontWeight = if (isRead) FontWeight.Normal else FontWeight.Medium, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                val groups = remember(chapter.groupsJson) { deserializeChapterGroups(chapter.groupsJson) }
+                val groups = remember(chapter.groupsJson) { deserializeChapterGroups(chapter.groupsJson).filter { it.name.isNotBlank() } }
                 if (groups.isNotEmpty()) {
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         groups.forEach { group ->
