@@ -180,7 +180,7 @@ fun ComicKHomeScreen(
                                     rightLabel = completedLabel,
                                     rightSelected = showCompleted,
                                     onToggle = { viewModel.setShowCompleted(it) },
-                                    comics = if (showCompleted) feed.completed else feed.recentlyAdded,
+                                    comics = (if (showCompleted) feed.completed else feed.recentlyAdded).take(15),
                                     onOpenManga = ::openManga,
                                     onViewAll = { onOpenSection(if (showCompleted) "completed" else "recently_added", null, if (showCompleted) completedLabel else recentlyAddedLabel) },
                                 )
@@ -191,7 +191,7 @@ fun ComicKHomeScreen(
                                     title = label,
                                     window = popularNewWindow,
                                     onWindowChange = { viewModel.setPopularNewWindow(it) },
-                                    comics = feed.popularNew[popularNewWindow].orEmpty(),
+                                    comics = feed.popularNew[popularNewWindow].orEmpty().take(15),
                                     onOpenManga = ::openManga,
                                     onViewAll = { onOpenSection("popular_new", popularNewWindow, label) },
                                 )
@@ -202,7 +202,7 @@ fun ComicKHomeScreen(
                                     title = label,
                                     window = mostRecentPopularWindow,
                                     onWindowChange = { viewModel.setMostRecentPopularWindow(it) },
-                                    comics = feed.mostRecentPopular[mostRecentPopularWindow].orEmpty(),
+                                    comics = feed.mostRecentPopular[mostRecentPopularWindow].orEmpty().take(15),
                                     onOpenManga = ::openManga,
                                     onViewAll = { onOpenSection("most_recent_popular", mostRecentPopularWindow, label) },
                                 )
@@ -210,7 +210,7 @@ fun ComicKHomeScreen(
                             item {
                                 val label = stringResource(R.string.comick_home_recent_reviews)
                                 ReviewSection(
-                                    reviews = feed.recentReviews,
+                                    reviews = feed.recentReviews.take(15),
                                     onOpenManga = ::openManga,
                                     onViewAll = { onOpenSection("recent_reviews", null, label) },
                                 )
@@ -222,6 +222,7 @@ fun ComicKHomeScreen(
                     val updates by viewModel.updates.collectAsState()
                     val updatesOrder by viewModel.updatesOrder.collectAsState()
                     val updatesLoading by viewModel.updatesLoading.collectAsState()
+                    val updatesError by viewModel.updatesError.collectAsState()
                     val listState = rememberLazyListState()
 
                     val shouldLoadMore by remember {
@@ -254,7 +255,15 @@ fun ComicKHomeScreen(
                                 ) { Text(label, fontSize = 13.sp) }
                             }
                         }
-                        if (updates.isEmpty() && !updatesLoading) {
+                        if (updatesError != null) {
+                            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(32.dp)) {
+                                    Text(stringResource(R.string.comick_home_load_failed), color = TextSecondary, fontSize = 14.sp)
+                                    Text(updatesError ?: "", color = TextSecondary.copy(alpha = 0.6f), fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp, bottom = 16.dp))
+                                    OutlinedButton(onClick = { viewModel.retry() }) { Text(stringResource(R.string.common_retry), color = Violet) }
+                                }
+                            }
+                        } else if (updates.isEmpty() && !updatesLoading) {
                             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                                 Text(stringResource(R.string.comick_home_empty), color = TextSecondary, fontSize = 14.sp)
                             }
@@ -405,9 +414,9 @@ private fun ReviewSection(reviews: List<ReviewItem>, onOpenManga: (SManga) -> Un
 }
 
 @Composable
-internal fun ReviewCard(review: ReviewItem, onClick: () -> Unit) {
+internal fun ReviewCard(review: ReviewItem, onClick: () -> Unit, modifier: Modifier = Modifier) {
     Box(
-        modifier = Modifier
+        modifier = modifier
             .width(220.dp)
             .clip(RoundedCornerShape(12.dp))
             .border(1.dp, GlowCyan.copy(alpha = 0.2f), RoundedCornerShape(12.dp))

@@ -37,6 +37,9 @@ class ComicKHomeViewModel @Inject constructor(
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
 
+    private val _updatesError = MutableStateFlow<String?>(null)
+    val updatesError: StateFlow<String?> = _updatesError.asStateFlow()
+
     private val _showCompleted = MutableStateFlow(false)
     val showCompleted: StateFlow<Boolean> = _showCompleted.asStateFlow()
 
@@ -103,7 +106,7 @@ class ComicKHomeViewModel @Inject constructor(
     private fun loadUpdatesFirstPage() {
         updatesPage = 1
         _updates.value = emptyList()
-        _error.value = null
+        _updatesError.value = null
         loadMoreUpdates()
     }
 
@@ -113,11 +116,11 @@ class ComicKHomeViewModel @Inject constructor(
             _updatesLoading.value = true
             try {
                 val page = comicKSource.getUpdates(_updatesOrder.value, updatesPage)
-                _updates.value = _updates.value + page
+                _updates.value = (_updates.value + page).distinctBy { it.chapter.sourceId + it.chapter.url }
                 if (page.isNotEmpty()) updatesPage++
             } catch (e: Exception) {
                 e.report("comickhome:getUpdates")
-                if (_updates.value.isEmpty()) _error.value = e.toFriendlyMessage()
+                if (_updates.value.isEmpty()) _updatesError.value = e.toFriendlyMessage()
             } finally {
                 _updatesLoading.value = false
             }

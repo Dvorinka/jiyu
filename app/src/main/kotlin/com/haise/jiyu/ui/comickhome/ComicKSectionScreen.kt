@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -73,7 +74,7 @@ fun ComicKSectionScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             Row(
-                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                modifier = Modifier.fillMaxWidth().statusBarsPadding().padding(16.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 IconButton(onClick = onBack) {
@@ -97,7 +98,7 @@ fun ComicKSectionScreen(
                 reviews.isNotEmpty() -> LazyColumn(contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 16.dp + navBottom)) {
                     items(reviews) { review ->
                         Box(modifier = Modifier.padding(vertical = 6.dp)) {
-                            ReviewCard(review = review, onClick = { viewModel.openManga(review.comic, onOpenManga) })
+                            ReviewCard(review = review, onClick = { viewModel.openManga(review.comic, onOpenManga) }, modifier = Modifier.fillMaxWidth())
                         }
                     }
                 }
