@@ -440,7 +440,7 @@ private fun FeaturedSourceCard(source: MangaSource, onClick: () -> Unit) {
                         contentScale = ContentScale.Fit,
                         modifier = Modifier
                             .matchParentSize()
-                            .padding(8.dp)
+                            .padding(4.dp)
                             .alpha(if (showFavicon) 1f else 0f),
                         onState = { state -> showFavicon = state is AsyncImagePainter.State.Success },
                     )
@@ -537,7 +537,7 @@ private fun SourceCard(
                         contentScale = ContentScale.Fit,
                         modifier = Modifier
                             .matchParentSize()
-                            .padding(6.dp)
+                            .padding(3.dp)
                             .alpha(if (showFavicon) 1f else 0f),
                         onState = { state -> showFavicon = state is AsyncImagePainter.State.Success },
                     )
