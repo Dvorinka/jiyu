@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Button
@@ -39,6 +40,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -62,6 +64,7 @@ import coil.compose.SubcomposeAsyncImage
 import coil.compose.SubcomposeAsyncImageContent
 import com.haise.jiyu.R
 import com.haise.jiyu.source.SManga
+import com.haise.jiyu.source.comick.ChapterUpdate
 import com.haise.jiyu.source.comick.ReviewItem
 import com.haise.jiyu.source.comick.TopFeed
 import com.haise.jiyu.ui.components.JiyuLoadingIndicator
@@ -73,6 +76,9 @@ import com.haise.jiyu.ui.theme.screenGradient
 import compose.icons.TablerIcons
 import compose.icons.tablericons.Book
 import compose.icons.tablericons.Search
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @Composable
 fun ComicKHomeScreen(
@@ -212,7 +218,68 @@ fun ComicKHomeScreen(
                         }
                     }
                 }
-                // HomeTab.UPDATES vetev pridava Task 6
+                tab == HomeTab.UPDATES -> {
+                    val updates by viewModel.updates.collectAsState()
+                    val updatesOrder by viewModel.updatesOrder.collectAsState()
+                    val updatesLoading by viewModel.updatesLoading.collectAsState()
+                    val listState = rememberLazyListState()
+
+                    val shouldLoadMore by remember {
+                        derivedStateOf {
+                            val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+                            val totalItems = listState.layoutInfo.totalItemsCount
+                            lastVisible >= totalItems - 5 && totalItems > 0
+                        }
+                    }
+                    LaunchedEffect(shouldLoadMore) {
+                        if (shouldLoadMore && !updatesLoading) viewModel.loadMoreUpdates()
+                    }
+
+                    Column {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            listOf("hot" to stringResource(R.string.source_browse_popular), "new" to stringResource(R.string.source_browse_latest)).forEach { (value, label) ->
+                                val selected = updatesOrder == value
+                                Button(
+                                    onClick = { if (!selected) viewModel.setUpdatesOrder(value) },
+                                    modifier = Modifier.weight(1f),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = if (selected) Violet.copy(alpha = 0.2f) else Color.Transparent,
+                                        contentColor = if (selected) Violet else TextSecondary,
+                                    ),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, if (selected) Violet.copy(alpha = 0.5f) else TextSecondary.copy(alpha = 0.15f)),
+                                    elevation = null,
+                                ) { Text(label, fontSize = 13.sp) }
+                            }
+                        }
+                        if (updates.isEmpty() && !updatesLoading) {
+                            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                Text(stringResource(R.string.comick_home_empty), color = TextSecondary, fontSize = 14.sp)
+                            }
+                        } else {
+                            val navBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+                            LazyColumn(
+                                state = listState,
+                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp).let {
+                                    PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 16.dp + navBottom)
+                                },
+                            ) {
+                                items(updates, key = { it.chapter.sourceId + it.chapter.url }) { update ->
+                                    UpdateRow(update = update, onClick = { openManga(update.comic) })
+                                }
+                                if (updatesLoading) {
+                                    item {
+                                        Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                                            JiyuLoadingIndicator(size = 24.dp, strokeWidth = 2.dp)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
             if (openingManga != null) {
                 Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.4f)), contentAlignment = Alignment.Center) {
@@ -432,5 +499,55 @@ internal fun ComicKMangaCard(manga: SManga, onClick: () -> Unit) {
             maxLines = 2, overflow = TextOverflow.Ellipsis, lineHeight = 12.sp,
             modifier = Modifier.align(Alignment.BottomStart).padding(horizontal = 6.dp, vertical = 5.dp),
         )
+    }
+}
+
+@Composable
+private fun UpdateRow(update: ChapterUpdate, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp)
+            .clip(RoundedCornerShape(10.dp))
+            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.35f))
+            .pointerInput(Unit) { detectTapGestures(onTap = { onClick() }) }
+            .padding(10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(modifier = Modifier.size(48.dp).clip(RoundedCornerShape(8.dp))) {
+            SubcomposeAsyncImage(
+                model = update.comic.coverUrl,
+                contentDescription = update.comic.title,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+            ) {
+                val state = painter.state
+                if (update.comic.coverUrl.isNullOrBlank() || state is AsyncImagePainter.State.Error) {
+                    Box(modifier = Modifier.fillMaxSize().background(Color(0xFF0D1526)))
+                } else {
+                    SubcomposeAsyncImageContent()
+                }
+            }
+        }
+        Column(modifier = Modifier.weight(1f).padding(start = 10.dp)) {
+            Text(update.comic.title, color = TextPrimary, fontSize = 13.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(update.chapter.name, color = TextSecondary, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            val groupName = update.chapter.scanlationGroup
+            if (!groupName.isNullOrBlank()) {
+                Text(groupName, color = TextSecondary.copy(alpha = 0.6f), fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+        }
+        Column(horizontalAlignment = Alignment.End) {
+            if (update.chapter.dateUpload > 0L) {
+                Text(
+                    SimpleDateFormat("d. M.", Locale.getDefault()).format(Date(update.chapter.dateUpload)),
+                    color = TextSecondary.copy(alpha = 0.6f), fontSize = 10.sp,
+                )
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text("${update.upCount}▲", color = TextSecondary.copy(alpha = 0.6f), fontSize = 10.sp)
+                Text("${update.commentCount}💬", color = TextSecondary.copy(alpha = 0.6f), fontSize = 10.sp)
+            }
+        }
     }
 }
