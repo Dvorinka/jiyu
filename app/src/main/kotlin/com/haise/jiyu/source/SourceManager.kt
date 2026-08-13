@@ -96,6 +96,10 @@ import com.haise.jiyu.source.yaoimangaonline.YaoiMangaOnlineSource
 import com.haise.jiyu.source.hentaipaw.HentaiPawSource
 import com.haise.jiyu.source.doujiva.DoujivaSource
 import com.haise.jiyu.source.hentaizap.HentaiZapSource
+import com.haise.jiyu.source.omegascans.OmegaScansSource
+import com.haise.jiyu.source.eahentai.EAHentaiSource
+import com.haise.jiyu.source.simplyhentai.SimplyHentaiSource
+import com.haise.jiyu.source.oppaistream.OppaiStreamSource
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -210,6 +214,10 @@ class SourceManager @Inject constructor(
     hentaiPawSource: HentaiPawSource,
     doujivaSource: DoujivaSource,
     hentaiZapSource: HentaiZapSource,
+    omegaScansSource: OmegaScansSource,
+    eaHentaiSource: EAHentaiSource,
+    simplyHentaiSource: SimplyHentaiSource,
+    oppaiStreamSource: OppaiStreamSource,
     private val customSourceDao: CustomSourceDao,
     private val client: OkHttpClient,
     private val settings: com.haise.jiyu.settings.SettingsRepository,
@@ -628,6 +636,16 @@ class SourceManager @Inject constructor(
         // bez zjevného API endpointu zjistitelného statickou analýzou -
         // stejná architektonická překážka jako u evilmanga/mangahub (viz
         // komentáře výše).
+
+        // ── Dávka 2026-08-13 - dříve odložené "MOŽNÁ" kandidáty ───────────────────
+        omegaScansSource,
+        eaHentaiSource,
+        simplyHentaiSource,
+        oppaiStreamSource,
+        // XToonhub (xtoonhub.com) VYNECHÁN - doména byla přesměrována na
+        // reklamní/podvodný redirect řetězec ("302 → survey-smiles.com",
+        // Cowboy server, žádný skutečný obsah) - stejná kategorie jako dřívější
+        // zparkované/hijacknuté domény (HenTalk apod.), ne technická překážka.
     )
 
     init {
