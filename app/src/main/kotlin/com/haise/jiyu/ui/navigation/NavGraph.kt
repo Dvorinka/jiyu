@@ -11,6 +11,8 @@ import com.haise.jiyu.ui.account.AccountScreen
 import com.haise.jiyu.ui.browse.BrowseScreen
 import com.haise.jiyu.ui.browse.SourceBrowseScreen
 import com.haise.jiyu.ui.community.CommunityScreen
+import com.haise.jiyu.ui.comickhome.ComicKHomeScreen
+import com.haise.jiyu.ui.comickhome.ComicKSectionScreen
 import com.haise.jiyu.ui.css.CustomCssScreen
 import com.haise.jiyu.ui.detail.MangaDetailInfoScreen
 import com.haise.jiyu.ui.detail.MangaDetailScreen
@@ -260,6 +262,28 @@ fun JiyuNavGraph(
             ),
         ) {
             GroupScreen(
+                onBack = { navController.popBackStack() },
+                onOpenManga = { mangaId -> navController.navigate(Routes.detail(mangaId)) },
+            )
+        }
+
+        composable(Routes.COMICK_HOME) {
+            ComicKHomeScreen(
+                onOpenManga = { mangaId -> navController.navigate(Routes.detail(mangaId)) },
+                onOpenSearch = { navController.navigate(Routes.globalSearch()) },
+                onOpenSection = { section, window, title -> navController.navigate(Routes.comickSection(section, window, title)) },
+            )
+        }
+
+        composable(
+            route = Routes.COMICK_SECTION,
+            arguments = listOf(
+                navArgument("section") { type = NavType.StringType },
+                navArgument("window") { type = NavType.StringType; defaultValue = "" },
+                navArgument("title") { type = NavType.StringType; defaultValue = "" },
+            ),
+        ) {
+            ComicKSectionScreen(
                 onBack = { navController.popBackStack() },
                 onOpenManga = { mangaId -> navController.navigate(Routes.detail(mangaId)) },
             )
