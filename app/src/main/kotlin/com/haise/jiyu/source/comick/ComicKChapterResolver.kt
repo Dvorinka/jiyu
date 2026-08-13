@@ -49,8 +49,8 @@ class ComicKChapterResolver @Inject constructor(
     /**
      * @param comicKMangaId klíč pro cache (Room id ComicK manga entity)
      * @param comicKMangaUrl url ComicK manga entity - použije se pro dotažení alternativních
-     *   názvů (viz [ComicKSource.getAlternateTitles]), protože `comicKTitle` sám o sobě
-     *   často nesedí s tím, jak titul jmenují ostatní zdroje (viz [searchAndFetch]).
+     *   názvů a content_rating (viz [ComicKSource.getTitleInfo]), protože `comicKTitle` sám
+     *   o sobě často nesedí s tím, jak titul jmenují ostatní zdroje (viz [searchAndFetch]).
      * @param requestedChapterNumber null = zajímá nás jen "existuje vůbec zdroj", jinak
      *   se navíc spočítá [ResolvedCandidate.hasRequestedChapter] pro tohle konkrétní číslo.
      */
@@ -88,22 +88,30 @@ class ComicKChapterResolver @Inject constructor(
      * kterým ho eviduje většina ostatních zdrojů (např. ComicK primárně eviduje Solo Leveling
      * pod "I am the only the one who levels up", "Solo Leveling" je md_titles položka s
      * `is_default: true`). Bez alternativních názvů by přesná shoda selhala úplně, i když
-     * reálný zdroj existuje. Dotažení alt. názvů je jen jeden extra request navíc (ne za
-     * zdroj), a pokud selže, spadneme zpátky na `comicKTitle` samotný.
+     * reálný zdroj existuje. Dotažení alt. názvů (+ content_rating, viz níže) je jen jeden
+     * extra request navíc (ne za zdroj), a pokud selže, spadneme zpátky na `comicKTitle`
+     * samotný a titul se bere jako ne-adult (viz [isAdultRating]).
      */
     private suspend fun searchAndFetch(comicKMangaUrl: String, comicKTitle: String, comicKContentType: String): List<CachedCandidate> =
         coroutineScope {
             val semaphore = Semaphore(5)
-            val alternateTitles = try {
-                comicKSource.getAlternateTitles(comicKMangaUrl)
+            val titleInfo = try {
+                comicKSource.getTitleInfo(comicKMangaUrl)
             } catch (e: Exception) {
-                e.report("comick:resolver:alternateTitles")
-                emptyList()
+                e.report("comick:resolver:titleInfo")
+                ComicKTitleInfo(alternateTitles = emptyList(), contentRating = null)
             }
+            val alternateTitles = titleInfo.alternateTitles
+            val isAdultTitle = isAdultRating(titleInfo.contentRating)
             val searchTitle = alternateTitles.firstOrNull() ?: comicKTitle
             val normalizedTargets = (alternateTitles + comicKTitle).map { normalizeMangaTitle(it) }.toSet()
-            sourceManager.getAll()
+            sourceManager.getAllForCrossSourceSearch()
                 .filter { it.id != "comick" && isSameContentGroup(it.contentType, comicKContentType) }
+                // Ne-adult ComicK titul nikdy neprohledává isAdult zdroje (i kdyz je uzivatel
+                // globalne povolil v Nastaveni) - a adult titul je naopak vzdy zahrne, i kdyz
+                // je uzivatel globalne skryl z Prochazet/hledani. Zamerne nezavisle na
+                // SourceManager.getAll()/showAdultSources - viz getAllForCrossSourceSearch.
+                .filter { isAdultTitle || !it.isAdult }
                 .map { source ->
                     async {
                         semaphore.withPermit {
@@ -122,6 +130,9 @@ class ComicKChapterResolver @Inject constructor(
                 }.awaitAll().filterNotNull()
         }
 
+    /** "erotica"/"pornographic" = 18+ na ComicK škále (stejná škála jako MangaDex/MangaFire content_rating filtr), "safe"/"suggestive"/null = ne. */
+    private fun isAdultRating(contentRating: String?): Boolean = contentRating in ADULT_CONTENT_RATINGS
+
     /**
      * MANGA/MANHWA/MANHUA se pro účely hledání zdroje berou jako jedna skupina (region
      * asijského komiksu) - stejná konvence jako `BrowseViewModel.MANGA_GROUP` pro
@@ -132,5 +143,9 @@ class ComicKChapterResolver @Inject constructor(
     private fun isSameContentGroup(sourceType: String, targetType: String): Boolean {
         val asianComicTypes = setOf("MANGA", "MANHWA", "MANHUA")
         return if (targetType in asianComicTypes) sourceType in asianComicTypes else sourceType == targetType
+    }
+
+    private companion object {
+        val ADULT_CONTENT_RATINGS = setOf("erotica", "pornographic")
     }
 }

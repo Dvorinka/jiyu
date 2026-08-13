@@ -184,7 +184,7 @@ class ComicKSourceTest {
     }
 
     @Test
-    fun `getAlternateTitles puts the md_titles entry flagged is_default first`() = runTest {
+    fun `getTitleInfo puts the md_titles entry flagged is_default first`() = runTest {
         // Realny pripad, ktery zpusoboval "zadny zdroj to nema" v resolveru (Sub-projekt 3):
         // ComicK.comic.title muze byt uplne jiny nazev, nez ten oznaceny is_default=true.
         server.dispatcher = object : Dispatcher() {
@@ -202,14 +202,14 @@ class ComicKSourceTest {
                 }
             }
         }
-        val titles = source.getAlternateTitles("https://api.comick.dev/comic/test-series")
-        assertEquals("Solo Leveling", titles[0])
-        assertTrue(titles.contains("I Alone Level-Up"))
-        assertTrue(titles.none { it.contains("سولو") })
+        val info = source.getTitleInfo("https://api.comick.dev/comic/test-series")
+        assertEquals("Solo Leveling", info.alternateTitles[0])
+        assertTrue(info.alternateTitles.contains("I Alone Level-Up"))
+        assertTrue(info.alternateTitles.none { it.contains("سولو") })
     }
 
     @Test
-    fun `getAlternateTitles falls back to comic title when md_titles is absent`() = runTest {
+    fun `getTitleInfo falls back to comic title when md_titles is absent`() = runTest {
         server.dispatcher = object : Dispatcher() {
             override fun dispatch(request: RecordedRequest): MockResponse {
                 val path = request.path.orEmpty()
@@ -221,8 +221,26 @@ class ComicKSourceTest {
                 }
             }
         }
-        val titles = source.getAlternateTitles("https://api.comick.dev/comic/test-series")
-        assertEquals(listOf("Plain Title"), titles)
+        val info = source.getTitleInfo("https://api.comick.dev/comic/test-series")
+        assertEquals(listOf("Plain Title"), info.alternateTitles)
+        assertEquals(null, info.contentRating)
+    }
+
+    @Test
+    fun `getTitleInfo reads content_rating from the comic object`() = runTest {
+        server.dispatcher = object : Dispatcher() {
+            override fun dispatch(request: RecordedRequest): MockResponse {
+                val path = request.path.orEmpty()
+                return when {
+                    path == "/comic/test-series" -> MockResponse().setBody(
+                        """{"comic": {"hid": "abcd", "title": "Plain Title", "content_rating": "erotica"}}"""
+                    )
+                    else -> MockResponse().setResponseCode(404)
+                }
+            }
+        }
+        val info = source.getTitleInfo("https://api.comick.dev/comic/test-series")
+        assertEquals("erotica", info.contentRating)
     }
 
     @Test

@@ -684,4 +684,13 @@ class SourceManager @Inject constructor(
 
     /** Nefiltrované podle isAdult - viz komentář u [observeAll]. */
     suspend fun getById(id: String): MangaSource? = rawSources().find { it.id == id }
+
+    /**
+     * Zdroje pro [com.haise.jiyu.source.comick.ComicKChapterResolver] - narozdíl od
+     * [getAll] NEaplikuje globální [SettingsRepository.showAdultSources] toggle. O
+     * zahrnutí isAdult zdrojů do křížového hledání se tam rozhoduje per titul (podle
+     * content_rating konkrétní ComicK mangy - safe/suggestive nikdy neprohledávají
+     * isAdult zdroje, erotica/pornographic je vždy zahrnou), ne globálním nastavením.
+     */
+    suspend fun getAllForCrossSourceSearch(): List<MangaSource> = rawSources()
 }

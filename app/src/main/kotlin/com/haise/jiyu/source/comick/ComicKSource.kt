@@ -138,8 +138,13 @@ class ComicKSource @Inject constructor(
      * primárně eviduje pod "I am the only the one who levels up", "Solo Leveling" je jen
      * jeden z `md_titles`, ale s `is_default: true`) selže úplně - žádný zdroj nenajde,
      * i když ho reálně máme.
+     *
+     * Vrací i `content_rating` ("safe"/"suggestive"/"erotica"/"pornographic" - stejná
+     * škála, jakou MangaDex/MangaFire zdroje používají pro svůj vlastní safe/suggestive
+     * filtr) ze STEJNÉ odpovědi, aby [ComicKChapterResolver] mohl rozhodnout o zahrnutí
+     * isAdult zdrojů per titul bez dalšího requestu navíc.
      */
-    suspend fun getAlternateTitles(mangaUrl: String): List<String> =
+    suspend fun getTitleInfo(mangaUrl: String): ComicKTitleInfo =
         withContext(Dispatchers.IO) {
             val slug = mangaUrl.substringAfterLast("/")
             val json = getObject("$apiBase/comic/$slug")
@@ -157,7 +162,11 @@ class ComicKSource @Inject constructor(
                 }
             }
             val ordered = alternates.sortedByDescending { it.second }.map { it.first }
-            (ordered + listOfNotNull(fallbackTitle)).distinct()
+            val contentRating = if (comic.isNull("content_rating")) null else comic.optString("content_rating").ifBlank { null }
+            ComicKTitleInfo(
+                alternateTitles = (ordered + listOfNotNull(fallbackTitle)).distinct(),
+                contentRating = contentRating,
+            )
         }
 
     // ─── Kapitoly ────────────────────────────────────────────────────────────
@@ -353,3 +362,9 @@ class ComicKSource @Inject constructor(
         val ROMANIZED_LANGS = setOf("en", "ja-ro", "ko-ro", "zh-ro", "zh-hk-ro")
     }
 }
+
+/** Výsledek [ComicKSource.getTitleInfo] - alternativní názvy pro cross-source hledání + content_rating pro adult filtr. */
+data class ComicKTitleInfo(
+    val alternateTitles: List<String>,
+    val contentRating: String?,
+)
