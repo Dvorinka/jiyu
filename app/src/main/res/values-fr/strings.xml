@@ -409,6 +409,23 @@
     <string name="group_screen_follow_count">%1$d abonnés</string>
     <string name="group_screen_chapter_count">%1$d chapitres traduits</string>
 
+    <!-- Page d\'accueil ComicK -->
+    <string name="comick_home_tab_home">Accueil</string>
+    <string name="comick_home_tab_updates">Mises à jour</string>
+    <string name="comick_home_recently_added">Ajoutés récemment</string>
+    <string name="comick_home_completed">Terminés</string>
+    <string name="comick_home_popular_new">Nouveaux populaires</string>
+    <string name="comick_home_most_recent_popular">Populaires récemment</string>
+    <string name="comick_home_recent_reviews">Avis récents</string>
+    <string name="comick_home_window_7d">7j</string>
+    <string name="comick_home_window_30d">1m</string>
+    <string name="comick_home_window_90d">3m</string>
+    <string name="comick_home_view_all">Tout afficher</string>
+    <string name="comick_home_loading">Chargement…</string>
+    <string name="comick_home_load_failed">Échec du chargement de ComicK.</string>
+    <string name="comick_home_empty">Rien ici.</string>
+    <string name="comick_home_review_by">par %1$s</string>
+
     <string name="detail_chapter_downloaded">Téléchargé</string>
     <string name="detail_mark_read_up_to">Marquer celui-ci et les plus anciens comme lus</string>
     <string name="detail_mark_all_older_read">Marquer tous les plus anciens comme lus</string>

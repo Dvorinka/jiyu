@@ -430,6 +430,23 @@
     <string name="group_screen_follow_count">%1$d sledujících</string>
     <string name="group_screen_chapter_count">%1$d přeložených kapitol</string>
 
+    <!-- ComicK domovská obrazovka -->
+    <string name="comick_home_tab_home">Domů</string>
+    <string name="comick_home_tab_updates">Aktualizace</string>
+    <string name="comick_home_recently_added">Nově přidané</string>
+    <string name="comick_home_completed">Dokončené</string>
+    <string name="comick_home_popular_new">Nové oblíbené</string>
+    <string name="comick_home_most_recent_popular">Aktuálně oblíbené</string>
+    <string name="comick_home_recent_reviews">Nedávné recenze</string>
+    <string name="comick_home_window_7d">7d</string>
+    <string name="comick_home_window_30d">1m</string>
+    <string name="comick_home_window_90d">3m</string>
+    <string name="comick_home_view_all">Zobrazit vše</string>
+    <string name="comick_home_loading">Načítám…</string>
+    <string name="comick_home_load_failed">Nepodařilo se načíst ComicK.</string>
+    <string name="comick_home_empty">Nic tu není.</string>
+    <string name="comick_home_review_by">od %1$s</string>
+
     <string name="detail_chapter_downloaded">Staženo</string>
     <string name="detail_mark_read_up_to">Označit toto i vše starší přečtené</string>
     <string name="detail_mark_all_older_read">Označit vše starší jako přečtené</string>

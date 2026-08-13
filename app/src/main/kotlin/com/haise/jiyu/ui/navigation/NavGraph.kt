@@ -70,6 +70,8 @@ internal object Routes {
     const val QR            = "qr/{mangaId}?title={mangaTitle}"
     const val SOURCE_RESOLVER = "source_resolver/{chapterId}?incognito={incognito}"
     const val GROUP = "group/{slug}?title={title}"
+    const val COMICK_HOME = "comick_home"
+    const val COMICK_SECTION = "comick_section/{section}?window={window}&title={title}"
 
     // ── Podstránky Nastavení (kategorie) ─────────────────────────────────
     const val SETTINGS_APPEARANCE   = "settings_appearance"
@@ -98,13 +100,15 @@ internal object Routes {
      * záložky, které porovnává přesnou shodu cesty.
      */
     fun browseRoute(appMode: String): String =
-        if (appMode == com.haise.jiyu.settings.AppMode.COMICK) sourceBrowse("comick") else BROWSE
+        if (appMode == com.haise.jiyu.settings.AppMode.COMICK) COMICK_HOME else BROWSE
     fun reader(chapterId: String, incognito: Boolean = false) =
         "reader/${android.net.Uri.encode(chapterId)}?incognito=$incognito"
     fun sourceResolver(chapterId: String, incognito: Boolean = false) =
         "source_resolver/${android.net.Uri.encode(chapterId)}?incognito=$incognito"
     fun group(slug: String, title: String) =
         "group/${android.net.Uri.encode(slug)}?title=${android.net.Uri.encode(title)}"
+    fun comickSection(section: String, window: String?, title: String) =
+        "comick_section/${android.net.Uri.encode(section)}?window=${android.net.Uri.encode(window ?: "")}&title=${android.net.Uri.encode(title)}"
     fun globalSearch(query: String? = null) =
         if (query.isNullOrBlank()) "global_search?q=" else "global_search?q=${android.net.Uri.encode(query)}"
     fun qr(mangaId: String, mangaTitle: String) =
