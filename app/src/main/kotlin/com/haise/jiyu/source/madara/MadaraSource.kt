@@ -51,6 +51,7 @@ class MadaraSource(
     private val client: OkHttpClient,
     private val selectors: MadaraSelectors = MadaraSelectors.DEFAULT,
     private val contentTypeOverride: String = "MANGA",
+    private val isAdultOverride: Boolean = false,
     // Vetsina Madara webu pouziva vychozi WordPress permalink strukturu
     // ("/manga/page/N/?m_orderby=", "/page/N/?s=...&post_type=wp-manga"),
     // ale nektere weby maji vlastni post-type/taxonomy slug (napr.
@@ -65,6 +66,7 @@ class MadaraSource(
 
     override val contentType: String get() = contentTypeOverride
     override val homepageUrl: String get() = baseUrl
+    override val isAdult: Boolean get() = isAdultOverride
 
     private val root get() = baseUrl.trimEnd('/')
 

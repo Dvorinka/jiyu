@@ -93,6 +93,9 @@ import com.haise.jiyu.source.cinguru.CinGuruSource
 import com.haise.jiyu.source.hentaifox.HentaiFoxSource
 import com.haise.jiyu.source.imhentai.ImHentaiSource
 import com.haise.jiyu.source.yaoimangaonline.YaoiMangaOnlineSource
+import com.haise.jiyu.source.hentaipaw.HentaiPawSource
+import com.haise.jiyu.source.doujiva.DoujivaSource
+import com.haise.jiyu.source.hentaizap.HentaiZapSource
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -204,6 +207,9 @@ class SourceManager @Inject constructor(
     hentaiFoxSource: HentaiFoxSource,
     imHentaiSource: ImHentaiSource,
     yaoiMangaOnlineSource: YaoiMangaOnlineSource,
+    hentaiPawSource: HentaiPawSource,
+    doujivaSource: DoujivaSource,
+    hentaiZapSource: HentaiZapSource,
     private val customSourceDao: CustomSourceDao,
     private val client: OkHttpClient,
     private val settings: com.haise.jiyu.settings.SettingsRepository,
@@ -577,6 +583,51 @@ class SourceManager @Inject constructor(
         hentaiFoxSource,
         imHentaiSource,
         yaoiMangaOnlineSource,
+        // ── Dávka 2026-08-13, doplnění zbylých 10 - 4 z nich jsou taky Madara ─────
+        // Pornhwaz - vlastni permalink "/webtoon/{slug}" (ne "/manga/{slug}"),
+        // hledani (?s=) funguje na vychozi ceste beze zmeny.
+        MadaraSource(
+            "pornhwaz", "Pornhwaz", "https://www.pornhwaz.com", client,
+            contentTypeOverride = "MANHWA", isAdultOverride = true,
+            popularUrl = { root, page, orderby -> "$root/webtoon/page/$page/?m_orderby=$orderby" },
+        ),
+        // Manga District - vlastni permalink "/series/{slug}" pro tituly i archiv,
+        // hledani je na vychozi ceste.
+        MadaraSource(
+            "mangadistrict", "Manga District", "https://mangadistrict.com", client,
+            contentTypeOverride = "MANHWA", isAdultOverride = true,
+            popularUrl = { root, page, orderby -> "$root/series/page/$page/?m_orderby=$orderby" },
+        ),
+        // Manhwa18 (manhwa18.today) - plne vychozi Madara cesty, zadny prepis netreba.
+        MadaraSource(
+            "manhwa18today", "Manhwa18", "https://www.manhwa18.today", client,
+            contentTypeOverride = "MANHWA", isAdultOverride = true,
+        ),
+        // ManhwaDen - plne vychozi Madara cesty, zadny prepis netreba.
+        MadaraSource(
+            "manhwaden", "ManhwaDen", "https://www.manhwaden.com", client,
+            contentTypeOverride = "MANHWA", isAdultOverride = true,
+        ),
+        // HenTalk (hentalk.com) VYNECHÁN - doména mezitím zparkována, homepage
+        // je jen `<script>window.onload=...location.href="/lander"</script>`
+        // (klasický ad-lander vzor, žádný obsah).
+        hentaiPawSource,
+        doujivaSource,
+        hentaiZapSource,
+        // Caitlin.top VYNECHÁN - reader ("route=comic/readOnline") vůbec
+        // neobsahuje obrázky stránek ve statickém HTML a vkládá podezřelý
+        // skript z domény ("ndejhe73jslaw093.com") vypadající jako
+        // malvertising/ad-injection - stejná kategorie jako dříve zamítnuté
+        // xcalibrscans apod. Bez čitelné kapitoly by appka jen "prohlížela",
+        // proto nepřidáno.
+        //
+        // Hentai2Read (hentai2read.com, sesterský web hentaihere.com/
+        // hentai2w.com, sdílí hentaicdn.com backend) VYNECHÁN - reader
+        // ("#arf-reader"/"#js-reader") je v initial HTML prázdný kontejner,
+        // obrázky stránek se dohrávají čistě přes JS (arf-reader_v105.js)
+        // bez zjevného API endpointu zjistitelného statickou analýzou -
+        // stejná architektonická překážka jako u evilmanga/mangahub (viz
+        // komentáře výše).
     )
 
     init {
