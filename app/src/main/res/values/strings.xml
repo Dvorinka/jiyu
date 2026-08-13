@@ -422,6 +422,14 @@
     <string name="resolver_missing_chapter">Tuhle kapitolu nemá</string>
     <string name="resolver_opening">Otevírám…</string>
     <string name="resolver_chapter_missing_after_select">Tenhle zdroj nakonec danou kapitolu nemá.</string>
+
+    <!-- Stránka skupiny zdrojů -->
+    <string name="group_screen_loading">Načítám skupinu…</string>
+    <string name="group_screen_load_failed">Nepodařilo se načíst skupinu.</string>
+    <string name="group_screen_no_titles">Tahle skupina zatím nemá žádné tituly.</string>
+    <string name="group_screen_follow_count">%1$d sledujících</string>
+    <string name="group_screen_chapter_count">%1$d přeložených kapitol</string>
+
     <string name="detail_chapter_downloaded">Staženo</string>
     <string name="detail_mark_read_up_to">Označit toto i vše starší přečtené</string>
     <string name="detail_mark_all_older_read">Označit vše starší jako přečtené</string>

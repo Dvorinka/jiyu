@@ -68,6 +68,7 @@ internal object Routes {
     const val TAP_ZONES     = "tap_zones"
     const val QR            = "qr/{mangaId}?title={mangaTitle}"
     const val SOURCE_RESOLVER = "source_resolver/{chapterId}?incognito={incognito}"
+    const val GROUP = "group/{slug}?title={title}"
 
     // ── Podstránky Nastavení (kategorie) ─────────────────────────────────
     const val SETTINGS_APPEARANCE   = "settings_appearance"
@@ -105,6 +106,8 @@ internal object Routes {
         if (query.isNullOrBlank()) "global_search?q=" else "global_search?q=${android.net.Uri.encode(query)}"
     fun qr(mangaId: String, mangaTitle: String) =
         "qr/${android.net.Uri.encode(mangaId)}?title=${android.net.Uri.encode(mangaTitle)}"
+    fun group(slug: String, title: String) =
+        "group/${android.net.Uri.encode(slug)}?title=${android.net.Uri.encode(title)}"
 }
 
 @Composable
