@@ -13,13 +13,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -28,7 +25,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -119,23 +115,12 @@ fun ReaderSettingsScreen(
 
                 // ── Čtečka ───────────────────────────────────────────────────
                 SettingsSection(title = stringResource(R.string.settings_reader_section_title)) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .toggleable(value = tapZonesEnabled, role = Role.Switch, onValueChange = { viewModel.setTapZonesEnabled(it) })
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(stringResource(R.string.settings_reader_tap_zones_title), color = TextPrimary, fontSize = 14.sp)
-                            Text(stringResource(R.string.settings_reader_tap_zones_desc), color = TextSecondary, fontSize = 11.sp)
-                        }
-                        Switch(
-                            checked = tapZonesEnabled,
-                            onCheckedChange = null,
-                            colors = SwitchDefaults.colors(checkedThumbColor = GlowViolet, checkedTrackColor = GlowViolet.copy(alpha = 0.5f)),
-                        )
-                    }
+                    SettingsToggleRow(
+                        title = stringResource(R.string.settings_reader_tap_zones_title),
+                        description = stringResource(R.string.settings_reader_tap_zones_desc),
+                        checked = tapZonesEnabled,
+                        onCheckedChange = { viewModel.setTapZonesEnabled(it) },
+                    )
 
                     if (tapZonesEnabled) {
                         Row(
@@ -194,205 +179,84 @@ fun ReaderSettingsScreen(
                         }
                     }
 
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .toggleable(value = doublePageSpread, role = Role.Switch, onValueChange = { viewModel.setDoublePageSpread(it) })
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(stringResource(R.string.settings_reader_double_page_title), color = TextPrimary, fontSize = 14.sp)
-                            Text(stringResource(R.string.settings_reader_double_page_desc), color = TextSecondary, fontSize = 11.sp)
-                        }
-                        Switch(
-                            checked = doublePageSpread,
-                            onCheckedChange = null,
-                            colors = SwitchDefaults.colors(checkedThumbColor = GlowViolet, checkedTrackColor = GlowViolet.copy(alpha = 0.5f)),
-                        )
-                    }
+                    SettingsToggleRow(
+                        title = stringResource(R.string.settings_reader_double_page_title),
+                        description = stringResource(R.string.settings_reader_double_page_desc),
+                        checked = doublePageSpread,
+                        onCheckedChange = { viewModel.setDoublePageSpread(it) },
+                    )
 
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .toggleable(value = fullscreenEnabled, role = Role.Switch, onValueChange = { viewModel.setFullscreenEnabled(it) })
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(stringResource(R.string.settings_reader_fullscreen_title), color = TextPrimary, fontSize = 14.sp)
-                            Text(stringResource(R.string.settings_reader_fullscreen_desc), color = TextSecondary, fontSize = 11.sp)
-                        }
-                        Switch(
-                            checked = fullscreenEnabled,
-                            onCheckedChange = null,
-                            colors = SwitchDefaults.colors(checkedThumbColor = GlowViolet, checkedTrackColor = GlowViolet.copy(alpha = 0.5f)),
-                        )
-                    }
+                    SettingsToggleRow(
+                        title = stringResource(R.string.settings_reader_fullscreen_title),
+                        description = stringResource(R.string.settings_reader_fullscreen_desc),
+                        checked = fullscreenEnabled,
+                        onCheckedChange = { viewModel.setFullscreenEnabled(it) },
+                    )
 
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .toggleable(value = oledMode, role = Role.Switch, onValueChange = { viewModel.setOledMode(it) })
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(stringResource(R.string.settings_reader_oled_title), color = TextPrimary, fontSize = 14.sp)
-                            Text(stringResource(R.string.settings_reader_oled_desc), color = TextSecondary, fontSize = 11.sp)
-                        }
-                        Switch(
-                            checked = oledMode,
-                            onCheckedChange = null,
-                            colors = SwitchDefaults.colors(checkedThumbColor = GlowViolet, checkedTrackColor = GlowViolet.copy(alpha = 0.5f)),
-                        )
-                    }
+                    SettingsToggleRow(
+                        title = stringResource(R.string.settings_reader_oled_title),
+                        description = stringResource(R.string.settings_reader_oled_desc),
+                        checked = oledMode,
+                        onCheckedChange = { viewModel.setOledMode(it) },
+                    )
 
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .toggleable(value = autoNextChapter, role = Role.Switch, onValueChange = { viewModel.setAutoNextChapter(it) })
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(stringResource(R.string.settings_reader_auto_next_title), color = TextPrimary, fontSize = 14.sp)
-                            Text(stringResource(R.string.settings_reader_auto_next_desc), color = TextSecondary, fontSize = 11.sp)
-                        }
-                        Switch(
-                            checked = autoNextChapter,
-                            onCheckedChange = null,
-                            colors = SwitchDefaults.colors(checkedThumbColor = GlowViolet, checkedTrackColor = GlowViolet.copy(alpha = 0.5f)),
-                        )
-                    }
+                    SettingsToggleRow(
+                        title = stringResource(R.string.settings_reader_auto_next_title),
+                        description = stringResource(R.string.settings_reader_auto_next_desc),
+                        checked = autoNextChapter,
+                        onCheckedChange = { viewModel.setAutoNextChapter(it) },
+                    )
 
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .toggleable(value = preloadNextNovelChapter, role = Role.Switch, onValueChange = { viewModel.setPreloadNextNovelChapter(it) })
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(stringResource(R.string.settings_reader_preload_novel_title), color = TextPrimary, fontSize = 14.sp)
-                            Text(stringResource(R.string.settings_reader_preload_novel_desc), color = TextSecondary, fontSize = 11.sp)
-                        }
-                        Switch(
-                            checked = preloadNextNovelChapter,
-                            onCheckedChange = null,
-                            colors = SwitchDefaults.colors(checkedThumbColor = GlowViolet, checkedTrackColor = GlowViolet.copy(alpha = 0.5f)),
-                        )
-                    }
+                    SettingsToggleRow(
+                        title = stringResource(R.string.settings_reader_preload_novel_title),
+                        description = stringResource(R.string.settings_reader_preload_novel_desc),
+                        checked = preloadNextNovelChapter,
+                        onCheckedChange = { viewModel.setPreloadNextNovelChapter(it) },
+                    )
 
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .toggleable(value = preloadNextChapterManga, role = Role.Switch, onValueChange = { viewModel.setPreloadNextChapterManga(it) })
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(stringResource(R.string.settings_reader_preload_manga_title), color = TextPrimary, fontSize = 14.sp)
-                            Text(stringResource(R.string.settings_reader_preload_manga_desc), color = TextSecondary, fontSize = 11.sp)
-                        }
-                        Switch(
-                            checked = preloadNextChapterManga,
-                            onCheckedChange = null,
-                            colors = SwitchDefaults.colors(checkedThumbColor = GlowViolet, checkedTrackColor = GlowViolet.copy(alpha = 0.5f)),
-                        )
-                    }
+                    SettingsToggleRow(
+                        title = stringResource(R.string.settings_reader_preload_manga_title),
+                        description = stringResource(R.string.settings_reader_preload_manga_desc),
+                        checked = preloadNextChapterManga,
+                        onCheckedChange = { viewModel.setPreloadNextChapterManga(it) },
+                    )
 
                     if (preloadNextChapterManga) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .toggleable(value = preloadNextChapterWifiOnly, role = Role.Switch, onValueChange = { viewModel.setPreloadNextChapterWifiOnly(it) })
-                                .padding(horizontal = 16.dp, vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(stringResource(R.string.settings_reader_preload_manga_wifi_title), color = TextPrimary, fontSize = 14.sp)
-                                Text(stringResource(R.string.settings_reader_preload_manga_wifi_desc), color = TextSecondary, fontSize = 11.sp)
-                            }
-                            Switch(
-                                checked = preloadNextChapterWifiOnly,
-                                onCheckedChange = null,
-                                colors = SwitchDefaults.colors(checkedThumbColor = GlowViolet, checkedTrackColor = GlowViolet.copy(alpha = 0.5f)),
-                            )
-                        }
-                    }
-
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .toggleable(value = cropBorders, role = Role.Switch, onValueChange = { viewModel.setCropBorders(it) })
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(stringResource(R.string.settings_reader_crop_borders_title), color = TextPrimary, fontSize = 14.sp)
-                            Text(stringResource(R.string.settings_reader_crop_borders_desc), color = TextSecondary, fontSize = 11.sp)
-                        }
-                        Switch(
-                            checked = cropBorders,
-                            onCheckedChange = null,
-                            colors = SwitchDefaults.colors(checkedThumbColor = GlowViolet, checkedTrackColor = GlowViolet.copy(alpha = 0.5f)),
+                        SettingsToggleRow(
+                            title = stringResource(R.string.settings_reader_preload_manga_wifi_title),
+                            description = stringResource(R.string.settings_reader_preload_manga_wifi_desc),
+                            checked = preloadNextChapterWifiOnly,
+                            onCheckedChange = { viewModel.setPreloadNextChapterWifiOnly(it) },
                         )
                     }
 
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .toggleable(value = keepScreenOn, role = Role.Switch, onValueChange = { viewModel.setKeepScreenOn(it) })
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(stringResource(R.string.settings_reader_keep_screen_on_title), color = TextPrimary, fontSize = 14.sp)
-                            Text(stringResource(R.string.settings_reader_keep_screen_on_desc), color = TextSecondary, fontSize = 11.sp)
-                        }
-                        Switch(
-                            checked = keepScreenOn,
-                            onCheckedChange = null,
-                            colors = SwitchDefaults.colors(checkedThumbColor = GlowViolet, checkedTrackColor = GlowViolet.copy(alpha = 0.5f)),
-                        )
-                    }
+                    SettingsToggleRow(
+                        title = stringResource(R.string.settings_reader_crop_borders_title),
+                        description = stringResource(R.string.settings_reader_crop_borders_desc),
+                        checked = cropBorders,
+                        onCheckedChange = { viewModel.setCropBorders(it) },
+                    )
 
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .toggleable(value = volumeKeysNav, role = Role.Switch, onValueChange = { viewModel.setVolumeKeysNav(it) })
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(stringResource(R.string.settings_reader_volume_keys_title), color = TextPrimary, fontSize = 14.sp)
-                            Text(stringResource(R.string.settings_reader_volume_keys_desc), color = TextSecondary, fontSize = 11.sp)
-                        }
-                        Switch(
-                            checked = volumeKeysNav,
-                            onCheckedChange = null,
-                            colors = SwitchDefaults.colors(checkedThumbColor = GlowViolet, checkedTrackColor = GlowViolet.copy(alpha = 0.5f)),
-                        )
-                    }
+                    SettingsToggleRow(
+                        title = stringResource(R.string.settings_reader_keep_screen_on_title),
+                        description = stringResource(R.string.settings_reader_keep_screen_on_desc),
+                        checked = keepScreenOn,
+                        onCheckedChange = { viewModel.setKeepScreenOn(it) },
+                    )
 
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .toggleable(value = skipReadChapters, role = Role.Switch, onValueChange = { viewModel.setSkipReadChapters(it) })
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(stringResource(R.string.settings_reader_skip_read_title), color = TextPrimary, fontSize = 14.sp)
-                            Text(stringResource(R.string.settings_reader_skip_read_desc), color = TextSecondary, fontSize = 11.sp)
-                        }
-                        Switch(
-                            checked = skipReadChapters,
-                            onCheckedChange = null,
-                            colors = SwitchDefaults.colors(checkedThumbColor = GlowViolet, checkedTrackColor = GlowViolet.copy(alpha = 0.5f)),
-                        )
-                    }
+                    SettingsToggleRow(
+                        title = stringResource(R.string.settings_reader_volume_keys_title),
+                        description = stringResource(R.string.settings_reader_volume_keys_desc),
+                        checked = volumeKeysNav,
+                        onCheckedChange = { viewModel.setVolumeKeysNav(it) },
+                    )
+
+                    SettingsToggleRow(
+                        title = stringResource(R.string.settings_reader_skip_read_title),
+                        description = stringResource(R.string.settings_reader_skip_read_desc),
+                        checked = skipReadChapters,
+                        onCheckedChange = { viewModel.setSkipReadChapters(it) },
+                    )
                 }
 
                 Spacer(Modifier.height(12.dp))

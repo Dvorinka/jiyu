@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
@@ -22,8 +21,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -37,13 +34,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.haise.jiyu.ui.theme.GlowViolet
-import com.haise.jiyu.ui.theme.TextPrimary
 import com.haise.jiyu.ui.theme.TextSecondary
 import com.haise.jiyu.ui.theme.Violet
 import com.haise.jiyu.ui.theme.screenGradient
@@ -124,40 +119,18 @@ fun DownloadsSettingsScreen(
                 Spacer(Modifier.height(12.dp))
 
                 SettingsSection(title = stringResource(com.haise.jiyu.R.string.settings_downloads_section_title)) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .toggleable(value = downloadOnlyWifi, onValueChange = { viewModel.setDownloadOnlyWifi(it) }, role = Role.Switch)
-                            .padding(horizontal = 16.dp, vertical = 12.dp),
-                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(stringResource(com.haise.jiyu.R.string.settings_wifi_only), color = TextPrimary, fontWeight = FontWeight.Medium)
-                            Text(stringResource(com.haise.jiyu.R.string.settings_wifi_only_desc), color = TextSecondary, style = MaterialTheme.typography.bodySmall)
-                        }
-                        Switch(
-                            checked = downloadOnlyWifi,
-                            onCheckedChange = null,
-                            colors = SwitchDefaults.colors(checkedThumbColor = Violet, checkedTrackColor = GlowViolet.copy(alpha = 0.5f)),
-                        )
-                    }
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .toggleable(value = autoDeleteRead, onValueChange = { viewModel.setAutoDeleteRead(it) }, role = Role.Switch)
-                            .padding(horizontal = 16.dp, vertical = 12.dp),
-                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(stringResource(com.haise.jiyu.R.string.settings_downloads_auto_delete_title), color = TextPrimary, fontWeight = FontWeight.Medium)
-                            Text(stringResource(com.haise.jiyu.R.string.settings_downloads_auto_delete_desc), color = TextSecondary, style = MaterialTheme.typography.bodySmall)
-                        }
-                        Switch(
-                            checked = autoDeleteRead,
-                            onCheckedChange = null,
-                            colors = SwitchDefaults.colors(checkedThumbColor = Violet, checkedTrackColor = GlowViolet.copy(alpha = 0.5f)),
-                        )
-                    }
+                    SettingsToggleRow(
+                        title = stringResource(com.haise.jiyu.R.string.settings_wifi_only),
+                        description = stringResource(com.haise.jiyu.R.string.settings_wifi_only_desc),
+                        checked = downloadOnlyWifi,
+                        onCheckedChange = { viewModel.setDownloadOnlyWifi(it) },
+                    )
+                    SettingsToggleRow(
+                        title = stringResource(com.haise.jiyu.R.string.settings_downloads_auto_delete_title),
+                        description = stringResource(com.haise.jiyu.R.string.settings_downloads_auto_delete_desc),
+                        checked = autoDeleteRead,
+                        onCheckedChange = { viewModel.setAutoDeleteRead(it) },
+                    )
                     if (autoDeleteRead) {
                         Text(
                             text = stringResource(com.haise.jiyu.R.string.settings_downloads_auto_delete_delay_title),
@@ -179,23 +152,12 @@ fun DownloadsSettingsScreen(
                         }
                     }
 
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .toggleable(value = saveAsCbz, onValueChange = { viewModel.setSaveAsCbz(it) }, role = Role.Switch)
-                            .padding(horizontal = 16.dp, vertical = 12.dp),
-                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(stringResource(com.haise.jiyu.R.string.settings_downloads_export_cbz_title), color = TextPrimary, fontWeight = FontWeight.Medium)
-                            Text(stringResource(com.haise.jiyu.R.string.settings_downloads_export_cbz_desc), color = TextSecondary, style = MaterialTheme.typography.bodySmall)
-                        }
-                        Switch(
-                            checked = saveAsCbz,
-                            onCheckedChange = null,
-                            colors = SwitchDefaults.colors(checkedThumbColor = Violet, checkedTrackColor = GlowViolet.copy(alpha = 0.5f)),
-                        )
-                    }
+                    SettingsToggleRow(
+                        title = stringResource(com.haise.jiyu.R.string.settings_downloads_export_cbz_title),
+                        description = stringResource(com.haise.jiyu.R.string.settings_downloads_export_cbz_desc),
+                        checked = saveAsCbz,
+                        onCheckedChange = { viewModel.setSaveAsCbz(it) },
+                    )
 
                     Text(
                         text = stringResource(com.haise.jiyu.R.string.settings_downloads_parallel_title),
