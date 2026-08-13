@@ -470,6 +470,93 @@ class ComicKSourceTest {
         assertEquals(0, info.chapterCount)
         assertTrue(info.comics.isEmpty())
     }
+
+    @Test
+    fun `getTop parses all five sections and reuses the search-result comic parser`() = runTest {
+        server.dispatcher = object : Dispatcher() {
+            override fun dispatch(request: RecordedRequest): MockResponse {
+                val path = request.path.orEmpty()
+                return when {
+                    path == "/top" -> MockResponse().setBody(
+                        """{
+                            "news": [{"title": "News Comic", "slug": "news-comic", "country": "kr", "md_covers": [{"b2key": "news.jpg"}]}],
+                            "completions": [{"title": "Done Comic", "slug": "done-comic", "country": "cn", "md_covers": [{"b2key": "done.jpg"}]}],
+                            "topFollowNewComics": {
+                                "7": [{"title": "New7", "slug": "new-7", "country": "cn", "md_covers": []}],
+                                "30": [{"title": "New30", "slug": "new-30", "country": "cn", "md_covers": []}],
+                                "90": [{"title": "New90", "slug": "new-90", "country": "cn", "md_covers": []}]
+                            },
+                            "topFollowComics": {
+                                "7": [{"title": "Pop7", "slug": "pop-7", "country": "kr", "md_covers": []}],
+                                "30": [{"title": "Pop30", "slug": "pop-30", "country": "kr", "md_covers": []}],
+                                "90": [{"title": "Pop90", "slug": "pop-90", "country": "kr", "md_covers": []}]
+                            },
+                            "recentReviews": [{
+                                "title": "Great read", "content": "Really enjoyed this one.",
+                                "identities": {"traits": {"username": "reader42"}},
+                                "md_comics": {"title": "Reviewed Comic", "slug": "reviewed-comic", "country": "jp", "md_covers": [{"b2key": "rev.jpg"}]}
+                            }]
+                        }"""
+                    )
+                    else -> MockResponse().setResponseCode(404)
+                }
+            }
+        }
+        val feed = source.getTop()
+        assertEquals("News Comic", feed.recentlyAdded[0].title)
+        assertEquals("Done Comic", feed.completed[0].title)
+        assertEquals("MANHUA", feed.completed[0].contentType)
+        assertEquals("New7", feed.popularNew["7"]!![0].title)
+        assertEquals("New30", feed.popularNew["30"]!![0].title)
+        assertEquals("New90", feed.popularNew["90"]!![0].title)
+        assertEquals("Pop7", feed.mostRecentPopular["7"]!![0].title)
+        assertEquals(1, feed.recentReviews.size)
+        assertEquals("Great read", feed.recentReviews[0].title)
+        assertEquals("Really enjoyed this one.", feed.recentReviews[0].content)
+        assertEquals("reader42", feed.recentReviews[0].authorName)
+        assertEquals("Reviewed Comic", feed.recentReviews[0].comic.title)
+    }
+
+    @Test
+    fun `getTop caches the result - a second call does not hit the network again`() = runTest {
+        var requestCount = 0
+        server.dispatcher = object : Dispatcher() {
+            override fun dispatch(request: RecordedRequest): MockResponse {
+                val path = request.path.orEmpty()
+                return when {
+                    path == "/top" -> {
+                        requestCount++
+                        MockResponse().setBody(
+                            """{"news": [], "completions": [], "topFollowNewComics": {"7":[],"30":[],"90":[]}, "topFollowComics": {"7":[],"30":[],"90":[]}, "recentReviews": []}"""
+                        )
+                    }
+                    else -> MockResponse().setResponseCode(404)
+                }
+            }
+        }
+        source.getTop()
+        source.getTop()
+        assertEquals(1, requestCount)
+    }
+
+    @Test
+    fun `getTop treats a review with no title as null, not blank string`() = runTest {
+        server.dispatcher = object : Dispatcher() {
+            override fun dispatch(request: RecordedRequest): MockResponse {
+                val path = request.path.orEmpty()
+                return when {
+                    path == "/top" -> MockResponse().setBody(
+                        """{"news": [], "completions": [], "topFollowNewComics": {"7":[],"30":[],"90":[]}, "topFollowComics": {"7":[],"30":[],"90":[]},
+                            "recentReviews": [{"content": "No title here.", "identities": {}, "md_comics": {"title": "C", "slug": "c", "country": "kr", "md_covers": []}}]}"""
+                    )
+                    else -> MockResponse().setResponseCode(404)
+                }
+            }
+        }
+        val feed = source.getTop()
+        assertEquals(null, feed.recentReviews[0].title)
+        assertEquals(null, feed.recentReviews[0].authorName)
+    }
 }
 
 /**

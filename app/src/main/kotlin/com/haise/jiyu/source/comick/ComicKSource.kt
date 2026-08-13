@@ -186,6 +186,49 @@ class ComicKSource @Inject constructor(
             )
         }
 
+    private var cachedTop: TopFeed? = null
+
+    /**
+     * ComicK domovská data (Sub-projekt: Home Feed) - jeden request vrátí data
+     * pro všech 5 sekcí naráz (~3 MB), proto se cachuje po dobu běhu appky
+     * (stejný vzor jako [ComicKChapterResolver]'s cache) - Home i "zobrazit vše"
+     * obrazovky sdílí jedno stažení, ne request na sekci.
+     */
+    suspend fun getTop(): TopFeed =
+        withContext(Dispatchers.IO) {
+            cachedTop?.let { return@withContext it }
+            val json = getObject("$apiBase/top")
+            val windows = listOf("7", "30", "90")
+            fun windowMap(key: String): Map<String, List<SManga>> {
+                val obj = json.optJSONObject(key) ?: JSONObject()
+                return windows.associateWith { w -> parseComicList(obj.optJSONArray(w) ?: JSONArray()) }
+            }
+            val feed = TopFeed(
+                recentlyAdded     = parseComicList(json.optJSONArray("news") ?: JSONArray()),
+                completed         = parseComicList(json.optJSONArray("completions") ?: JSONArray()),
+                popularNew        = windowMap("topFollowNewComics"),
+                mostRecentPopular = windowMap("topFollowComics"),
+                recentReviews     = parseReviewList(json.optJSONArray("recentReviews") ?: JSONArray()),
+            )
+            cachedTop = feed
+            feed
+        }
+
+    private fun parseReviewList(arr: JSONArray): List<ReviewItem> =
+        (0 until arr.length()).mapNotNull { i -> reviewFromJson(arr.getJSONObject(i)) }
+
+    private fun reviewFromJson(json: JSONObject): ReviewItem? {
+        val content = json.optString("content").ifBlank { return null }
+        val comicJson = json.optJSONObject("md_comics") ?: return null
+        val comic = comicFromJson(comicJson) ?: return null
+        val title = if (json.isNull("title")) null else json.optString("title").ifBlank { null }
+        val authorName = json.optJSONObject("identities")
+            ?.optJSONObject("traits")
+            ?.optString("username")
+            ?.ifBlank { null }
+        return ReviewItem(title = title, content = content, authorName = authorName, comic = comic)
+    }
+
     // ─── Kapitoly ────────────────────────────────────────────────────────────
 
     /**
@@ -281,28 +324,34 @@ class ComicKSource @Inject constructor(
 
     /** Převede jeden objekt z výsledků hledání na SManga. */
     private fun parseComicList(arr: JSONArray): List<SManga> =
-        (0 until arr.length()).mapNotNull { i ->
-            val comic = arr.getJSONObject(i)
-            val title = comic.optString("title").ifBlank { return@mapNotNull null }
-            val slug  = comic.optString("slug").ifBlank { return@mapNotNull null }
+        (0 until arr.length()).mapNotNull { i -> comicFromJson(arr.getJSONObject(i)) }
 
-            // Titulní obrázek: první položka md_covers s neprázdným b2key
-            val coverUrl = comic.optJSONArray("md_covers")
-                ?.let { covers ->
-                    (0 until covers.length()).firstNotNullOfOrNull { j ->
-                        covers.getJSONObject(j).optString("b2key").ifBlank { null }
-                    }
+    /**
+     * Jeden komiks z `/v1.0/search`, `/group/{slug}`'s `comics[]`, i `/top`'s
+     * `news`/`completions`/`topFollowNewComics`/`topFollowComics` - všechny mají
+     * stejný tvar položky, proto jedna sdílená funkce.
+     */
+    private fun comicFromJson(comic: JSONObject): SManga? {
+        val title = comic.optString("title").ifBlank { return null }
+        val slug  = comic.optString("slug").ifBlank { return null }
+
+        // Titulní obrázek: první položka md_covers s neprázdným b2key
+        val coverUrl = comic.optJSONArray("md_covers")
+            ?.let { covers ->
+                (0 until covers.length()).firstNotNullOfOrNull { j ->
+                    covers.getJSONObject(j).optString("b2key").ifBlank { null }
                 }
-                ?.let { b2key -> "$coverBase/$b2key" }
+            }
+            ?.let { b2key -> "$coverBase/$b2key" }
 
-            SManga(
-                sourceId    = id,
-                url         = "$apiBase/comic/$slug",
-                title       = title,
-                coverUrl    = coverUrl,
-                contentType = contentTypeFromCountry(comic.optString("country")),
-            )
-        }
+        return SManga(
+            sourceId    = id,
+            url         = "$apiBase/comic/$slug",
+            title       = title,
+            coverUrl    = coverUrl,
+            contentType = contentTypeFromCountry(comic.optString("country")),
+        )
+    }
 
     /** ComicK nema vlastni "contentType" pole - odvozujeme ho z puvodu (jp/kr/cn). internal kvuli testu. */
     internal fun contentTypeFromCountry(country: String): String = when (country) {
@@ -392,4 +441,21 @@ data class GroupInfo(
     val followCount: Int,
     val chapterCount: Int,
     val comics: List<SManga>,
+)
+
+/** Výsledek [ComicKSource.getTop] - data pro ComicK domovskou obrazovku (5 sekcí). Klíče map jsou "7"/"30"/"90" (dny). */
+data class TopFeed(
+    val recentlyAdded: List<SManga>,
+    val completed: List<SManga>,
+    val popularNew: Map<String, List<SManga>>,
+    val mostRecentPopular: Map<String, List<SManga>>,
+    val recentReviews: List<ReviewItem>,
+)
+
+/** Jedna recenze z `/top`'s `recentReviews[]` - `title` může chybět (recenze bez nadpisu). */
+data class ReviewItem(
+    val title: String?,
+    val content: String,
+    val authorName: String?,
+    val comic: SManga,
 )
