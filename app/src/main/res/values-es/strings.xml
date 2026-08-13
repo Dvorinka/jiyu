@@ -136,7 +136,9 @@
     <string name="settings_reader_mode_title">Modo de lectura</string>
     <string name="settings_reader_mode_manga">Manga  (páginas horizontales)</string>
     <string name="settings_reader_mode_webtoon">Webtoon  (desplazamiento fluido)</string>
-    <string name="settings_reader_section_title">Lector</string>
+    <string name="settings_reader_page_display_section_title">Visualización de página</string>
+    <string name="settings_reader_navigation_section_title">Navegación y comportamiento</string>
+    <string name="settings_reader_preload_section_title">Precarga de traducción</string>
     <string name="settings_reader_tap_zones_title">Zonas táctiles</string>
     <string name="settings_reader_tap_zones_desc">Los bordes pasan página, el centro muestra/oculta los controles</string>
     <string name="settings_reader_tap_zones_config">Configurar zonas</string>

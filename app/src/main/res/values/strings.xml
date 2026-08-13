@@ -146,7 +146,9 @@
     <string name="settings_reader_mode_title">Režim čtení</string>
     <string name="settings_reader_mode_manga">Manga  (horizontální stránky)</string>
     <string name="settings_reader_mode_webtoon">Webtoon  (plynulé rolování)</string>
-    <string name="settings_reader_section_title">Čtečka</string>
+    <string name="settings_reader_page_display_section_title">Zobrazení stránky</string>
+    <string name="settings_reader_navigation_section_title">Navigace a chování</string>
+    <string name="settings_reader_preload_section_title">Přednačítání překladu</string>
     <string name="settings_reader_tap_zones_title">Zóny pro tapnutí</string>
     <string name="settings_reader_tap_zones_desc">Okraje listují stránky, střed zobrazí/skryje ovládání</string>
     <string name="settings_reader_tap_zones_config">Konfigurace zón</string>

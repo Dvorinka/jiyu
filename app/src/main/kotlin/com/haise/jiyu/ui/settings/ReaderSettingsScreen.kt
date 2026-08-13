@@ -113,8 +113,66 @@ fun ReaderSettingsScreen(
 
                 Spacer(Modifier.height(12.dp))
 
-                // ── Čtečka ───────────────────────────────────────────────────
-                SettingsSection(title = stringResource(R.string.settings_reader_section_title)) {
+                // ── Zobrazení stránky ───────────────────────────────────────
+                SettingsSection(title = stringResource(R.string.settings_reader_page_display_section_title)) {
+                    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+                        Text(stringResource(R.string.settings_reader_page_scale_title), color = TextPrimary, fontSize = 14.sp)
+                        Spacer(Modifier.height(4.dp))
+                        listOf(
+                            "fit_width"  to stringResource(R.string.settings_reader_page_scale_fit_width),
+                            "fit_height" to stringResource(R.string.settings_reader_page_scale_fit_height),
+                            "fit_screen" to stringResource(R.string.settings_reader_page_scale_fit_screen),
+                            "stretch"    to stringResource(R.string.settings_reader_page_scale_stretch),
+                        ).forEach { (value, label) ->
+                            GlassRadioRow(label = label, selected = pageScale == value, onClick = { viewModel.setPageScale(value) })
+                        }
+                    }
+
+                    SettingsToggleRow(
+                        title = stringResource(R.string.settings_reader_double_page_title),
+                        description = stringResource(R.string.settings_reader_double_page_desc),
+                        checked = doublePageSpread,
+                        onCheckedChange = { viewModel.setDoublePageSpread(it) },
+                    )
+
+                    SettingsToggleRow(
+                        title = stringResource(R.string.settings_reader_crop_borders_title),
+                        description = stringResource(R.string.settings_reader_crop_borders_desc),
+                        checked = cropBorders,
+                        onCheckedChange = { viewModel.setCropBorders(it) },
+                    )
+
+                    SettingsToggleRow(
+                        title = stringResource(R.string.settings_reader_oled_title),
+                        description = stringResource(R.string.settings_reader_oled_desc),
+                        checked = oledMode,
+                        onCheckedChange = { viewModel.setOledMode(it) },
+                    )
+
+                    SettingsToggleRow(
+                        title = stringResource(R.string.settings_reader_fullscreen_title),
+                        description = stringResource(R.string.settings_reader_fullscreen_desc),
+                        checked = fullscreenEnabled,
+                        onCheckedChange = { viewModel.setFullscreenEnabled(it) },
+                    )
+
+                    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+                        val scrollSpeedDesc = stringResource(R.string.settings_reader_scroll_speed_desc)
+                        Text(stringResource(R.string.settings_reader_scroll_speed, String.format("%.1f", webtoonScrollSpeed)), color = TextPrimary, fontSize = 14.sp)
+                        Slider(
+                            value = webtoonScrollSpeed,
+                            onValueChange = { viewModel.setWebtoonScrollSpeed(it) },
+                            valueRange = 0.5f..3.0f,
+                            modifier = Modifier.semantics { contentDescription = scrollSpeedDesc },
+                            colors = SliderDefaults.colors(thumbColor = GlowViolet, activeTrackColor = GlowViolet, inactiveTrackColor = GlowViolet.copy(alpha = 0.2f)),
+                        )
+                    }
+                }
+
+                Spacer(Modifier.height(12.dp))
+
+                // ── Navigace a chování ──────────────────────────────────────
+                SettingsSection(title = stringResource(R.string.settings_reader_navigation_section_title)) {
                     SettingsToggleRow(
                         title = stringResource(R.string.settings_reader_tap_zones_title),
                         description = stringResource(R.string.settings_reader_tap_zones_desc),
@@ -142,62 +200,25 @@ fun ReaderSettingsScreen(
                         }
                     }
 
-                    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
-                        val scrollSpeedDesc = stringResource(R.string.settings_reader_scroll_speed_desc)
-                        Text(stringResource(R.string.settings_reader_scroll_speed, String.format("%.1f", webtoonScrollSpeed)), color = TextPrimary, fontSize = 14.sp)
-                        Slider(
-                            value = webtoonScrollSpeed,
-                            onValueChange = { viewModel.setWebtoonScrollSpeed(it) },
-                            valueRange = 0.5f..3.0f,
-                            modifier = Modifier.semantics { contentDescription = scrollSpeedDesc },
-                            colors = SliderDefaults.colors(thumbColor = GlowViolet, activeTrackColor = GlowViolet, inactiveTrackColor = GlowViolet.copy(alpha = 0.2f)),
-                        )
-                    }
-
-                    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
-                        val textScaleDesc = stringResource(R.string.settings_reader_text_scale_desc)
-                        Text(stringResource(R.string.settings_reader_text_scale, String.format("%.1f", readerTextScale)), color = TextPrimary, fontSize = 14.sp)
-                        Slider(
-                            value = readerTextScale,
-                            onValueChange = { viewModel.setReaderTextScale(it) },
-                            valueRange = 0.7f..1.6f,
-                            modifier = Modifier.semantics { contentDescription = textScaleDesc },
-                            colors = SliderDefaults.colors(thumbColor = GlowViolet, activeTrackColor = GlowViolet, inactiveTrackColor = GlowViolet.copy(alpha = 0.2f)),
-                        )
-                    }
-
-                    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
-                        Text(stringResource(R.string.settings_reader_page_scale_title), color = TextPrimary, fontSize = 14.sp)
-                        Spacer(Modifier.height(4.dp))
-                        listOf(
-                            "fit_width"  to stringResource(R.string.settings_reader_page_scale_fit_width),
-                            "fit_height" to stringResource(R.string.settings_reader_page_scale_fit_height),
-                            "fit_screen" to stringResource(R.string.settings_reader_page_scale_fit_screen),
-                            "stretch"    to stringResource(R.string.settings_reader_page_scale_stretch),
-                        ).forEach { (value, label) ->
-                            GlassRadioRow(label = label, selected = pageScale == value, onClick = { viewModel.setPageScale(value) })
-                        }
-                    }
-
                     SettingsToggleRow(
-                        title = stringResource(R.string.settings_reader_double_page_title),
-                        description = stringResource(R.string.settings_reader_double_page_desc),
-                        checked = doublePageSpread,
-                        onCheckedChange = { viewModel.setDoublePageSpread(it) },
+                        title = stringResource(R.string.settings_reader_volume_keys_title),
+                        description = stringResource(R.string.settings_reader_volume_keys_desc),
+                        checked = volumeKeysNav,
+                        onCheckedChange = { viewModel.setVolumeKeysNav(it) },
                     )
 
                     SettingsToggleRow(
-                        title = stringResource(R.string.settings_reader_fullscreen_title),
-                        description = stringResource(R.string.settings_reader_fullscreen_desc),
-                        checked = fullscreenEnabled,
-                        onCheckedChange = { viewModel.setFullscreenEnabled(it) },
+                        title = stringResource(R.string.settings_reader_keep_screen_on_title),
+                        description = stringResource(R.string.settings_reader_keep_screen_on_desc),
+                        checked = keepScreenOn,
+                        onCheckedChange = { viewModel.setKeepScreenOn(it) },
                     )
 
                     SettingsToggleRow(
-                        title = stringResource(R.string.settings_reader_oled_title),
-                        description = stringResource(R.string.settings_reader_oled_desc),
-                        checked = oledMode,
-                        onCheckedChange = { viewModel.setOledMode(it) },
+                        title = stringResource(R.string.settings_reader_skip_read_title),
+                        description = stringResource(R.string.settings_reader_skip_read_desc),
+                        checked = skipReadChapters,
+                        onCheckedChange = { viewModel.setSkipReadChapters(it) },
                     )
 
                     SettingsToggleRow(
@@ -206,7 +227,12 @@ fun ReaderSettingsScreen(
                         checked = autoNextChapter,
                         onCheckedChange = { viewModel.setAutoNextChapter(it) },
                     )
+                }
 
+                Spacer(Modifier.height(12.dp))
+
+                // ── Přednačítání překladu ───────────────────────────────────
+                SettingsSection(title = stringResource(R.string.settings_reader_preload_section_title)) {
                     SettingsToggleRow(
                         title = stringResource(R.string.settings_reader_preload_novel_title),
                         description = stringResource(R.string.settings_reader_preload_novel_desc),
@@ -229,34 +255,6 @@ fun ReaderSettingsScreen(
                             onCheckedChange = { viewModel.setPreloadNextChapterWifiOnly(it) },
                         )
                     }
-
-                    SettingsToggleRow(
-                        title = stringResource(R.string.settings_reader_crop_borders_title),
-                        description = stringResource(R.string.settings_reader_crop_borders_desc),
-                        checked = cropBorders,
-                        onCheckedChange = { viewModel.setCropBorders(it) },
-                    )
-
-                    SettingsToggleRow(
-                        title = stringResource(R.string.settings_reader_keep_screen_on_title),
-                        description = stringResource(R.string.settings_reader_keep_screen_on_desc),
-                        checked = keepScreenOn,
-                        onCheckedChange = { viewModel.setKeepScreenOn(it) },
-                    )
-
-                    SettingsToggleRow(
-                        title = stringResource(R.string.settings_reader_volume_keys_title),
-                        description = stringResource(R.string.settings_reader_volume_keys_desc),
-                        checked = volumeKeysNav,
-                        onCheckedChange = { viewModel.setVolumeKeysNav(it) },
-                    )
-
-                    SettingsToggleRow(
-                        title = stringResource(R.string.settings_reader_skip_read_title),
-                        description = stringResource(R.string.settings_reader_skip_read_desc),
-                        checked = skipReadChapters,
-                        onCheckedChange = { viewModel.setSkipReadChapters(it) },
-                    )
                 }
 
                 Spacer(Modifier.height(12.dp))
@@ -274,6 +272,17 @@ fun ReaderSettingsScreen(
                 Spacer(Modifier.height(12.dp))
 
                 SettingsSection(title = stringResource(R.string.settings_reader_translate_section_title)) {
+                    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+                        val textScaleDesc = stringResource(R.string.settings_reader_text_scale_desc)
+                        Text(stringResource(R.string.settings_reader_text_scale, String.format("%.1f", readerTextScale)), color = TextPrimary, fontSize = 14.sp)
+                        Slider(
+                            value = readerTextScale,
+                            onValueChange = { viewModel.setReaderTextScale(it) },
+                            valueRange = 0.7f..1.6f,
+                            modifier = Modifier.semantics { contentDescription = textScaleDesc },
+                            colors = SliderDefaults.colors(thumbColor = GlowViolet, activeTrackColor = GlowViolet, inactiveTrackColor = GlowViolet.copy(alpha = 0.2f)),
+                        )
+                    }
                     TRANSLATE_LANGUAGES.forEach { (value, label) ->
                         GlassRadioRow(label = label, selected = language == value, onClick = { viewModel.setTargetLanguage(value) })
                     }
