@@ -84,6 +84,8 @@ import coil.compose.AsyncImage
 import com.haise.jiyu.R
 import com.haise.jiyu.data.db.entity.ChapterEntity
 import com.haise.jiyu.data.db.entity.DownloadStatus
+import com.haise.jiyu.data.repository.deserializeChapterGroups
+import com.haise.jiyu.source.SGroup
 import com.haise.jiyu.ui.theme.Cyan
 import com.haise.jiyu.ui.theme.GlowCyan
 import com.haise.jiyu.ui.theme.GlowViolet
@@ -105,6 +107,7 @@ fun MangaDetailScreen(
     onOpenQr: (mangaId: String, mangaTitle: String) -> Unit = { _, _ -> },
     onOpenDetails: () -> Unit = {},
     onResolveChapter: (chapterId: String, incognito: Boolean) -> Unit = { _, _ -> },
+    onOpenGroup: (slug: String, title: String) -> Unit = { _, _ -> },
     viewModel: MangaDetailViewModel = hiltViewModel(),
 ) {
     val manga            by viewModel.manga.collectAsState()
@@ -819,6 +822,7 @@ fun MangaDetailScreen(
                                 onMarkAllOlderRead = { viewModel.markAllOlderAsRead(chapter) },
                                 onMarkAllNewerUnread = { viewModel.markAllNewerAsUnread(chapter) },
                                 onToggleRead = { viewModel.markChapterRead(chapter.id, !chapter.read) },
+                                onGroupClick = { group -> group.slug?.let { onOpenGroup(it, group.name) } },
                             )
                         }
                     }
@@ -832,6 +836,7 @@ fun MangaDetailScreen(
                             onMarkAllOlderRead = { viewModel.markAllOlderAsRead(chapter) },
                             onMarkAllNewerUnread = { viewModel.markAllNewerAsUnread(chapter) },
                             onToggleRead = { viewModel.markChapterRead(chapter.id, !chapter.read) },
+                            onGroupClick = { group -> group.slug?.let { onOpenGroup(it, group.name) } },
                         )
                     }
                 }
@@ -902,6 +907,7 @@ private fun LibraryDuplicateDialog(
 
 // ── Chapter row ───────────────────────────────────────────────────────────────
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun GlassChapterRow(
     chapter: ChapterEntity,
@@ -911,6 +917,7 @@ internal fun GlassChapterRow(
     onMarkAllOlderRead: () -> Unit = {},
     onMarkAllNewerUnread: () -> Unit = {},
     onToggleRead: () -> Unit = {},
+    onGroupClick: (SGroup) -> Unit = {},
 ) {
     val isRead = chapter.read
     var showMenu by remember { mutableStateOf(false) }
@@ -934,7 +941,25 @@ internal fun GlassChapterRow(
             Box(modifier = Modifier.size(6.dp).background(if (isRead) GlowCyan.copy(alpha = 0.4f) else GlowViolet, RoundedCornerShape(50)))
             Column(modifier = Modifier.weight(1f).padding(start = 12.dp)) {
                 Text(text = chapter.name, color = if (isRead) TextSecondary else TextPrimary, fontWeight = if (isRead) FontWeight.Normal else FontWeight.Medium, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                if (!chapter.scanlationGroup.isNullOrBlank()) {
+                val groups = remember(chapter.groupsJson) { deserializeChapterGroups(chapter.groupsJson) }
+                if (groups.isNotEmpty()) {
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        groups.forEach { group ->
+                            Text(
+                                text = group.name,
+                                color = if (group.slug != null) Violet else TextSecondary.copy(alpha = 0.6f),
+                                fontSize = 10.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = if (group.slug != null) {
+                                    Modifier.clickable { onGroupClick(group) }
+                                } else {
+                                    Modifier
+                                },
+                            )
+                        }
+                    }
+                } else if (!chapter.scanlationGroup.isNullOrBlank()) {
                     Text(text = chapter.scanlationGroup, color = TextSecondary.copy(alpha = 0.6f), fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
                 if (chapter.dateUpload > 0L) {

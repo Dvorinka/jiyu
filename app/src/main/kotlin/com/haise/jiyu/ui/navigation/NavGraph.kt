@@ -16,6 +16,7 @@ import com.haise.jiyu.ui.detail.MangaDetailInfoScreen
 import com.haise.jiyu.ui.detail.MangaDetailScreen
 import com.haise.jiyu.ui.downloads.DownloadManagerScreen
 import com.haise.jiyu.ui.goals.ReadingGoalsScreen
+import com.haise.jiyu.ui.group.GroupScreen
 import com.haise.jiyu.ui.history.HistoryScreen
 import com.haise.jiyu.ui.library.LibraryScreen
 import com.haise.jiyu.ui.library.LibrarySection
@@ -202,6 +203,7 @@ fun JiyuNavGraph(
                 onOpenQr = { id, title -> navController.navigate(Routes.qr(id, title)) },
                 onOpenDetails = { mangaId?.let { navController.navigate(Routes.detailInfo(it)) } },
                 onResolveChapter = { chapterId, incognito -> navController.navigate(Routes.sourceResolver(chapterId, incognito)) },
+                onOpenGroup = { slug, title -> navController.navigate(Routes.group(slug, title)) },
             )
         }
 
@@ -243,6 +245,19 @@ fun JiyuNavGraph(
                     }
                 },
                 onSearchManually = { query -> navController.navigate(Routes.globalSearch(query)) },
+            )
+        }
+
+        composable(
+            route = Routes.GROUP,
+            arguments = listOf(
+                navArgument("slug") { type = NavType.StringType },
+                navArgument("title") { type = NavType.StringType; defaultValue = "" },
+            ),
+        ) {
+            GroupScreen(
+                onBack = { navController.popBackStack() },
+                onOpenManga = { mangaId -> navController.navigate(Routes.detail(mangaId)) },
             )
         }
 
