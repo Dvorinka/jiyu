@@ -584,8 +584,9 @@ class ComicKSourceTest {
         assertEquals("Asura", updates[0].chapter.groups[0].name)
         assertEquals(10, updates[0].upCount)
         assertEquals(2, updates[0].commentCount)
-        assertTrue(request().path!!.contains("order=hot"))
-        assertTrue(request().path!!.contains("page=1"))
+        val recordedRequest = request()
+        assertTrue(recordedRequest.path!!.contains("order=hot"))
+        assertTrue(recordedRequest.path!!.contains("page=1"))
     }
 
     @Test
