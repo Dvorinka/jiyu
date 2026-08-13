@@ -12,7 +12,7 @@ class RoutesTest {
     }
 
     @Test
-    fun `browseRoute returns the ComicK source browse screen in ComicK mode`() {
-        assertEquals(Routes.sourceBrowse("comick"), Routes.browseRoute(AppMode.COMICK))
+    fun `browseRoute returns the ComicK home feed in ComicK mode`() {
+        assertEquals(Routes.COMICK_HOME, Routes.browseRoute(AppMode.COMICK))
     }
 }
