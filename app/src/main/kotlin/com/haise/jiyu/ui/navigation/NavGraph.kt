@@ -102,12 +102,12 @@ internal object Routes {
         "reader/${android.net.Uri.encode(chapterId)}?incognito=$incognito"
     fun sourceResolver(chapterId: String, incognito: Boolean = false) =
         "source_resolver/${android.net.Uri.encode(chapterId)}?incognito=$incognito"
+    fun group(slug: String, title: String) =
+        "group/${android.net.Uri.encode(slug)}?title=${android.net.Uri.encode(title)}"
     fun globalSearch(query: String? = null) =
         if (query.isNullOrBlank()) "global_search?q=" else "global_search?q=${android.net.Uri.encode(query)}"
     fun qr(mangaId: String, mangaTitle: String) =
         "qr/${android.net.Uri.encode(mangaId)}?title=${android.net.Uri.encode(mangaTitle)}"
-    fun group(slug: String, title: String) =
-        "group/${android.net.Uri.encode(slug)}?title=${android.net.Uri.encode(title)}"
 }
 
 @Composable
