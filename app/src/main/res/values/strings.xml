@@ -85,8 +85,9 @@
     <string name="settings_main_services_subtitle">Cloud sync, MyAnimeList, Kitsu, MangaUpdates</string>
     <string name="settings_main_backup_title">Zálohovat a obnovit</string>
     <string name="settings_main_backup_subtitle">Záloha knihovny, Záloha nastavení, Import Mihon</string>
-    <string name="settings_main_reading_title">Čtení</string>
-    <string name="settings_main_reading_subtitle">Cíle čtení, Community listy, Duplikát detektor</string>
+    <string name="settings_main_goals_subtitle">Denní cíl, Série dnů</string>
+    <string name="settings_main_community_subtitle">Sdílené seznamy mang</string>
+    <string name="settings_main_duplicates_subtitle">Vyhledání duplicit v knihovně</string>
     <string name="settings_main_about_title">O aplikaci</string>
     <string name="settings_main_about_subtitle">Verze, Aktualizace</string>
 
@@ -277,7 +278,6 @@
     <string name="settings_backup_settings_export_success">Nastavení exportováno</string>
 
     <!-- Settings: Čtení -->
-    <string name="settings_reading_title">Čtení</string>
     <string name="settings_reading_goals_button">Cíle čtení &amp; Série dnů</string>
     <string name="settings_reading_community_button">Community manga listy</string>
     <string name="settings_reading_duplicates_button">Duplikát detektor</string>

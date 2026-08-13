@@ -34,7 +34,6 @@ import com.haise.jiyu.ui.settings.AppearanceSettingsScreen
 import com.haise.jiyu.ui.settings.BackupSettingsScreen
 import com.haise.jiyu.ui.settings.DownloadsSettingsScreen
 import com.haise.jiyu.ui.settings.ReaderSettingsScreen
-import com.haise.jiyu.ui.settings.ReadingSettingsScreen
 import com.haise.jiyu.ui.settings.ServicesSettingsScreen
 import com.haise.jiyu.ui.settings.SettingsScreen
 import com.haise.jiyu.ui.settings.SourceCatalogScreen
@@ -84,7 +83,6 @@ internal object Routes {
     const val SETTINGS_UPDATE_CHECK = "settings_update_check"
     const val SETTINGS_SERVICES     = "settings_services"
     const val SETTINGS_BACKUP       = "settings_backup"
-    const val SETTINGS_READING      = "settings_reading"
     const val SETTINGS_ABOUT        = "settings_about"
 
     /** Cesta nese název konstanty [LibrarySection] - proto se ty konstanty nesmí přejmenovat. */
@@ -300,7 +298,9 @@ fun JiyuNavGraph(
                 onOpenUpdateCheck = { navController.navigate(Routes.SETTINGS_UPDATE_CHECK) },
                 onOpenServices = { navController.navigate(Routes.SETTINGS_SERVICES) },
                 onOpenBackup = { navController.navigate(Routes.SETTINGS_BACKUP) },
-                onOpenReading = { navController.navigate(Routes.SETTINGS_READING) },
+                onOpenGoals = { navController.navigate(Routes.GOALS) },
+                onOpenCommunity = { navController.navigate(Routes.COMMUNITY) },
+                onOpenDuplicates = { navController.navigate(Routes.DUPLICATES) },
                 onOpenAbout = { navController.navigate(Routes.SETTINGS_ABOUT) },
             )
         }
@@ -348,15 +348,6 @@ fun JiyuNavGraph(
 
         composable(Routes.SETTINGS_BACKUP) {
             BackupSettingsScreen(onBack = { navController.popBackStack() })
-        }
-
-        composable(Routes.SETTINGS_READING) {
-            ReadingSettingsScreen(
-                onBack = { navController.popBackStack() },
-                onOpenGoals = { navController.navigate(Routes.GOALS) },
-                onOpenCommunity = { navController.navigate(Routes.COMMUNITY) },
-                onOpenDuplicates = { navController.navigate(Routes.DUPLICATES) },
-            )
         }
 
         composable(Routes.SETTINGS_ABOUT) {

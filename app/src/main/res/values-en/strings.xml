@@ -84,8 +84,9 @@
     <string name="settings_main_services_subtitle">Cloud sync, MyAnimeList, Kitsu, MangaUpdates</string>
     <string name="settings_main_backup_title">Backup &amp; restore</string>
     <string name="settings_main_backup_subtitle">Library backup, Settings backup, Mihon import</string>
-    <string name="settings_main_reading_title">Reading</string>
-    <string name="settings_main_reading_subtitle">Reading goals, Community lists, Duplicate detector</string>
+    <string name="settings_main_goals_subtitle">Daily goal, Streak</string>
+    <string name="settings_main_community_subtitle">Shared manga lists</string>
+    <string name="settings_main_duplicates_subtitle">Find duplicates in your library</string>
     <string name="settings_main_about_title">About</string>
     <string name="settings_main_about_subtitle">Version, Updates</string>
 
@@ -264,7 +265,6 @@
     <string name="settings_backup_settings_export_success">Settings exported</string>
 
     <!-- Settings: Reading -->
-    <string name="settings_reading_title">Reading</string>
     <string name="settings_reading_goals_button">Reading goals &amp; Streak</string>
     <string name="settings_reading_community_button">Community manga lists</string>
     <string name="settings_reading_duplicates_button">Duplicate detector</string>

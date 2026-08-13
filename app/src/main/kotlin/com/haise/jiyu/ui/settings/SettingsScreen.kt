@@ -35,15 +35,17 @@ import com.haise.jiyu.ui.theme.TextSecondary
 import com.haise.jiyu.ui.theme.screenGradient
 import compose.icons.TablerIcons
 import compose.icons.tablericons.Book
+import compose.icons.tablericons.Copy
 import compose.icons.tablericons.Database
 import compose.icons.tablericons.Download
+import compose.icons.tablericons.Flame
 import compose.icons.tablericons.History
 import compose.icons.tablericons.InfoCircle
 import compose.icons.tablericons.Palette
 import compose.icons.tablericons.Puzzle
 import compose.icons.tablericons.Refresh
 import compose.icons.tablericons.Stack
-import compose.icons.tablericons.Target
+import compose.icons.tablericons.Users
 
 private data class SettingsCategory(
     val title: String,
@@ -63,7 +65,9 @@ fun SettingsScreen(
     onOpenUpdateCheck: () -> Unit,
     onOpenServices: () -> Unit,
     onOpenBackup: () -> Unit,
-    onOpenReading: () -> Unit,
+    onOpenGoals: () -> Unit,
+    onOpenCommunity: () -> Unit,
+    onOpenDuplicates: () -> Unit,
     onOpenAbout: () -> Unit,
 ) {
     val categories = listOf(
@@ -75,7 +79,9 @@ fun SettingsScreen(
         SettingsCategory(stringResource(R.string.settings_main_update_check_title), stringResource(R.string.settings_main_update_check_subtitle), TablerIcons.Refresh, onOpenUpdateCheck),
         SettingsCategory(stringResource(R.string.settings_main_services_title), stringResource(R.string.settings_main_services_subtitle), TablerIcons.Puzzle, onOpenServices),
         SettingsCategory(stringResource(R.string.settings_main_backup_title), stringResource(R.string.settings_main_backup_subtitle), TablerIcons.History, onOpenBackup),
-        SettingsCategory(stringResource(R.string.settings_main_reading_title), stringResource(R.string.settings_main_reading_subtitle), TablerIcons.Target, onOpenReading),
+        SettingsCategory(stringResource(R.string.settings_reading_goals_button), stringResource(R.string.settings_main_goals_subtitle), TablerIcons.Flame, onOpenGoals),
+        SettingsCategory(stringResource(R.string.settings_reading_community_button), stringResource(R.string.settings_main_community_subtitle), TablerIcons.Users, onOpenCommunity),
+        SettingsCategory(stringResource(R.string.settings_reading_duplicates_button), stringResource(R.string.settings_main_duplicates_subtitle), TablerIcons.Copy, onOpenDuplicates),
         SettingsCategory(stringResource(R.string.settings_main_about_title), stringResource(R.string.settings_main_about_subtitle), TablerIcons.InfoCircle, onOpenAbout),
     )
 

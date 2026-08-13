@@ -81,8 +81,9 @@
     <string name="settings_main_services_subtitle">Sync cloud, MyAnimeList, Kitsu, MangaUpdates</string>
     <string name="settings_main_backup_title">Sauvegarder et restaurer</string>
     <string name="settings_main_backup_subtitle">Sauvegarde bibliothèque, Sauvegarde paramètres, Import Mihon</string>
-    <string name="settings_main_reading_title">Lecture</string>
-    <string name="settings_main_reading_subtitle">Objectifs de lecture, Listes communautaires, Détecteur de doublons</string>
+    <string name="settings_main_goals_subtitle">Objectif quotidien, Série</string>
+    <string name="settings_main_community_subtitle">Listes manga partagées</string>
+    <string name="settings_main_duplicates_subtitle">Rechercher les doublons dans la bibliothèque</string>
     <string name="settings_main_about_title">À propos</string>
     <string name="settings_main_about_subtitle">Version, Mises à jour</string>
 
@@ -261,7 +262,6 @@
     <string name="settings_backup_settings_export_success">Paramètres exportés</string>
 
     <!-- Paramètres : Lecture -->
-    <string name="settings_reading_title">Lecture</string>
     <string name="settings_reading_goals_button">Objectifs de lecture &amp; Série</string>
     <string name="settings_reading_community_button">Listes manga communautaires</string>
     <string name="settings_reading_duplicates_button">Détecteur de doublons</string>

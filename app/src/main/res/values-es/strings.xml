@@ -81,8 +81,9 @@
     <string name="settings_main_services_subtitle">Sync en la nube, MyAnimeList, Kitsu, MangaUpdates</string>
     <string name="settings_main_backup_title">Copia de seguridad y restauración</string>
     <string name="settings_main_backup_subtitle">Copia de biblioteca, Copia de ajustes, Importar Mihon</string>
-    <string name="settings_main_reading_title">Lectura</string>
-    <string name="settings_main_reading_subtitle">Objetivos de lectura, Listas de la comunidad, Detector de duplicados</string>
+    <string name="settings_main_goals_subtitle">Objetivo diario, Racha</string>
+    <string name="settings_main_community_subtitle">Listas de manga compartidas</string>
+    <string name="settings_main_duplicates_subtitle">Buscar duplicados en tu biblioteca</string>
     <string name="settings_main_about_title">Acerca de</string>
     <string name="settings_main_about_subtitle">Versión, Actualizaciones</string>
 
@@ -261,7 +262,6 @@
     <string name="settings_backup_settings_export_success">Ajustes exportados</string>
 
     <!-- Ajustes: Lectura -->
-    <string name="settings_reading_title">Lectura</string>
     <string name="settings_reading_goals_button">Objetivos de lectura y racha</string>
     <string name="settings_reading_community_button">Listas de manga de la comunidad</string>
     <string name="settings_reading_duplicates_button">Detector de duplicados</string>
