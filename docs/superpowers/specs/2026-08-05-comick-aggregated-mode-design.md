@@ -156,3 +156,63 @@ Od tohohle okamžiku appka pracuje úplně normálně (klíčové rozhodnutí 1)
 - Unit testy pro výpočet úplnosti (`X/Y`) a pro nalezení nejbližší odpovídající kapitoly podle čísla.
 - Unit test pro in-memory cache (druhé volání pro stejný titul nevolá znovu `search()`/plný `getChapterList()` u již objevených kandidátů).
 - Manuální ověření na zařízení: ComicK titul s jasnou shodou (např. Solo Leveling) → ověřit že se najdou správní kandidáti se správným poměrem kapitol; titul co žádný zdroj nemá → ověřit "Hledat ručně" cestu; klik na konkrétní starší kapitolu → ověřit že appka skočí rovnou na odpovídající kapitolu ve vybraném zdroji, ne na první.
+
+---
+
+## Sub-projekt 4: Stránka skupiny
+
+Poslední, dřív jen jednou větou nastíněný sub-projekt. `SGroup.slug` a `ChapterEntity.groupsJson` jsou z Sub-projektu 2 už připravené, ale nikde se nečtou zpátky do UI ani nepoužívají — tenhle sub-projekt to dokončí: klik na překladatelskou skupinu u ComicK kapitoly ukáže mřížku jejích dalších titulů na ComicK.
+
+### ComicK API (ověřeno živě)
+
+`GET https://api.comick.dev/group/{slug}` (funguje i bez i s koncovým lomítkem) vrací:
+
+```json
+{
+  "group": { "id": 12401, "title": "Asura", "slug": "asura", "follow_count": 51, "chapter_count": 30711, "description": "", "links": [...], ... },
+  "comics": [ { "title": "...", "slug": "...", "country": "kr", "id": ..., "md_covers": [...], ... }, ... ],
+  "chapters": [ /* feed posledních uploadů napříč tituly - mimo scope, nepoužije se */ ],
+  "total": 30711,
+  "limit": 1000
+}
+```
+
+- `group.chapter_count` je počet PŘELOŽENÝCH KAPITOL celkem (ne počet titulů) — pro hlavičku obrazovky se použije spolu s `group.follow_count` a `group.title`.
+- `comics[]` má **identický tvar** jako položky v `/v1.0/search` (viz `ComicKSource.parseComicList`) — stejná parsovací logika jde znovupoužít beze změny.
+- `?page=` parametr byl vyzkoušen živě a nemění výsledek (na zdroji s 376 tituly vrátil stejných 376) — žádná stránkovací logika se tedy needelá; pokud by u extrémně aktivní skupiny (tisíce titulů) API jednou vracelo neúplný seznam, projeví se to jako neúplná mřížka, ne pád (`comics` se prostě vezme tak, jak přijde).
+
+### Datový model
+
+`ComicKSource.kt`:
+- Nová `data class GroupInfo(val title: String, val followCount: Int, val chapterCount: Int, val comics: List<SManga>)`.
+- Nová `suspend fun getGroup(slug: String): GroupInfo` — `GET $apiBase/group/$slug`, `comics` se namapuje přes stejnou vnitřní logiku jako `parseComicList` (extrahovat do sdílené privátní funkce, aby se nekopírovala).
+
+`MangaRepository.kt`:
+- Nová `internal fun deserializeChapterGroups(json: String?): List<SGroup>` — protějšek k existující `serializeChapterGroups`. Stejná `isNull()` opatrnost jako u ostatního ComicK parsování v téhle iniciativě (ale tady appka sama serializovala, takže riziko je jen v tom, že `json` je `null`/prázdné → vrátit `emptyList()`).
+
+### UI
+
+**`GlassChapterRow`** (`MangaDetailScreen.kt:906`):
+- `Text(chapter.scanlationGroup)` (řádek 937-938) se nahradí `Row`em klikacích chipů, jeden na skupinu z `deserializeChapterGroups(chapter.groupsJson)`.
+- Pro ne-ComicK zdroje je `groupsJson == null` → `deserializeChapterGroups` vrátí `emptyList()` → beze změny se použije fallback na dnešní `chapter.scanlationGroup` text (jen zobrazený, ne klikací) — zpětná kompatibilita se všemi ostatními ~180 zdroji, které `groups`/`groupsJson` nikdy nenaplňují.
+- Klik na chip naviguje na `Routes.group(slug, title)` — jen pokud `slug != null` (u skupin bez slugu, viz Sub-projekt 2 poznámka o chybějícím `md_chapters_groups` indexu, se chip zobrazí, ale nebude klikací).
+
+**Nová obrazovka `ui/group/GroupScreen.kt` + `GroupViewModel.kt`** (vzor `SourceResolverScreen`/`ViewModel` — loading stav, chybová hláška, žádné SDD navíc potřebné):
+- Hlavička: název skupiny, `follow_count` sledujících, `chapter_count` přeložených kapitol.
+- `LazyVerticalGrid` titulů (`comics`) — nová privátní karta stejného střihu jako `BrowseMangaCard`/`MiniMangaCard` (v kódu se nesdílí mezi soubory, zavedená konvence, ne nedopatření).
+- Klik na titul: `repository.openPreview(manga)` → `Routes.detail(id)`, stejný vzor jako `SourceBrowseViewModel.openManga` (loading přes `_openingManga`, chyba přes `_openError`/`toFriendlyMessage()` jako snackbar).
+
+**Navigace** (`NavGraph.kt`):
+- `Routes.GROUP = "group/{slug}?title={title}"`, `Routes.group(slug, title) = "group/${Uri.encode(slug)}?title=${Uri.encode(title)}"` (title se předá jako navigační argument, aby se hlavička obrazovky nemusela čekat na network round-trip, než se ukáže aspoň nadpis — stejný trik jako `Routes.qr`).
+
+### Mimo rozsah (záměrně)
+
+- `chapters[]` feed posledních uploadů skupiny napříč tituly — nepoužije se, mimo scope jedné věty ze zadání ("ukáže její další tituly").
+- Stránkování/"load more" v mřížce titulů — `comics[]` přišlo v jednom requestu i pro skupinu s 376 tituly, žádná appkou řízená stránkovací logika se nepotřebuje (viz poznámka o `?page=` výš).
+- Filtrace/řazení titulů na stránce skupiny (podle typu, data, popularity) — YAGNI, ComicK je stejně vrací v nějakém výchozím pořadí.
+
+### Testování
+
+- `ComicKSourceTest`: parsování `getGroup()` odpovědi (`group.title/followCount/chapterCount` + `comics` mapované stejně jako `parseComicList`), test na chybějící/prázdné `comics`.
+- Test pro `deserializeChapterGroups` (round-trip s `serializeChapterGroups`, `null`/prázdný vstup → `emptyList()`).
+- Manuální ověření na zařízení: otevřít ComicK titul, kliknout na chip skupiny u kapitoly, ověřit že se otevře mřížka s hlavičkou a tituly, kliknout na titul v mřížce a ověřit že se otevře jeho ComicK detail.
