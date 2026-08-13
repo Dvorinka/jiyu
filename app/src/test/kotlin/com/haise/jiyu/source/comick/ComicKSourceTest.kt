@@ -557,6 +557,55 @@ class ComicKSourceTest {
         assertEquals(null, feed.recentReviews[0].title)
         assertEquals(null, feed.recentReviews[0].authorName)
     }
+
+    @Test
+    fun `getUpdates parses chapter feed items reusing chapterFromJson and comicFromJson`() = runTest {
+        server.dispatcher = object : Dispatcher() {
+            override fun dispatch(request: RecordedRequest): MockResponse {
+                val path = request.path.orEmpty()
+                return when {
+                    path.startsWith("/chapter") && !path.startsWith("/chapter/") -> MockResponse().setBody(
+                        """[{
+                            "chap": "177", "vol": null, "hid": "abc123", "created_at": "2026-08-13T11:44:48.626Z",
+                            "up_count": 10, "comment_count": 2, "group_name": ["asurascans"],
+                            "md_chapters_groups": [{"md_groups": {"title": "Asura", "slug": "asura"}}],
+                            "md_comics": {"title": "Knight King", "slug": "knight-king", "country": "kr", "md_covers": [{"b2key": "cover.jpg"}]}
+                        }]"""
+                    )
+                    else -> MockResponse().setResponseCode(404)
+                }
+            }
+        }
+        val updates = source.getUpdates(order = "hot", page = 1)
+        assertEquals(1, updates.size)
+        assertEquals("Knight King", updates[0].comic.title)
+        assertEquals("MANHWA", updates[0].comic.contentType)
+        assertEquals(177f, updates[0].chapter.chapterNumber)
+        assertEquals("Asura", updates[0].chapter.groups[0].name)
+        assertEquals(10, updates[0].upCount)
+        assertEquals(2, updates[0].commentCount)
+        assertTrue(request().path!!.contains("order=hot"))
+        assertTrue(request().path!!.contains("page=1"))
+    }
+
+    @Test
+    fun `getUpdates skips items whose md_comics is missing instead of throwing`() = runTest {
+        server.dispatcher = object : Dispatcher() {
+            override fun dispatch(request: RecordedRequest): MockResponse {
+                val path = request.path.orEmpty()
+                return when {
+                    path.startsWith("/chapter") && !path.startsWith("/chapter/") -> MockResponse().setBody(
+                        """[{"chap": "1", "hid": "x", "created_at": "2026-01-01T00:00:00Z", "up_count": 0, "comment_count": 0, "group_name": []}]"""
+                    )
+                    else -> MockResponse().setResponseCode(404)
+                }
+            }
+        }
+        val updates = source.getUpdates(order = "new", page = 1)
+        assertTrue(updates.isEmpty())
+    }
+
+    private fun request() = server.takeRequest()
 }
 
 /**

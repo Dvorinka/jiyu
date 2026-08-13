@@ -214,6 +214,31 @@ class ComicKSource @Inject constructor(
             feed
         }
 
+    /**
+     * Feed posledních nahraných kapitol napříč VŠEMI tituly (Updates tab) -
+     * na rozdíl od [getTop] se nekešuje, každé přepnutí `order` nebo scroll
+     * dolů je nový request. `limit` parametr API spolehlivě neomezuje počet
+     * položek (ověřeno živě) - konec seznamu pozná appka jen podle prázdné
+     * odpovědi, ne podle magického čísla.
+     */
+    suspend fun getUpdates(order: String, page: Int): List<ChapterUpdate> =
+        withContext(Dispatchers.IO) {
+            val langCode = LanguageMap.toMangaDexCode(settings.sourceLanguage.first())
+            val arr = getArray("$apiBase/chapter?lang=$langCode&order=$order&page=$page")
+            (0 until arr.length()).mapNotNull { i ->
+                val json = arr.getJSONObject(i)
+                val comicJson = json.optJSONObject("md_comics") ?: return@mapNotNull null
+                val comic = comicFromJson(comicJson) ?: return@mapNotNull null
+                val chapter = chapterFromJson(json, comic.url) ?: return@mapNotNull null
+                ChapterUpdate(
+                    chapter = chapter,
+                    comic = comic,
+                    upCount = json.optInt("up_count", 0),
+                    commentCount = json.optInt("comment_count", 0),
+                )
+            }
+        }
+
     private fun parseReviewList(arr: JSONArray): List<ReviewItem> =
         (0 until arr.length()).mapNotNull { i -> reviewFromJson(arr.getJSONObject(i)) }
 
@@ -458,4 +483,12 @@ data class ReviewItem(
     val content: String,
     val authorName: String?,
     val comic: SManga,
+)
+
+/** Jedna položka z [ComicKSource.getUpdates] - kapitola + komiks, kterému patří, + počty lajků/komentářů. */
+data class ChapterUpdate(
+    val chapter: SChapter,
+    val comic: SManga,
+    val upCount: Int,
+    val commentCount: Int,
 )
