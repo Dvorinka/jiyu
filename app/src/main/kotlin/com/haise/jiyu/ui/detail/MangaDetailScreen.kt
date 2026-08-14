@@ -526,19 +526,19 @@ fun MangaDetailScreen(
                                             onClick = { openChapter(chapter) },
                                             onLongClick = { showReadMenu = true },
                                         )
-                                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                                        .padding(horizontal = 14.dp, vertical = 9.dp),
                                     horizontalArrangement = Arrangement.Center,
                                     verticalAlignment = Alignment.CenterVertically,
                                 ) {
-                                    Icon(TablerIcons.PlayerPlay, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+                                    Icon(TablerIcons.PlayerPlay, contentDescription = null, tint = Color.White, modifier = Modifier.size(15.dp))
                                     Text(
                                         text = if (hasHistory) "${stringResource(R.string.detail_continue_short)} $chapterNumberLabel" else stringResource(R.string.action_start_reading),
                                         color = Color.White,
                                         fontWeight = FontWeight.SemiBold,
-                                        fontSize = 14.sp,
+                                        fontSize = 13.sp,
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis,
-                                        modifier = Modifier.padding(start = 8.dp),
+                                        modifier = Modifier.padding(start = 6.dp),
                                     )
                                 }
                                 DropdownMenu(expanded = showReadMenu, onDismissRequest = { showReadMenu = false }) {
@@ -564,12 +564,12 @@ fun MangaDetailScreen(
                                     .background(statusColor.copy(alpha = 0.15f))
                                     .border(1.dp, statusColor.copy(alpha = 0.4f), RoundedCornerShape(10.dp))
                                     .clickable { statusDropdownExpanded = true }
-                                    .padding(horizontal = 12.dp, vertical = 12.dp),
+                                    .padding(horizontal = 10.dp, vertical = 9.dp),
                                 horizontalArrangement = Arrangement.Center,
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
                                 Text(statusLabel, color = statusColor, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                Icon(TablerIcons.ChevronDown, contentDescription = null, tint = statusColor, modifier = Modifier.size(16.dp).padding(start = 2.dp))
+                                Icon(TablerIcons.ChevronDown, contentDescription = null, tint = statusColor, modifier = Modifier.size(14.dp).padding(start = 2.dp))
                             }
                             DropdownMenu(expanded = statusDropdownExpanded, onDismissRequest = { statusDropdownExpanded = false }) {
                                 statusOptions.forEach { (key, label) ->
