@@ -4,6 +4,16 @@
 > vidět v historii commitů a v popisech jednotlivých vydání na GitHubu; zpětně to sem
 > nedopisuju, abych si nevymýšlel.
 
+## v1.2.5
+
+### Detail titulu se rozpadl do obřího šedého kruhu přes celý popis
+Bato.to u některých titulů vrací jako jeden ze "žánrů" obří nesmyslný text
+(uvítání/poznámky slepené bez čárek, např. u "Vagabond [VIZBIG Edition]").
+Appka to bez omezení vykreslila jako "pilulku" se zaoblením 50 %, která tím
+pádem narostla do kruhu přes celou stránku. Přidán filtr (žánr delší než 30
+znaků se ignoruje) a pojistka na max. šířku s "..." na konci, aby se tohle
+nemohlo stát znovu ani u jiného zdroje.
+
 ## v1.2.4
 
 ### Appka nechávala nahoře pruh se status barem, i kolem výřezu kamery

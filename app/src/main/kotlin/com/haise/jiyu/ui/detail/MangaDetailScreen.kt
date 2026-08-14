@@ -30,6 +30,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -406,7 +407,7 @@ fun MangaDetailScreen(
                                     Text(text = label, color = statusColor, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
                                 }
                             }
-                            val allGenres = manga?.genres?.split(",")?.map { it.trim() }?.filter { it.isNotBlank() } ?: emptyList()
+                            val allGenres = manga?.genres?.split(",")?.map { it.trim() }?.filter { it.isNotBlank() && it.length <= 30 } ?: emptyList()
                             val demographicGenre = allGenres.firstOrNull { it.lowercase() in DEMOGRAPHIC_TAGS }
                             val genres = allGenres.filter { it != demographicGenre }
                             if (genres.isNotEmpty()) {
@@ -418,12 +419,13 @@ fun MangaDetailScreen(
                                     genres.take(4).forEach { genre ->
                                         Box(
                                             modifier = Modifier
+                                                .widthIn(max = 150.dp)
                                                 .clip(RoundedCornerShape(50))
                                                 .background(Violet.copy(alpha = 0.15f))
                                                 .border(1.dp, Violet.copy(alpha = 0.4f), RoundedCornerShape(50))
                                                 .padding(horizontal = 8.dp, vertical = 2.dp),
                                         ) {
-                                            Text(genre, color = Violet, fontSize = 10.sp)
+                                            Text(genre, color = Violet, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                         }
                                     }
                                 }
