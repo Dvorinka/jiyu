@@ -220,6 +220,12 @@ internal object QiFieldShader {
             float mist    = r1.x + 0.6 * r2.x;
             float strands = (r1.y + 0.7 * r2.y) * (1.0 - uDensity) * 0.30;
 
+            // Jemne zrno v mlze - samostatny vysokofrekvencni sum (jine meritko/posun nez
+            // hlavni fbm, aby se s nim netocil synchronne). Bez nej je mlha hladky gradient,
+            // ktery na OLED cerne pusobi jako plakat, ne jako plyn.
+            float grain = fbm(p * 9.0 + float2(uTime * 0.4, -uTime * 0.3));
+            mist *= 0.82 + 0.36 * grain;
+
             // Blize k jadru = zjemnelejsi cchi = presouva se do zlate. Gate hustotou, aby
             // rane snimky (mala hustota, jadro daleko) zustaly cistě fialove.
             float refine = clamp(uDensity * 1.3 - r * 0.55, 0.0, 1.0);
@@ -248,11 +254,24 @@ internal object QiFieldShader {
             float rim  = exp(-rimD * rimD) * (0.50 + 0.75 * uHeat) * exp(-r * 0.55);
             col += mix(uMist, uGold, 0.5 * uHeat) * rim;
 
-            // ── Jadro v tantienu - zlate, ne bile ───────────────────────────
+            // ── Bloom kolem jadra - siroka, tlumena zare POD ostrym jadrem. Bez tohohle
+            // svetlo koncí ostrou hranou misto aby se rozlevalo do prostoru kolem sebe -
+            // presne ten rozdil mezi "vykresleny kruh" a "skutecne svitici predmet".
             float coreR = 0.028 + 0.055 * uDensity;
-            float core  = exp(-(r * r) / (coreR * coreR));
+            float bloomR = coreR * 5.5;
+            float bloom  = exp(-(r * r) / (bloomR * bloomR));
             float3 coreCol = mix(uMist, uGold, clamp(uHeat * 1.3, 0.0, 1.0));
-            col += coreCol * (core * (0.40 + 1.55 * uHeat));
+            col += coreCol * (bloom * (0.10 + 0.35 * uHeat));
+
+            // ── Jadro v tantienu - zlate, ne bile. Tep (dve po sobe jdouci pulzace za
+            // cyklus, jako "lub-DUB") misto rovnomerneho blikani - ma pusobit jako zive
+            // bijici srdce sily, ne jako majak.
+            float beatPhase = fract(uTime * 0.9);
+            float lub = exp(-((beatPhase - 0.08) / 0.045) * ((beatPhase - 0.08) / 0.045));
+            float dub = exp(-((beatPhase - 0.24) / 0.05) * ((beatPhase - 0.24) / 0.05)) * 0.6;
+            float pulse = 1.0 + 0.22 * uHeat * (lub + dub);
+            float core  = exp(-(r * r) / (coreR * coreR));
+            col += coreCol * (core * (0.40 + 1.55 * uHeat) * pulse);
 
             // ── Pecet na tantienu: tenky vyryty prstenec, existuje od zacatku ─
             // Ostrejsi nez difuzni zare - ma cist jako vypalena znacka, ne jako mlha.
@@ -286,12 +305,27 @@ internal object QiFieldShader {
             float dcr   = length(float2(p.x, p.y - 0.50)) / 0.075;
             col += uGold * (exp(-dcr * dcr) * crown * 0.85);
 
-            // ── Razova vlna po ztuhnuti - zlata ──────────────────────────────
-            float dring = (r - uFlashR) / 0.045;
-            col += uGold * (exp(-dring * dring) * uFlashA * 0.85);
+            // ── Razova vlna po ztuhnuti - zlata s jemnou chromatickou disperzi. Kazdy
+            // kanal svitilny prstenec na neznatelne jinem polomeru - stejny trik jako
+            // prizmaticky lem kolem prepalenych svetel ve skutecne fotografii; na cistem
+            // jednobarevnem prstenci oko okamzite pozna "vykresleny efekt".
+            float disp  = 0.006;
+            float ringR = exp(-((r - uFlashR - disp) / 0.045) * ((r - uFlashR - disp) / 0.045)) * uFlashA;
+            float ringG = exp(-((r - uFlashR) / 0.045) * ((r - uFlashR) / 0.045)) * uFlashA;
+            float ringB = exp(-((r - uFlashR + disp) / 0.045) * ((r - uFlashR + disp) / 0.045)) * uFlashA;
+            col += float3(uGold.r * ringR, uGold.g * ringG, uGold.b * ringB) * 0.85;
 
             // Mekke dosednuti na okraji, aby nebyla videt hrana ctverce.
             col *= 1.0 - smoothstep(0.80, 1.05, length(uv));
+
+            // Mekky "soft-shoulder" strop misto tvrdeho orizu na 1.0. Plny Reinhard
+            // (x/(1+x)) jsem zkousel prvni - stlacoval i stredni tony a cely obrazek
+            // zesedl/vybledl, presny opak profesionalniho vzhledu. Tohle zasahuje jen
+            // posledních 8 % rozsahu (knee=0.92) - vse pod tim zustava beze zmeny, jen
+            // ostra hrana na spickach (jadro, zablesk) zmekne do plynuleho zaveru.
+            const float KNEE = 0.92;
+            float3 over = max(col - KNEE, float3(0.0));
+            col = min(col, float3(KNEE)) + (1.0 - KNEE) * (1.0 - exp(-over / (1.0 - KNEE)));
 
             // Dither proti pruhovani gradientu na OLED cerne.
             col += float3((hash(fragCoord) - 0.5) / 220.0);
