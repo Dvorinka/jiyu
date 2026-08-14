@@ -104,12 +104,13 @@ fun MainScreen(
                         NavigationBarItem(
                             selected = selected,
                             onClick = {
+                                // Zaznamena zaklaneni zalozky vzdy resetuje na jeji koren -
+                                // zadne pamatovani rozkliknutych obrazovek/sekci (saveState/restoreState schvalne vypnute)
                                 navController.navigate(tab.route) {
                                     popUpTo(navController.graph.findStartDestination().id) {
-                                        saveState = true
+                                        inclusive = false
                                     }
                                     launchSingleTop = true
-                                    restoreState = true
                                 }
                             },
                             icon = {

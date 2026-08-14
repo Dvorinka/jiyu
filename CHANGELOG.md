@@ -4,6 +4,16 @@
 > vidět v historii commitů a v popisech jednotlivých vydání na GitHubu; zpětně to sem
 > nedopisuju, abych si nevymýšlel.
 
+## v1.2.6
+
+### Přepnutí na jinou záložku dole a zpátky tě vrátilo přesně tam, kde jsi skončil
+Spodní navigace (Knihovna/Seznam/Novinky/Procházet/Historie/Nastavení) si podle
+standardního Android vzoru pamatovala celý stav každé záložky - když jsi měl
+rozkliknutý titul v knihovně, odešel přes zdroje a vrátil se, appka tě vrátila
+zpátky na ten titul místo do knihovny. Stejně tak rozkliknutá sekce v nastavení
+zůstala rozkliknutá. Tohle "pamatování" je teď vypnuté - klepnutí na záložku
+dole vždy resetuje na její výchozí obrazovku.
+
 ## v1.2.5
 
 ### Detail titulu se rozpadl do obřího šedého kruhu přes celý popis
