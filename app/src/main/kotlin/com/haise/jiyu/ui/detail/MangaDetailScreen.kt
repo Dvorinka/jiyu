@@ -30,7 +30,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -410,29 +409,12 @@ fun MangaDetailScreen(
                             val allGenres = manga?.genres?.split(",")?.map { it.trim() }?.filter { it.isNotBlank() && it.length <= 30 } ?: emptyList()
                             val demographicGenre = allGenres.firstOrNull { it.lowercase() in DEMOGRAPHIC_TAGS }
                             val genres = allGenres.filter { it != demographicGenre }
-                            if (genres.isNotEmpty()) {
-                                FlowRow(
-                                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                                    modifier = Modifier.padding(top = 6.dp),
-                                ) {
-                                    genres.take(4).forEach { genre ->
-                                        Box(
-                                            modifier = Modifier
-                                                .widthIn(max = 150.dp)
-                                                .clip(RoundedCornerShape(50))
-                                                .background(Violet.copy(alpha = 0.15f))
-                                                .border(1.dp, Violet.copy(alpha = 0.4f), RoundedCornerShape(50))
-                                                .padding(horizontal = 8.dp, vertical = 2.dp),
-                                        ) {
-                                            Text(genre, color = Violet, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                        }
-                                    }
-                                }
-                            }
                             Column(modifier = Modifier.padding(top = 6.dp)) {
                                 DetailInfoRow(stringResource(R.string.detail_info_origination), originationLabel(manga?.contentType))
                                 (manga?.demographic ?: demographicGenre)?.let { DetailInfoRow(stringResource(R.string.detail_info_demographic), it) }
+                                if (genres.isNotEmpty()) {
+                                    DetailInfoRow(stringResource(R.string.detail_info_genres), genres.take(4).joinToString(", "))
+                                }
                                 manga?.year?.takeIf { it > 0 }?.let { DetailInfoRow(stringResource(R.string.detail_info_published), it.toString()) }
                                 manga?.translationCompleted?.let {
                                     DetailInfoRow(

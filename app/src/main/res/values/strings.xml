@@ -380,6 +380,7 @@
     <string name="detail_reading_status_plan">Plánuji číst</string>
     <string name="detail_status_placeholder">Status</string>
     <string name="detail_info_origination">Typ</string>
+    <string name="detail_info_genres">Žánry</string>
     <string name="detail_cover_gallery_title">Všechny obálky</string>
     <string name="detail_cover_gallery_empty">Žádné další obálky se nenašly.</string>
     <string name="detail_cover_gallery_volume">Svazek %1$s</string>
