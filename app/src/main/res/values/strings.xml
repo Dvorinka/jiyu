@@ -379,7 +379,7 @@
     <string name="detail_reading_status_dropped">Opuštěno</string>
     <string name="detail_reading_status_plan">Plánuji číst</string>
     <string name="detail_status_placeholder">Status</string>
-    <string name="detail_info_origination">Původ</string>
+    <string name="detail_info_origination">Typ</string>
     <string name="detail_info_demographic">Demografie</string>
     <string name="detail_info_published">Vydáno</string>
     <string name="detail_info_translation">Překlad</string>

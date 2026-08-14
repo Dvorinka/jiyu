@@ -73,8 +73,25 @@ class AsuraScansSource @Inject constructor(private val client: OkHttpClient) : M
                 description = doc.selectFirst("meta[property=og:description]")?.attr("content")?.trim(),
                 genres = doc.select("a[href*=genre]").map { it.text().trim() }.filter { it.isNotBlank() },
                 author = doc.selectFirst("div:contains(Author) span")?.text()?.trim(),
+                contentType = parseContentType(doc),
             )
         } catch (_: Exception) { manga }
+    }
+
+    /**
+     * Detailni stranka ma info kartu s labelem "Type" (Manga/Manhwa/Manhua/Novel) - overeno
+     * zive na "Return of The Unrivaled Spear Knight" (Manhwa, ne Manga jak appka ukazovala
+     * pred timhle fixem, protoze contentType se nikde nenastavoval a ticha vychozi hodnota
+     * SManga je "MANGA"). Label je jediny element s presnym textem "Type" na cele strance -
+     * overeno na dvou ruznych titulech, zadny falesny zasah.
+     */
+    private fun parseContentType(doc: org.jsoup.nodes.Document): String {
+        val label = doc.select("div").firstOrNull { it.ownText().trim().equals("Type", ignoreCase = true) }
+        val raw = label?.nextElementSibling()?.select("span")?.lastOrNull()?.text()?.trim()?.uppercase()
+        return when (raw) {
+            "MANHWA", "MANHUA", "NOVEL" -> raw
+            else -> "MANGA"
+        }
     }
 
     override suspend fun getChapterList(manga: SManga): List<SChapter> = withContext(Dispatchers.IO) {
