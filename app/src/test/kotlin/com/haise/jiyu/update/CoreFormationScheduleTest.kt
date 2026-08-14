@@ -82,6 +82,39 @@ class CoreFormationScheduleTest {
         assertEquals(1f, CoreFormationSchedule.heat(4f), 0.0001f)
     }
 
+    // ── Meridian ─────────────────────────────────────────────────────────────
+
+    @Test
+    fun `qi has not risen at all at the start and reaches the crown at the end`() {
+        assertEquals(0f, CoreFormationSchedule.meridianReach(0f), 0.0001f)
+        assertEquals(1f, CoreFormationSchedule.meridianReach(1f), 0.0001f)
+    }
+
+    @Test
+    fun `qi only starts rising once the core has begun to gather and heat`() {
+        // Stoupat muze teprve to, co se predtim v tantienu nashromazdilo.
+        assertEquals(0f, CoreFormationSchedule.meridianReach(0.4f), 0.0001f)
+        assertEquals(0f, CoreFormationSchedule.meridianReach(0.55f), 0.0001f)
+    }
+
+    @Test
+    fun `qi never flows back down`() {
+        var previous = -1f
+        var p = 0f
+        while (p <= 1f) {
+            val value = CoreFormationSchedule.meridianReach(p)
+            assertTrue("meridian klesl na p=$p", value >= previous - 0.0001f)
+            previous = value
+            p += 0.02f
+        }
+    }
+
+    @Test
+    fun `meridian outside 0-1 is clamped instead of overshooting`() {
+        assertEquals(0f, CoreFormationSchedule.meridianReach(-1f), 0.0001f)
+        assertEquals(1f, CoreFormationSchedule.meridianReach(3f), 0.0001f)
+    }
+
     // ── Zablesk pri ztuhnuti ────────────────────────────────────────────────
 
     @Test
