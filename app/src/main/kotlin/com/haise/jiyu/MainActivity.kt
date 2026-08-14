@@ -3,7 +3,6 @@ package com.haise.jiyu
 import android.Manifest
 import android.content.Intent
 import android.net.Uri
-import android.os.Build
 import android.os.Bundle
 import android.view.WindowManager
 import androidx.activity.compose.setContent
@@ -58,20 +57,12 @@ class MainActivity : AppCompatActivity() {
         // Edge-to-edge: obsah se kreslí pod status barem i navigační lištou
         enableEdgeToEdge()
         // Android 13+ vyžaduje runtime žádost o POST_NOTIFICATIONS
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            notifPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-        }
+        notifPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
         super.onCreate(savedInstanceState)
 
         // Obsah se kreslí kolem výřezu přední kamery (notch / punch-hole)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            window.attributes.layoutInDisplayCutoutMode =
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                    WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
-                } else {
-                    WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
-                }
-        }
+        window.attributes.layoutInDisplayCutoutMode =
+            WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
 
         // Cold start: notifikace nebo widget tap, appka nebyla v paměti
         intent?.data?.takeIf { it.scheme == "jiyu" && it.host != "anilist" && it.host != "mal-auth" }

@@ -440,20 +440,16 @@ private suspend fun saveBitmapToGallery(context: android.content.Context, url: S
     val values = android.content.ContentValues().apply {
         put(android.provider.MediaStore.Images.Media.DISPLAY_NAME, filename)
         put(android.provider.MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
-            put(android.provider.MediaStore.Images.Media.RELATIVE_PATH,
-                android.os.Environment.DIRECTORY_PICTURES + "/Jiyu")
-            put(android.provider.MediaStore.Images.Media.IS_PENDING, 1)
-        }
+        put(android.provider.MediaStore.Images.Media.RELATIVE_PATH,
+            android.os.Environment.DIRECTORY_PICTURES + "/Jiyu")
+        put(android.provider.MediaStore.Images.Media.IS_PENDING, 1)
     }
     val resolver = context.contentResolver
     val uri = resolver.insert(android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values) ?: return
     resolver.openOutputStream(uri)?.use { out ->
         bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 95, out)
     }
-    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
-        val updateValues = android.content.ContentValues()
-        updateValues.put(android.provider.MediaStore.Images.Media.IS_PENDING, 0)
-        resolver.update(uri, updateValues, null, null)
-    }
+    val updateValues = android.content.ContentValues()
+    updateValues.put(android.provider.MediaStore.Images.Media.IS_PENDING, 0)
+    resolver.update(uri, updateValues, null, null)
 }

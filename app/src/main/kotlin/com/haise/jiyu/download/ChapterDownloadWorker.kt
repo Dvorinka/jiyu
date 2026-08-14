@@ -5,7 +5,6 @@ import android.content.Context
 import android.content.pm.ServiceInfo
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
@@ -75,12 +74,9 @@ class ChapterDownloadWorker @AssistedInject constructor(
 
         // Explicitní dataSync typ je od Androidu 14 (targetSdk 34) povinný, jinak setForeground()
         // shodí proces s InvalidForegroundServiceTypeException (viz manifest pro service+permission).
-        val foregroundInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        setForeground(
             ForegroundInfo(progressId, progressNotification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
-        } else {
-            ForegroundInfo(progressId, progressNotification)
-        }
-        setForeground(foregroundInfo)
+        )
         repository.setDownloadStatus(chapterEntityId, DownloadStatus.DOWNLOADING)
 
         return withContext(Dispatchers.IO) {

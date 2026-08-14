@@ -3,7 +3,6 @@ package com.haise.jiyu
 import android.app.Application
 import android.app.NotificationChannel
 import android.app.NotificationManager
-import android.os.Build
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.BackoffPolicy
 import androidx.work.Constraints
@@ -110,19 +109,17 @@ class JiyuApp : Application(), Configuration.Provider {
             .build()
 
     private fun createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val nm = getSystemService(NotificationManager::class.java)
-            nm.createNotificationChannel(
-                NotificationChannel(CHANNEL_ID, "Nové kapitoly", NotificationManager.IMPORTANCE_DEFAULT).apply {
-                    description = "Upozornění na nové kapitoly v knihovně"
-                }
-            )
-            nm.createNotificationChannel(
-                NotificationChannel(CHANNEL_DOWNLOADS, "Stahování kapitol", NotificationManager.IMPORTANCE_LOW).apply {
-                    description = "Průběh stahování kapitol"
-                }
-            )
-        }
+        val nm = getSystemService(NotificationManager::class.java)
+        nm.createNotificationChannel(
+            NotificationChannel(CHANNEL_ID, "Nové kapitoly", NotificationManager.IMPORTANCE_DEFAULT).apply {
+                description = "Upozornění na nové kapitoly v knihovně"
+            }
+        )
+        nm.createNotificationChannel(
+            NotificationChannel(CHANNEL_DOWNLOADS, "Stahování kapitol", NotificationManager.IMPORTANCE_LOW).apply {
+                description = "Průběh stahování kapitol"
+            }
+        )
     }
 
     private fun evictOldTranslationCache() {

@@ -3,7 +3,6 @@ package com.haise.jiyu.translate
 import android.app.NotificationManager
 import android.content.Context
 import android.content.pm.ServiceInfo
-import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
@@ -72,12 +71,9 @@ class TranslateChapterWorker @AssistedInject constructor(
                 .setProgress(total, done, total == 0)
                 .setOngoing(true)
                 .build()
-            val info = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            setForeground(
                 ForegroundInfo(notificationId, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
-            } else {
-                ForegroundInfo(notificationId, notification)
-            }
-            setForeground(info)
+            )
         }
 
         showProgress(done = 0, total = 0)

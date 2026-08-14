@@ -34,7 +34,9 @@ android {
 
     defaultConfig {
         applicationId = "com.haise.jiyu"
-        minSdk = 26
+        // Android 13+ (API 33): appka pouziva AGSL RuntimeShader (UpdateProgressOverlay),
+        // ktery na nizsich verzich neexistuje.
+        minSdk = 33
         targetSdk = 36
         versionCode = 56
         versionName = "1.1.2"
