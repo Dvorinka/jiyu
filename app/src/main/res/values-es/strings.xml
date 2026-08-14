@@ -360,6 +360,9 @@
     <string name="detail_status_placeholder">Estado</string>
     <string name="detail_info_origination">Origen</string>
     <string name="detail_info_genres">Géneros</string>
+    <string name="detail_info_rating">Valoración</string>
+    <string name="detail_info_rank">Ranking</string>
+    <string name="detail_info_followers">Seguidores</string>
     <string name="detail_cover_gallery_title">Todas las portadas</string>
     <string name="detail_cover_gallery_empty">No se encontraron más portadas.</string>
     <string name="detail_cover_gallery_volume">Volumen %1$s</string>

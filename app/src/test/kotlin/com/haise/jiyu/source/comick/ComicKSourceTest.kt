@@ -28,7 +28,7 @@ class ComicKSourceTest {
     """.trimIndent()
 
     private val mangaDetailJson = """
-        {"demographic": "Shounen", "comic": {"hid": "abcd", "desc": "A summary.", "status": 1, "year": 2020, "country": "kr", "translation_completed": true, "has_anime": true, "final_chapter": "200", "final_volume": "3"}, "authors": [{"name": "Jane"}], "genres": [{"name": "Action"}]}
+        {"demographic": "Shounen", "comic": {"hid": "abcd", "desc": "A summary.", "status": 1, "year": 2020, "country": "kr", "translation_completed": true, "has_anime": true, "final_chapter": "200", "final_volume": "3", "bayesian_rating": "9.19", "user_follow_count": 194953, "follow_rank": 5, "md_titles": [{"title": "Test Series", "lang": "en"}, {"title": "Solo Leveling", "lang": "en"}, {"title": "나 혼자만 레벨업", "lang": "ko"}]}, "authors": [{"name": "Jane"}], "genres": [{"name": "Action"}]}
     """.trimIndent()
 
     private val chaptersJson = """
@@ -190,6 +190,22 @@ class ComicKSourceTest {
         val manga = source.getPopular(1).first()
         val details = source.getMangaDetails(manga)
         assertEquals("Svazek 3, kapitola 200", details.finalChapter)
+    }
+
+    @Test
+    fun `getMangaDetails reads rating, follow count and rank from the same response`() = runTest {
+        val manga = source.getPopular(1).first()
+        val details = source.getMangaDetails(manga)
+        assertEquals(9.19, details.rating!!, 0.001)
+        assertEquals(194953, details.followCount)
+        assertEquals(5, details.rank)
+    }
+
+    @Test
+    fun `getMangaDetails collects md_titles into alternateTitles, excluding the manga's own title`() = runTest {
+        val manga = source.getPopular(1).first() // title = "Test Series", stejne jako jedna md_titles polozka
+        val details = source.getMangaDetails(manga)
+        assertEquals(listOf("Solo Leveling", "나 혼자만 레벨업"), details.alternateTitles)
     }
 
     @Test

@@ -19,6 +19,10 @@ data class SManga(
     val translationCompleted: Boolean? = null,
     val hasAnime: Boolean? = null,
     val finalChapter: String? = null,
+    val rating: Double? = null,
+    val followCount: Int? = null,
+    val rank: Int? = null,
+    val alternateTitles: List<String> = emptyList(),
 )
 
 data class MangaFilter(

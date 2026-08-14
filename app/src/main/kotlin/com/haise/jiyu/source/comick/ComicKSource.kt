@@ -117,6 +117,25 @@ class ComicKSource @Inject constructor(
                 if (finalVolumeRaw != null) "Svazek $finalVolumeRaw, kapitola $chap" else "Kapitola $chap"
             }
 
+            // bayesian_rating je na rozdil od user_follow_count/follow_rank STRING v JSON
+            // ("9.19"), proto isNull() guard + optString misto optDouble (viz zavedeny
+            // org.json optString-na-JSON-null bug - stejny pattern jako u demographic vyse).
+            val rating = if (comic.isNull("bayesian_rating")) null else comic.optString("bayesian_rating").toDoubleOrNull()
+            val followCount = comic.optInt("user_follow_count", 0).takeIf { it > 0 }
+            val rank = comic.optInt("follow_rank", 0).takeIf { it > 0 }
+
+            // md_titles - stejne pole, ktere getTitleInfo() pouziva pro cross-source parovani,
+            // tady jen bereme vsechny nazvy krome toho, co uz appka pouziva jako hlavni titul.
+            val altTitlesArr = comic.optJSONArray("md_titles")
+            val alternateTitles = mutableListOf<String>()
+            if (altTitlesArr != null) {
+                for (i in 0 until altTitlesArr.length()) {
+                    val t = altTitlesArr.optJSONObject(i) ?: continue
+                    val titleText = if (t.isNull("title")) null else t.optString("title").ifBlank { null }
+                    if (titleText != null && titleText != manga.title) alternateTitles.add(titleText)
+                }
+            }
+
             manga.copy(
                 description = desc,
                 status      = status,
@@ -128,6 +147,10 @@ class ComicKSource @Inject constructor(
                 translationCompleted = translationCompleted,
                 hasAnime = hasAnime,
                 finalChapter = finalChapter,
+                rating = rating,
+                followCount = followCount,
+                rank = rank,
+                alternateTitles = alternateTitles.distinct().take(8),
             )
         }
 

@@ -381,6 +381,9 @@
     <string name="detail_status_placeholder">Status</string>
     <string name="detail_info_origination">Typ</string>
     <string name="detail_info_genres">Žánry</string>
+    <string name="detail_info_rating">Hodnocení</string>
+    <string name="detail_info_rank">Žebříček</string>
+    <string name="detail_info_followers">Sledující</string>
     <string name="detail_cover_gallery_title">Všechny obálky</string>
     <string name="detail_cover_gallery_empty">Žádné další obálky se nenašly.</string>
     <string name="detail_cover_gallery_volume">Svazek %1$s</string>

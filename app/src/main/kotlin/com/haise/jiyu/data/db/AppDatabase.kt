@@ -43,7 +43,7 @@ class Converters {
         GlossaryEntity::class,
         ManualTranslationEntity::class,
     ],
-    version = 32,
+    version = 33,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -314,6 +314,14 @@ abstract class AppDatabase : RoomDatabase() {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE chapter ADD COLUMN lastReadAt INTEGER NOT NULL DEFAULT 0")
                 db.execSQL("ALTER TABLE chapter ADD COLUMN lastScrollOffset INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+        val MIGRATION_32_33 = object : Migration(32, 33) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE manga ADD COLUMN rating REAL")
+                db.execSQL("ALTER TABLE manga ADD COLUMN followCount INTEGER")
+                db.execSQL("ALTER TABLE manga ADD COLUMN rank INTEGER")
+                db.execSQL("ALTER TABLE manga ADD COLUMN alternateTitles TEXT NOT NULL DEFAULT ''")
             }
         }
     }

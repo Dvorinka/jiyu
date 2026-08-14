@@ -363,6 +363,9 @@
     <string name="detail_status_placeholder">Status</string>
     <string name="detail_info_origination">Origin</string>
     <string name="detail_info_genres">Genres</string>
+    <string name="detail_info_rating">Rating</string>
+    <string name="detail_info_rank">Ranked</string>
+    <string name="detail_info_followers">Followed by</string>
     <string name="detail_cover_gallery_title">All covers</string>
     <string name="detail_cover_gallery_empty">No other covers found.</string>
     <string name="detail_cover_gallery_volume">Volume %1$s</string>

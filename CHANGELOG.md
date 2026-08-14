@@ -4,6 +4,19 @@
 > vidět v historii commitů a v popisech jednotlivých vydání na GitHubu; zpětně to sem
 > nedopisuju, abych si nevymýšlel.
 
+## v1.2.7
+
+### Detail titulu na ComicK měl málo informací oproti webu
+Appka už dřív z ComicK API stahovala popis/stav/žánry/typ, ale samotný detail
+titulu odpovídal `/comic/{slug}` API endpointu, který obsahuje mnohem víc -
+bez jakéhokoli dalšího requestu navíc. Doplněno (jen pro ComicK zdroj):
+
+- **Hodnocení** (★ 8.2) a **žebříček** (#82) - z `bayesian_rating`/`follow_rank`
+- **Počet sledujících** ("Sledující: 81 139") - z `user_follow_count`
+- **Alternativní názvy** pod hlavním titulem (jiné jazyky/přepisy) - appka
+  tahle data ve skutečnosti dřív stahovala jen interně kvůli párování zdrojů
+  (`md_titles`), teď se stejná data zobrazí i uživateli
+
 ## v1.2.6
 
 ### Žánry na detailu titulu vypadaly jako fialová pilulka nafouklá do kruhu

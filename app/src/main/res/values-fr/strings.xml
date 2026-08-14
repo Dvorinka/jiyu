@@ -360,6 +360,9 @@
     <string name="detail_status_placeholder">Statut</string>
     <string name="detail_info_origination">Origine</string>
     <string name="detail_info_genres">Genres</string>
+    <string name="detail_info_rating">Note</string>
+    <string name="detail_info_rank">Classement</string>
+    <string name="detail_info_followers">Abonnés</string>
     <string name="detail_cover_gallery_title">Toutes les couvertures</string>
     <string name="detail_cover_gallery_empty">Aucune autre couverture trouvée.</string>
     <string name="detail_cover_gallery_volume">Tome %1$s</string>

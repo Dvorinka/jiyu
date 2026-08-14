@@ -56,4 +56,9 @@ data class MangaEntity(
     val translationCompleted: Boolean? = null,
     val hasAnime: Boolean? = null,
     val finalChapter: String? = null,
+    val rating: Double? = null,
+    val followCount: Int? = null,
+    val rank: Int? = null,
+    /** JSON pole řetězců - viz [com.haise.jiyu.data.repository.serializeAltTitles]. */
+    val alternateTitles: String = "",
 )

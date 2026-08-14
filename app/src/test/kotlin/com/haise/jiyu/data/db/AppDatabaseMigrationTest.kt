@@ -98,6 +98,7 @@ class AppDatabaseMigrationTest {
                 AppDatabase.MIGRATION_29_30,
                 AppDatabase.MIGRATION_30_31,
                 AppDatabase.MIGRATION_31_32,
+                AppDatabase.MIGRATION_32_33,
             )
             .build()
 
@@ -155,6 +156,17 @@ class AppDatabaseMigrationTest {
         assertEquals(12, ch1After.lastPageRead)
         assertEquals(345, ch1After.lastScrollOffset)
         assertEquals(1000L, ch1After.lastReadAt)
+
+        // MIGRATION_32_33: rating/followCount/rank/alternateTitles pridane na manga
+        // (nullable/default '', ComicK "vic informaci" pozadavek), musi prezit round-trip.
+        db.mangaDao().upsert(
+            result.copy(rating = 9.19, followCount = 194953, rank = 5, alternateTitles = """["Solo Leveling","I Alone Level-Up"]"""),
+        )
+        val ratedResult = db.mangaDao().getById("m1")!!
+        assertEquals(9.19, ratedResult.rating!!, 0.001)
+        assertEquals(194953, ratedResult.followCount)
+        assertEquals(5, ratedResult.rank)
+        assertEquals("""["Solo Leveling","I Alone Level-Up"]""", ratedResult.alternateTitles)
 
         db.close()
         context.deleteDatabase(dbName)

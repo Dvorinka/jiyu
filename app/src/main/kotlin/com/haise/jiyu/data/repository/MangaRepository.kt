@@ -259,6 +259,10 @@ class MangaRepository @Inject constructor(
             translationCompleted = detail.translationCompleted ?: existing.translationCompleted,
             hasAnime = detail.hasAnime ?: existing.hasAnime,
             finalChapter = detail.finalChapter ?: existing.finalChapter,
+            rating = detail.rating ?: existing.rating,
+            followCount = detail.followCount ?: existing.followCount,
+            rank = detail.rank ?: existing.rank,
+            alternateTitles = detail.alternateTitles.takeIf { it.isNotEmpty() }?.let { serializeAltTitles(it) } ?: existing.alternateTitles,
         )
         // LibraryViewModel vola tohle pro kazdy titul v knihovne pri kazdem pull-to-refresh -
         // bez tehle podminky by to byl plny row-write (+ Room invalidace/Flow re-emit) pro
@@ -388,6 +392,21 @@ internal fun serializeChapterGroups(groups: List<SGroup>): String? =
         // (org.json.JSONObject chovani) - proto explicitni JSONObject.NULL misto it.slug.
         JSONArray(list.map { JSONObject().apply { put("name", it.name); put("slug", it.slug ?: JSONObject.NULL) } }).toString()
     }
+
+/** JSON pole řetězců pro uložení SManga.alternateTitles do MangaEntity.alternateTitles. */
+internal fun serializeAltTitles(titles: List<String>): String =
+    JSONArray(titles).toString()
+
+/** Protějšek [serializeAltTitles] - přečte `MangaEntity.alternateTitles` zpátky do seznamu. */
+internal fun deserializeAltTitles(json: String?): List<String> {
+    if (json.isNullOrBlank()) return emptyList()
+    return try {
+        val arr = JSONArray(json)
+        (0 until arr.length()).map { arr.optString(it) }.filter { it.isNotBlank() }
+    } catch (_: Exception) {
+        emptyList()
+    }
+}
 
 /** Protějšek [serializeChapterGroups] - přečte `ChapterEntity.groupsJson` zpátky do [SGroup] seznamu. */
 internal fun deserializeChapterGroups(json: String?): List<SGroup> {

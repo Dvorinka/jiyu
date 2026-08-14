@@ -1,5 +1,7 @@
 package com.haise.jiyu.ui.detail
 
+import java.util.Locale
+
 import com.haise.jiyu.ui.components.JiyuLoadingIndicator
 
 
@@ -84,6 +86,7 @@ import coil.compose.AsyncImage
 import com.haise.jiyu.R
 import com.haise.jiyu.data.db.entity.ChapterEntity
 import com.haise.jiyu.data.db.entity.DownloadStatus
+import com.haise.jiyu.data.repository.deserializeAltTitles
 import com.haise.jiyu.data.repository.deserializeChapterGroups
 import com.haise.jiyu.source.SGroup
 import com.haise.jiyu.ui.theme.Cyan
@@ -179,6 +182,7 @@ fun MangaDetailScreen(
                 .padding(innerPadding),
             state = pullToRefreshState,
         ) {
+            val altTitles = remember(manga?.alternateTitles) { deserializeAltTitles(manga?.alternateTitles) }
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(bottom = navBottom),
@@ -246,6 +250,20 @@ fun MangaDetailScreen(
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
                     )
+                }
+
+                // ── Alternativní názvy (ComicK) ──────────────────────────────────
+                if (altTitles.isNotEmpty()) {
+                    item {
+                        Text(
+                            text = altTitles.take(4).joinToString(" • "),
+                            color = TextSecondary,
+                            fontSize = 12.sp,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 2.dp),
+                        )
+                    }
                 }
 
                 // ── Obálka + metadata ───────────────────────────────────────────
@@ -429,6 +447,9 @@ fun MangaDetailScreen(
                                     )
                                 }
                                 manga?.finalChapter?.let { DetailInfoRow(stringResource(R.string.detail_info_final_chapter), it) }
+                                manga?.rating?.let { DetailInfoRow(stringResource(R.string.detail_info_rating), "★ " + String.format(Locale.US, "%.1f", it)) }
+                                manga?.rank?.let { DetailInfoRow(stringResource(R.string.detail_info_rank), "#$it") }
+                                manga?.followCount?.let { DetailInfoRow(stringResource(R.string.detail_info_followers), formatCount(it)) }
                             }
                             Spacer(modifier = Modifier.weight(1f))
                             val readCount = chapters.count { it.read }
@@ -1107,6 +1128,17 @@ private fun DetailInfoRow(label: String, value: String) {
         Text(text = "$label: ", color = TextSecondary, fontSize = 11.sp)
         Text(text = value, color = TextPrimary, fontSize = 11.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
+}
+
+/** "81139" -> "81 139" - appka mezerou jako oddelovacem tisic, bez zavislosti na lokale zarizeni. */
+private fun formatCount(n: Int): String {
+    val s = n.toString()
+    val sb = StringBuilder()
+    for ((i, c) in s.withIndex()) {
+        if (i > 0 && (s.length - i) % 3 == 0) sb.append(' ')
+        sb.append(c)
+    }
+    return sb.toString()
 }
 
 internal fun formatReadingTime(ms: Long): String {
