@@ -4,6 +4,23 @@
 > vidět v historii commitů a v popisech jednotlivých vydání na GitHubu; zpětně to sem
 > nedopisuju, abych si nevymýšlel.
 
+## v1.2.2
+
+### Horní lišta čtečky přeplněná ikonami, spodní se sipkou na špatném místě
+Druhé kolo redesignu čtečky podle screenshotu od uživatele. Horní lišta měla
+šipky předchozí/další kapitoly, přepínač režimu panelu, časovač spánku,
+inkognito a překlad - zůstává jen seznam kapitol (tři čáry). Místo ikon je
+teď v horní liště vidět **název titulu** (appka ho do teď do čtečky vůbec
+neposílala, jen název kapitoly) - klepnutí na název otevře detail titulu.
+Předchozí/další kapitola pořád funguje přes gesto (swipe), jen bez tlačítka.
+
+Ve spodní liště se šipka další kapitoly přesunula na konec řady. Ikona
+překladu už nepřepíná rovnou, ale otevře okno s nastavením (jazyky, přepínač
+překlad zapnuto/vypnuto pro tuto kapitolu, přeložit vše) - tlačítko "Další
+možnosti" tím odpadlo, překlad je teď jediný vstup do stejného obsahu.
+Přesunutý režim panelu/časovač spánku/inkognito ze zrušené horní lišty
+přibyly jako řádek ikon navrch tohoto okna.
+
 ## v1.2.1
 
 ### Spodní lišta čtečky vypadala jinak, než měla
