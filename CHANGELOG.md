@@ -4,6 +4,20 @@
 > vidět v historii commitů a v popisech jednotlivých vydání na GitHubu; zpětně to sem
 > nedopisuju, abych si nevymýšlel.
 
+## v1.2.3
+
+### Asura Scans ukazoval manhwa tituly jako Manga
+`AsuraScansSource` nikde nenastavoval `contentType`, takže všechny tituly z tohoto
+zdroje tiše dostaly výchozí hodnotu "MANGA" bez ohledu na skutečný typ - stejná
+past, kterou appka řešila u 21 jiných zdrojů, Asura Scans v té dávce jenom chyběl
+(nahlášeno na "Return of The Unrivaled Spear Knight", ověřeno na ComicK že jde
+o Manhwa). Detailní stránka má vlastní pole "Type" - appka ho teď čte a mapuje
+na Manhwa/Manhua/Novel/Manga. Opraví se při otevření detailu titulu nebo ručním
+obnovení knihovny, ne v přehledu Procházet (tam web typ neukazuje).
+
+### Slovo "Původ" na detailu titulu nahrazeno za "Typ"
+Doslovný překlad ComicK labelu "Origination" nepůsobil přirozeně v češtině.
+
 ## v1.2.2
 
 ### Horní lišta čtečky přeplněná ikonami, spodní se sipkou na špatném místě
