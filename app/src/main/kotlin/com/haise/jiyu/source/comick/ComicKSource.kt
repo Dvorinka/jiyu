@@ -46,6 +46,11 @@ class ComicKSource @Inject constructor(
     private val apiBase   = "https://api.comick.dev"
     private val coverBase = "https://meo.comick.pictures"
 
+    // In-memory cache pro /genre - stejny seznam pro celou appku po celou dobu behu,
+    // nema smysl ho stahovat znovu pri kazdem otevreni filtru (stejny vzor jako
+    // ComicKChapterResolver).
+    private var cachedGenres: List<ComicKGenreOption>? = null
+
     // ─── Vyhledávání & browse ────────────────────────────────────────────────
 
     override suspend fun search(query: String, page: Int, filter: MangaFilter): List<SManga> =
@@ -63,6 +68,57 @@ class ComicKSource @Inject constructor(
                 else     -> "follow"
             }
             parseComicList(getArray("$apiBase/v1.0/search?sort=$sort&limit=20&page=$page"))
+        }
+
+    /**
+     * Kompletni taxonomie zanru/tagu z `/genre` - "group" pole rozlisuje "Genre"
+     * (zanry v uzsim smyslu) od ostatnich skupin (Format/Theme/Content Warning/...),
+     * ktere appka zobrazuje jako "Tagy" - stejne rozdeleni, jake ma ComicKuv vlastni
+     * filtr. Overeno zive 2026-08-14, viz [searchAdvanced].
+     */
+    suspend fun getGenreList(): List<ComicKGenreOption> = withContext(Dispatchers.IO) {
+        cachedGenres?.let { return@withContext it }
+        val arr = getArray("$apiBase/genre")
+        val result = (0 until arr.length()).mapNotNull { i ->
+            val obj = arr.getJSONObject(i)
+            val name = obj.optString("name").ifBlank { return@mapNotNull null }
+            val slug = obj.optString("slug").ifBlank { return@mapNotNull null }
+            ComicKGenreOption(name = name, slug = slug, group = obj.optString("group").ifBlank { "Genre" })
+        }
+        cachedGenres = result
+        result
+    }
+
+    /**
+     * Rozsirene hledani se vsemi filtry, ktere `/v1.0/search` podporuje - overeno
+     * zive proti kazdemu parametru zvlast (uzivatelsky pozadavek "vsechny filtry
+     * co ma ComicK"): genres/excludes/tags/excluded_tags (slug retezce, opakovatelne
+     * pro AND), demographic (1-4, opakovatelne), country (jp/kr/cn/others,
+     * opakovatelne), status (1-4), content_rating (safe/suggestive/erotica),
+     * minimum (min. pocet kapitol), from/to (rok vydani).
+     */
+    suspend fun searchAdvanced(page: Int, filters: ComicKSearchFilters): List<SManga> =
+        withContext(Dispatchers.IO) {
+            val sort = when (filters.sortBy) {
+                "latest" -> "uploaded"
+                "rating" -> "rating"
+                "title"  -> "title"
+                else     -> "follow"
+            }
+            val url = buildString {
+                append("$apiBase/v1.0/search?sort=$sort&limit=20&page=$page")
+                if (filters.query.isNotBlank()) append("&q=${URLEncoder.encode(filters.query, "UTF-8")}")
+                filters.genres.forEach { append("&genres=${URLEncoder.encode(it, "UTF-8")}") }
+                filters.tags.forEach { append("&tags=${URLEncoder.encode(it, "UTF-8")}") }
+                filters.demographics.forEach { append("&demographic=$it") }
+                filters.countries.forEach { append("&country=${URLEncoder.encode(it, "UTF-8")}") }
+                filters.status?.let { append("&status=$it") }
+                filters.contentRating?.let { append("&content_rating=${URLEncoder.encode(it, "UTF-8")}") }
+                filters.minChapters?.let { append("&minimum=$it") }
+                filters.yearFrom?.let { append("&from=$it") }
+                filters.yearTo?.let { append("&to=$it") }
+            }
+            parseComicList(getArray(url))
         }
 
     // ─── Detail mangy ────────────────────────────────────────────────────────
@@ -537,6 +593,33 @@ data class SCover(
     val volume: String?,
     val imageUrl: String,
 )
+
+/** Jedna položka z [ComicKSource.getGenreList] - `group` "Genre" = žánr, cokoliv jiného = tag. */
+data class ComicKGenreOption(
+    val name: String,
+    val slug: String,
+    val group: String,
+)
+
+/** Vstup pro [ComicKSource.searchAdvanced] - viz komentář u funkce pro ověřené hodnoty parametrů. */
+data class ComicKSearchFilters(
+    val query: String = "",
+    val genres: List<String> = emptyList(),
+    val tags: List<String> = emptyList(),
+    val demographics: List<Int> = emptyList(),
+    val countries: List<String> = emptyList(),
+    val status: Int? = null,
+    val contentRating: String? = null,
+    val minChapters: Int? = null,
+    val yearFrom: Int? = null,
+    val yearTo: Int? = null,
+    val sortBy: String = "follow",
+) {
+    val isActive: Boolean
+        get() = genres.isNotEmpty() || tags.isNotEmpty() || demographics.isNotEmpty() ||
+            countries.isNotEmpty() || status != null || contentRating != null ||
+            minChapters != null || yearFrom != null || yearTo != null
+}
 
 /** Výsledek [ComicKSource.getTop] - data pro ComicK domovskou obrazovku (5 sekcí). Klíče map jsou "7"/"30"/"90" (dny). */
 data class TopFeed(

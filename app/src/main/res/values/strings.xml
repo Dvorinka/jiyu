@@ -456,6 +456,26 @@
     <string name="comick_home_empty">Nic tu není.</string>
     <string name="comick_home_review_by">od %1$s</string>
 
+    <string name="comick_browse_search_placeholder">Hledat na ComicK…</string>
+    <string name="comick_browse_filters">Filtry</string>
+    <string name="comick_browse_apply">Použít filtry</string>
+    <string name="comick_browse_clear_filters">Vymazat filtry</string>
+    <string name="comick_browse_sort">Řazení</string>
+    <string name="comick_browse_sort_rating">Hodnocení</string>
+    <string name="comick_browse_sort_title">Název</string>
+    <string name="comick_browse_type">Typ</string>
+    <string name="comick_browse_type_others">Ostatní</string>
+    <string name="comick_browse_demographic">Demografie</string>
+    <string name="comick_browse_status">Status</string>
+    <string name="comick_browse_content_rating">Obsahové hodnocení</string>
+    <string name="comick_browse_content_rating_safe">Bezpečný</string>
+    <string name="comick_browse_content_rating_suggestive">Sugestivní</string>
+    <string name="comick_browse_content_rating_erotica">Erotický</string>
+    <string name="comick_browse_min_chapters">Min. počet kapitol</string>
+    <string name="comick_browse_year_from">Rok od</string>
+    <string name="comick_browse_year_to">Rok do</string>
+    <string name="comick_browse_tags">Tagy</string>
+
     <string name="detail_chapter_downloaded">Staženo</string>
     <string name="detail_mark_read_up_to">Označit toto i vše starší přečtené</string>
     <string name="detail_mark_all_older_read">Označit vše starší jako přečtené</string>

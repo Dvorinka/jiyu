@@ -11,6 +11,7 @@ import com.haise.jiyu.ui.account.AccountScreen
 import com.haise.jiyu.ui.browse.BrowseScreen
 import com.haise.jiyu.ui.browse.SourceBrowseScreen
 import com.haise.jiyu.ui.community.CommunityScreen
+import com.haise.jiyu.ui.comickhome.ComicKBrowseScreen
 import com.haise.jiyu.ui.comickhome.ComicKHomeScreen
 import com.haise.jiyu.ui.comickhome.ComicKSectionScreen
 import com.haise.jiyu.ui.css.CustomCssScreen
@@ -73,6 +74,7 @@ internal object Routes {
     const val GROUP = "group/{slug}?title={title}"
     const val COMICK_HOME = "comick_home"
     const val COMICK_SECTION = "comick_section/{section}?window={window}&title={title}"
+    const val COMICK_BROWSE = "comick_browse"
 
     // ── Podstránky Nastavení (kategorie) ─────────────────────────────────
     const val SETTINGS_APPEARANCE   = "settings_appearance"
@@ -269,7 +271,7 @@ fun JiyuNavGraph(
         composable(Routes.COMICK_HOME) {
             ComicKHomeScreen(
                 onOpenManga = { mangaId -> navController.navigate(Routes.detail(mangaId)) },
-                onOpenSearch = { navController.navigate(Routes.globalSearch()) },
+                onOpenSearch = { navController.navigate(Routes.COMICK_BROWSE) },
                 onOpenSection = { section, window, title -> navController.navigate(Routes.comickSection(section, window, title)) },
             )
         }
@@ -283,6 +285,13 @@ fun JiyuNavGraph(
             ),
         ) {
             ComicKSectionScreen(
+                onBack = { navController.popBackStack() },
+                onOpenManga = { mangaId -> navController.navigate(Routes.detail(mangaId)) },
+            )
+        }
+
+        composable(Routes.COMICK_BROWSE) {
+            ComicKBrowseScreen(
                 onBack = { navController.popBackStack() },
                 onOpenManga = { mangaId -> navController.navigate(Routes.detail(mangaId)) },
             )

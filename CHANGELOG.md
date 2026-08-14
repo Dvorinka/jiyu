@@ -4,6 +4,26 @@
 > vidět v historii commitů a v popisech jednotlivých vydání na GitHubu; zpětně to sem
 > nedopisuju, abych si nevymýšlel.
 
+## v1.2.9
+
+### Nová obrazovka: Procházet ComicK se všemi filtry, co má web
+Klepnutí na lupu na ComicK domovské obrazovce teď otevře novou obrazovku
+s vyhledáváním a tlačítkem "Filtry" - ověřeno živě proti ComicK API, jde
+filtrovat/kombinovat:
+
+- Žánry a tagy (víc najednou)
+- Typ/původ (Manga/Manhwa/Manhua/Ostatní)
+- Demografie (Shounen/Josei/Seinen/Shoujo)
+- Status (Vychází/Dokončeno/Zrušeno/Přerušeno)
+- Content rating (jen když jsou zapnuté 18+ zdroje v nastavení)
+- Minimální počet kapitol
+- Rok vydání od-do
+- Řazení (Populární/Nejnovější/Hodnocení/Název)
+
+Hot/New přepínač v Aktualizacích appka už měla dřív - jen o pár řádků níž,
+po přepnutí ze záložky Domů na Aktualizace (aktuálně pojmenované Populární/
+Nejnovější).
+
 ## v1.2.8
 
 ### Seznam kapitol ve čtečce se otevíral přes celou obrazovku a vždy od nejnovější kapitoly

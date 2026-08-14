@@ -435,6 +435,26 @@
     <string name="comick_home_empty">No hay nada aquí.</string>
     <string name="comick_home_review_by">por %1$s</string>
 
+    <string name="comick_browse_search_placeholder">Buscar en ComicK…</string>
+    <string name="comick_browse_filters">Filtros</string>
+    <string name="comick_browse_apply">Aplicar filtros</string>
+    <string name="comick_browse_clear_filters">Borrar filtros</string>
+    <string name="comick_browse_sort">Ordenar</string>
+    <string name="comick_browse_sort_rating">Valoración</string>
+    <string name="comick_browse_sort_title">Título</string>
+    <string name="comick_browse_type">Tipo</string>
+    <string name="comick_browse_type_others">Otros</string>
+    <string name="comick_browse_demographic">Demografía</string>
+    <string name="comick_browse_status">Estado</string>
+    <string name="comick_browse_content_rating">Clasificación de contenido</string>
+    <string name="comick_browse_content_rating_safe">Segura</string>
+    <string name="comick_browse_content_rating_suggestive">Sugestiva</string>
+    <string name="comick_browse_content_rating_erotica">Erótica</string>
+    <string name="comick_browse_min_chapters">Mín. de capítulos</string>
+    <string name="comick_browse_year_from">Año desde</string>
+    <string name="comick_browse_year_to">Año hasta</string>
+    <string name="comick_browse_tags">Etiquetas</string>
+
     <string name="detail_chapter_downloaded">Descargado</string>
     <string name="detail_mark_read_up_to">Marcar este y todos los anteriores como leídos</string>
     <string name="detail_mark_all_older_read">Marcar todos los anteriores como leídos</string>

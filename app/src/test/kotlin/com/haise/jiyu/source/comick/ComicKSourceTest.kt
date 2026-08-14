@@ -54,6 +54,14 @@ class ComicKSourceTest {
         <html><body><h1>Covers</h1><p>zadny odkaz na mangadex tady neni</p></body></html>
     """.trimIndent()
 
+    private val genreListJson = """
+        [
+            {"id": 244, "name": "Action", "slug": "action", "group": "Genre"},
+            {"id": 245, "name": "Adventure", "slug": "adventure", "group": "Genre"},
+            {"id": 279, "name": "Adaptation", "slug": "adaptation", "group": "Format"}
+        ]
+    """.trimIndent()
+
     private val mangaDexCoversJson = """
         {"data": [
             {"attributes": {"fileName": "b.jpg", "volume": "1"}},
@@ -70,6 +78,7 @@ class ComicKSourceTest {
                 val path = request.path.orEmpty()
                 return when {
                     path.startsWith("/v1.0/search") -> MockResponse().setBody(searchArrayJson)
+                    path == "/genre" -> MockResponse().setBody(genreListJson)
                     path == "/comic/test-series" -> MockResponse().setBody(mangaDetailJson)
                     path.startsWith("/comic/abcd/chapters") -> MockResponse().setBody(chaptersJson)
                     path.startsWith("/chapter/ch1") -> MockResponse().setBody(pagesJson)
@@ -183,6 +192,53 @@ class ComicKSourceTest {
         val details = source.getMangaDetails(manga)
         assertEquals(true, details.translationCompleted)
         assertEquals(true, details.hasAnime)
+    }
+
+    @Test
+    fun `getGenreList splits results by group and caches after the first call`() = runTest {
+        val result = source.getGenreList()
+        assertEquals(3, result.size)
+        assertEquals(listOf("Action", "Adventure"), result.filter { it.group == "Genre" }.map { it.name })
+        assertEquals(listOf("Adaptation"), result.filter { it.group != "Genre" }.map { it.name })
+
+        source.getGenreList() // druhe volani nesmi jit na sit znovu
+        val genreRequests = generateSequence { server.takeRequest(0, java.util.concurrent.TimeUnit.MILLISECONDS) }
+            .count { it.path?.startsWith("/genre") == true }
+        assertEquals(1, genreRequests)
+    }
+
+    @Test
+    fun `searchAdvanced builds request URL with every filter parameter`() = runTest {
+        source.searchAdvanced(
+            page = 2,
+            filters = ComicKSearchFilters(
+                query = "solo",
+                genres = listOf("action", "adventure"),
+                tags = listOf("time-travel"),
+                demographics = listOf(1, 3),
+                countries = listOf("kr"),
+                status = 2,
+                contentRating = "safe",
+                minChapters = 10,
+                yearFrom = 2020,
+                yearTo = 2024,
+                sortBy = "rating",
+            ),
+        )
+        val request = server.takeRequest()
+        val url = request.path.orEmpty()
+        assertTrue(url.contains("page=2"))
+        assertTrue(url.contains("sort=rating"))
+        assertTrue(url.contains("q=solo"))
+        assertTrue(url.contains("genres=action") && url.contains("genres=adventure"))
+        assertTrue(url.contains("tags=time-travel"))
+        assertTrue(url.contains("demographic=1") && url.contains("demographic=3"))
+        assertTrue(url.contains("country=kr"))
+        assertTrue(url.contains("status=2"))
+        assertTrue(url.contains("content_rating=safe"))
+        assertTrue(url.contains("minimum=10"))
+        assertTrue(url.contains("from=2020"))
+        assertTrue(url.contains("to=2024"))
     }
 
     @Test

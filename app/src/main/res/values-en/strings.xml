@@ -438,6 +438,26 @@
     <string name="comick_home_empty">Nothing here.</string>
     <string name="comick_home_review_by">by %1$s</string>
 
+    <string name="comick_browse_search_placeholder">Search ComicK…</string>
+    <string name="comick_browse_filters">Filters</string>
+    <string name="comick_browse_apply">Apply filters</string>
+    <string name="comick_browse_clear_filters">Clear filters</string>
+    <string name="comick_browse_sort">Sort</string>
+    <string name="comick_browse_sort_rating">Rating</string>
+    <string name="comick_browse_sort_title">Title</string>
+    <string name="comick_browse_type">Type</string>
+    <string name="comick_browse_type_others">Others</string>
+    <string name="comick_browse_demographic">Demographic</string>
+    <string name="comick_browse_status">Status</string>
+    <string name="comick_browse_content_rating">Content rating</string>
+    <string name="comick_browse_content_rating_safe">Safe</string>
+    <string name="comick_browse_content_rating_suggestive">Suggestive</string>
+    <string name="comick_browse_content_rating_erotica">Erotica</string>
+    <string name="comick_browse_min_chapters">Min. chapters</string>
+    <string name="comick_browse_year_from">Year from</string>
+    <string name="comick_browse_year_to">Year to</string>
+    <string name="comick_browse_tags">Tags</string>
+
     <string name="detail_chapter_downloaded">Downloaded</string>
     <string name="detail_mark_read_up_to">Mark this and all older as read</string>
     <string name="detail_mark_all_older_read">Mark all older as read</string>
