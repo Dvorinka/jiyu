@@ -124,11 +124,16 @@ internal object QiFieldShader {
             return mix(b, a, h) - k * h * (1.0 - h);
         }
 
+        // Polomer hlavy - zakladni jednotka pro Loomisuv kanon proporci (viz figure()).
+        const float HEAD_R = 0.082;
+
         /**
          * Silueta sedici postavy. Pocatek souradnic je TANTIEN, y roste nahoru.
          *
-         * Proporce vychazi z vysky hlavy jako jednotky: ~3 hlavy nad tantienem, ~1.5 pod nim,
-         * ramena 2.4 hlavy, zkrizene nohy 4. Stihle, ne nafouknute.
+         * Proporce podle Loomisova kanonu, v nasobcich prumeru hlavy (HEAD_R*2): ramena
+         * ~2.5 hlavy (hrdinska siluetka, Loomis udava 2 1/3 pro beznou postavu), boky ~1.5
+         * hlavy, PAS jen malinko pres 1 hlavu. Prvni verze mela pas 1.45 hlavy skoro bez
+         * zuzeni od hrudi - cetlo se to jako sloup, ne jako V-postava kultivatora.
          *
          * Vse se pocita v zrcadlovem poloprostoru (x = |x|), takze symetricke casti staci
          * napsat i spocitat jednou.
@@ -136,27 +141,45 @@ internal object QiFieldShader {
         float figure(float2 p, float breath) {
             float ch = breath * 0.012;   // dech: hrudnik se lehce zvedne
             float2 m = float2(abs(p.x), p.y);
+            float hd = HEAD_R * 2.0;
 
-            // Zkrizene nohy - kolena zaoblena. Zuzujici se kuzel je to, co dela rozdil mezi
-            // zkrizenyma nohama a polstarem.
+            // Zkrizene nohy - kolena zaoblena, kotveny na ose (a.x=0).
             float d = sdCone(m, float2(0.0, -0.11), float2(0.385, -0.285), 0.135, 0.078);
             d = smin(d, sdSeg(m, float2(0.0, -0.315), float2(0.20, -0.315), 0.058), 0.05);
 
-            // Trup - uzsi v pase, sirsi v hrudi
-            d = smin(d, sdCone(m, float2(0.0, -0.12), float2(0.0, 0.285 + ch), 0.128, 0.148 + ch), 0.055);
-            // Ramena - tenka, aby nedelala boule nad pazemi
-            d = smin(d, sdSeg(m, float2(0.0, 0.288 + ch), float2(0.205, 0.288 + ch), 0.055), 0.04);
+            // Boky - siroka zaoblena zakladna mezi pasem a nohama (~1.5 hlavy), aby trup na
+            // neco "sedel", misto aby presel primo do pasu jako holá tyc.
+            d = smin(d, sdCone(m, float2(0.0, -0.15), float2(0.0, -0.05), hd * 0.72, hd * 0.60), 0.05);
+
+            // Trup: PAS uzky (~1.05 hlavy), HRUD sirsi (~1.85 hlavy) - vyrazny V-tapering.
+            d = smin(d, sdCone(m, float2(0.0, -0.05), float2(0.0, 0.285 + ch), hd * 0.53, hd * 0.925 + ch), 0.05);
+
+            // Ramena - siroka, hladky prechod do pazi jen vetsim smin polomerem (zadny extra
+            // "cap" na konci - ten drivejsi pokus zasahoval az do vysky krku).
+            float shoulderX = hd * 1.24;
+            d = smin(d, sdSeg(m, float2(0.0, 0.282 + ch), float2(shoulderX, 0.282 + ch), 0.058), 0.055);
 
             // Krk a hlava. Viditelny krk je to, co dela z tvaru cloveka.
-            d = smin(d, sdSeg(m, float2(0.0, 0.335 + ch), float2(0.0, 0.415 + ch), 0.036), 0.03);
-            d = smin(d, sdCirc(m, float2(0.0, 0.505 + ch), 0.088), 0.032);
-            // Drdol - levna, ale silna identita wuxia postavy
-            d = smin(d, sdCirc(m, float2(0.0, 0.605 + ch), 0.040), 0.028);
+            d = smin(d, sdSeg(m, float2(0.0, 0.335 + ch), float2(0.0, 0.415 + ch), 0.034), 0.03);
+            d = smin(d, sdCirc(m, float2(0.0, 0.505 + ch), HEAD_R), 0.032);
+
+            // Vlasy: JEDEN dominantni pramen do strany + dva male vousky vzadu. Tri podobne
+            // velke hroty vedle sebe jsou silny archetyp koruny bez ohledu na drobne rozdily
+            // v pozici - rozbit se to musi hrubym rozdilem ve VELIKOSTI a smeru.
+            //
+            // DULEZITE: pouziva se NEZRCADLENE p, ne m! Vlasy jsou zamerne asymetricke -
+            // kdyby se pocitaly v zrcadlenem poloprostoru jako telo, abs(x) by pramen
+            // zdvojil na obe strany a asymetrii by tim smazal.
+            float hy = 0.505 + ch;
+            d = smin(d, sdCone(p, float2(0.010, hy + 0.058), float2(0.135, hy + 0.145), 0.042, 0.008), 0.030);
+            d = smin(d, sdCone(p, float2(-0.045, hy + 0.062), float2(-0.082, hy + 0.100), 0.032, 0.008), 0.024);
+            d = smin(d, sdCone(p, float2(-0.010, hy + 0.070), float2(-0.006, hy + 0.128), 0.028, 0.007), 0.022);
 
             // Pace: lokty daleko od tela, aby mezi pazi a trupem vznikl dost velky negativni
             // prostor. Tenka skvira by se na 260dp zavrela a cetla by jako chyba vykresleni.
-            d = smin(d, sdCone(m, float2(0.195, 0.275 + ch), float2(0.335, 0.02), 0.050, 0.044), 0.035);
-            d = smin(d, sdCone(m, float2(0.335, 0.02), float2(0.095, -0.105), 0.044, 0.040), 0.035);
+            float sx = shoulderX - 0.03;
+            d = smin(d, sdCone(m, float2(sx, 0.268 + ch), float2(0.335, 0.01), 0.050, 0.044), 0.040);
+            d = smin(d, sdCone(m, float2(0.335, 0.01), float2(0.095, -0.105), 0.044, 0.040), 0.035);
             // Ruce slozene v kline
             d = smin(d, sdSeg(m, float2(0.0, -0.105), float2(0.085, -0.105), 0.042), 0.032);
 
