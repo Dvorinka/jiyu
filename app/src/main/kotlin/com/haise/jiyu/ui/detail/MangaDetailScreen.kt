@@ -248,8 +248,8 @@ fun MangaDetailScreen(
                     Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)) {
                         Box(
                             modifier = Modifier
-                                .width(110.dp)
-                                .height(160.dp)
+                                .width(130.dp)
+                                .height(190.dp)
                                 .clip(RoundedCornerShape(12.dp))
                                 .clickable { showCoverFullscreen = true },
                         ) {
@@ -377,53 +377,6 @@ fun MangaDetailScreen(
                     }
                 }
 
-                // ── Description (collapsible) ───────────────────────────────────
-                item {
-                    if (!manga?.description.isNullOrBlank()) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 8.dp)
-                                .clip(RoundedCornerShape(14.dp))
-                                .background(glassGradient)
-                                .border(1.dp, GlowViolet.copy(alpha = 0.2f), RoundedCornerShape(14.dp))
-                                .clickable { descriptionExpanded = !descriptionExpanded }
-                                .padding(14.dp),
-                        ) {
-                            Column {
-                                Text(
-                                    text = stringResource(R.string.detail_description_header),
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = Violet,
-                                    letterSpacing = 2.sp,
-                                    modifier = Modifier.padding(bottom = 6.dp),
-                                )
-                                Text(
-                                    text = manga?.description ?: "",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = TextSecondary,
-                                    maxLines = if (descriptionExpanded) Int.MAX_VALUE else 3,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
-                                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 6.dp)) {
-                                    Text(
-                                        text = if (descriptionExpanded) stringResource(R.string.detail_show_less) else stringResource(R.string.detail_show_more),
-                                        color = GlowCyan,
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.SemiBold,
-                                    )
-                                    Icon(
-                                        imageVector = if (descriptionExpanded) TablerIcons.ChevronUp else TablerIcons.ChevronDown,
-                                        contentDescription = null,
-                                        tint = GlowCyan,
-                                        modifier = Modifier.size(16.dp).padding(start = 4.dp),
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-
                 // ── Akční řádek: Pokračovat + čtecí status ──────────────────────
                 item {
                     val statusOptions = listOf(
@@ -453,8 +406,8 @@ fun MangaDetailScreen(
                             var showReadMenu by remember { mutableStateOf(false) }
                             Row(
                                 modifier = Modifier
-                                    .weight(2f)
-                                    .clip(RoundedCornerShape(16.dp))
+                                    .weight(3f)
+                                    .clip(RoundedCornerShape(10.dp))
                                     .background(Brush.linearGradient(listOf(GlowViolet, GlowCyan.copy(alpha = 0.9f)))),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
@@ -495,13 +448,13 @@ fun MangaDetailScreen(
                             }
                         }
 
-                        Box(modifier = Modifier.weight(1f)) {
+                        Box(modifier = Modifier.weight(2f)) {
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .clip(RoundedCornerShape(16.dp))
+                                    .clip(RoundedCornerShape(10.dp))
                                     .background(statusColor.copy(alpha = 0.15f))
-                                    .border(1.dp, statusColor.copy(alpha = 0.4f), RoundedCornerShape(16.dp))
+                                    .border(1.dp, statusColor.copy(alpha = 0.4f), RoundedCornerShape(10.dp))
                                     .clickable { statusDropdownExpanded = true }
                                     .padding(horizontal = 12.dp, vertical = 16.dp),
                                 horizontalArrangement = Arrangement.Center,
@@ -518,6 +471,54 @@ fun MangaDetailScreen(
                                             viewModel.setReadingStatus(if (readingStatus == key) null else key)
                                             statusDropdownExpanded = false
                                         },
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // ── Description (collapsible) - ZAMERNE AZ PO akcnim radku (uzivatelsky
+                // pozadavek podle ComicK layoutu: obalka+info -> tlacitka -> popis) ─────
+                item {
+                    if (!manga?.description.isNullOrBlank()) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 8.dp)
+                                .clip(RoundedCornerShape(14.dp))
+                                .background(glassGradient)
+                                .border(1.dp, GlowViolet.copy(alpha = 0.2f), RoundedCornerShape(14.dp))
+                                .clickable { descriptionExpanded = !descriptionExpanded }
+                                .padding(14.dp),
+                        ) {
+                            Column {
+                                Text(
+                                    text = stringResource(R.string.detail_description_header),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = Violet,
+                                    letterSpacing = 2.sp,
+                                    modifier = Modifier.padding(bottom = 6.dp),
+                                )
+                                Text(
+                                    text = manga?.description ?: "",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = TextSecondary,
+                                    maxLines = if (descriptionExpanded) Int.MAX_VALUE else 3,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 6.dp)) {
+                                    Text(
+                                        text = if (descriptionExpanded) stringResource(R.string.detail_show_less) else stringResource(R.string.detail_show_more),
+                                        color = GlowCyan,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                    )
+                                    Icon(
+                                        imageVector = if (descriptionExpanded) TablerIcons.ChevronUp else TablerIcons.ChevronDown,
+                                        contentDescription = null,
+                                        tint = GlowCyan,
+                                        modifier = Modifier.size(16.dp).padding(start = 4.dp),
                                     )
                                 }
                             }
