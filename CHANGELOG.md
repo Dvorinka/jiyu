@@ -4,6 +4,17 @@
 > vidět v historii commitů a v popisech jednotlivých vydání na GitHubu; zpětně to sem
 > nedopisuju, abych si nevymýšlel.
 
+## v1.2.12
+
+### Nová ikona appky
+Fialové dveře na schodech (nahradila předchozí ikonu).
+
+### "Další možnosti" ve čtečce (překlad atd.) se zavíralo samo pod rukama
+Auto-schovávání ovládacích prvků běželo dál i s otevřeným sheetem
+(jazyky/překlad/orientace) - zmizelo po 3s bez ohledu na to, že v něm
+uživatel aktivně pracoval. Teď se sheet zavře jen explicitním tapnutím
+mimo. Základní zpoždění schovávání lišt taky prodlouženo (3s → 5s).
+
 ## v1.2.11
 
 ### Tlačítko Pokračovat na detailu titulu - úprava podle ComicK
