@@ -473,7 +473,7 @@ internal fun ComicKMangaCard(manga: SManga, onClick: () -> Unit) {
     Box(
         modifier = Modifier
             .width(110.dp)
-            .aspectRatio(0.68f)
+            .aspectRatio(0.74f)
             .scale(scale)
             .clip(RoundedCornerShape(12.dp))
             .border(1.dp, GlowCyan.copy(alpha = 0.25f), RoundedCornerShape(12.dp))

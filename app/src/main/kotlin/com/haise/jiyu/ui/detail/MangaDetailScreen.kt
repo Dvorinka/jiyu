@@ -249,7 +249,7 @@ fun MangaDetailScreen(
                         Box(
                             modifier = Modifier
                                 .width(130.dp)
-                                .height(190.dp)
+                                .height(176.dp)
                                 .clip(RoundedCornerShape(12.dp))
                                 .clickable { showCoverFullscreen = true },
                         ) {

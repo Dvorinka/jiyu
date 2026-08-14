@@ -942,7 +942,7 @@ private fun RelatedMangaCard(manga: SManga, onClick: () -> Unit) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .aspectRatio(0.68f)
+                .aspectRatio(0.74f)
                 .clip(RoundedCornerShape(10.dp))
                 .border(1.dp, GlowViolet.copy(alpha = 0.25f), RoundedCornerShape(10.dp)),
         ) {

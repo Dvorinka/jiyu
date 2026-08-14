@@ -328,7 +328,7 @@ private fun BrowseMangaCard(manga: SManga, isLoading: Boolean = false, onClick: 
 
     Box(
         modifier = Modifier
-            .aspectRatio(0.68f)
+            .aspectRatio(0.74f)
             .scale(scale)
             .violetGlow(radius = 14f, alpha = 0.12f)
             .clip(RoundedCornerShape(12.dp))

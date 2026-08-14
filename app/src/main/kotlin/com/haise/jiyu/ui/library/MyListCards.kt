@@ -143,7 +143,7 @@ internal fun AnimeMangaCard(
     )
     Box(
         modifier = Modifier
-            .aspectRatio(0.68f)
+            .aspectRatio(0.74f)
             .scale(scale)
             .violetGlow(radius = 16f, alpha = if (isSelected) 0.4f else 0.15f)
             .clip(RoundedCornerShape(12.dp))
