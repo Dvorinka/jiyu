@@ -349,17 +349,28 @@ fun ReaderBottomPanel(
     var showMore by remember { mutableStateOf(false) }
     val canJumpPage = pageCount > 1
     val dimTint = Color.White.copy(alpha = 0.25f)
-    val liveTint = Color.White.copy(alpha = 0.85f)
+    val liveTint = Color.White.copy(alpha = 0.9f)
+    // Tmava namornicka karta stejne barvy jako ostatni sheety v ctecce (Color(0xFF111B35)),
+    // ale skoro nepruhledna - drivejsi verze mela jen tenky cerny povlak (alpha 0.75 na
+    // cistem cernem), ktery na stranky pusobil jako slaby povlak, ne jako pevna karta.
+    val cardColor = Color(0xFF111B35).copy(alpha = 0.94f)
+    val cardShape = RoundedCornerShape(26.dp)
 
+    // Zamerne BEZ pozadi na cele plose - lišta ma "plovat" nad strankou s mezerou od
+    // okraju obrazovky (zaoblena karta), ne byt nalepena na spodni hranu na celou sirku.
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .background(Color.Black.copy(alpha = 0.75f))
-            .windowInsetsPadding(WindowInsets.safeDrawing),
+            .windowInsetsPadding(WindowInsets.safeDrawing)
+            .padding(horizontal = 20.dp, vertical = 10.dp),
     ) {
         if (showBrightness) {
             Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(cardShape)
+                    .background(cardColor)
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Icon(TablerIcons.Moon, contentDescription = null, tint = Color.White.copy(alpha = 0.5f), modifier = Modifier.size(16.dp))
@@ -379,10 +390,15 @@ fun ReaderBottomPanel(
                 )
                 Icon(TablerIcons.Sun, contentDescription = null, tint = Color.White.copy(alpha = 0.9f), modifier = Modifier.size(16.dp))
             }
+            Spacer(Modifier.height(8.dp))
         }
 
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(cardShape)
+                .background(cardColor)
+                .padding(horizontal = 4.dp, vertical = 6.dp),
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -391,7 +407,7 @@ fun ReaderBottomPanel(
                     TablerIcons.PlayerSkipBack,
                     contentDescription = stringResource(R.string.reader_first_page_desc),
                     tint = if (canJumpPage) liveTint else dimTint,
-                    modifier = Modifier.size(19.dp),
+                    modifier = Modifier.size(21.dp),
                 )
             }
             IconButton(onClick = onToggleTranslate, modifier = Modifier.size(40.dp)) {
@@ -409,7 +425,7 @@ fun ReaderBottomPanel(
                         translateMode -> Color(0xFF4FC3F7)
                         else          -> liveTint
                     },
-                    modifier = Modifier.size(19.dp),
+                    modifier = Modifier.size(21.dp),
                 )
             }
             IconButton(onClick = onNavigateNext, enabled = hasNextChapter, modifier = Modifier.size(40.dp)) {
@@ -417,7 +433,7 @@ fun ReaderBottomPanel(
                     TablerIcons.ArrowRight,
                     contentDescription = stringResource(R.string.reader_next_chapter_desc),
                     tint = if (hasNextChapter) liveTint else dimTint,
-                    modifier = Modifier.size(19.dp),
+                    modifier = Modifier.size(21.dp),
                 )
             }
             IconButton(onClick = { onJumpToPage(pageCount - 1) }, enabled = canJumpPage, modifier = Modifier.size(40.dp)) {
@@ -425,7 +441,7 @@ fun ReaderBottomPanel(
                     TablerIcons.PlayerSkipForward,
                     contentDescription = stringResource(R.string.reader_last_page_desc),
                     tint = if (canJumpPage) liveTint else dimTint,
-                    modifier = Modifier.size(19.dp),
+                    modifier = Modifier.size(21.dp),
                 )
             }
             IconButton(onClick = { showBrightness = !showBrightness }, modifier = Modifier.size(40.dp)) {
@@ -433,7 +449,7 @@ fun ReaderBottomPanel(
                     TablerIcons.Sun,
                     contentDescription = stringResource(R.string.reader_brightness_desc),
                     tint = if (showBrightness) Color(0xFFFFD54F) else liveTint,
-                    modifier = Modifier.size(19.dp),
+                    modifier = Modifier.size(21.dp),
                 )
             }
             IconButton(onClick = { showMore = true }, modifier = Modifier.size(40.dp)) {
@@ -441,7 +457,7 @@ fun ReaderBottomPanel(
                     TablerIcons.DotsVertical,
                     contentDescription = stringResource(R.string.reader_more_options_desc),
                     tint = liveTint,
-                    modifier = Modifier.size(19.dp),
+                    modifier = Modifier.size(21.dp),
                 )
             }
         }
