@@ -4,6 +4,19 @@
 > vidět v historii commitů a v popisech jednotlivých vydání na GitHubu; zpětně to sem
 > nedopisuju, abych si nevymýšlel.
 
+## v1.2.14
+
+### Aktualizace na Domů se teď načítají celé, ne jen náhled
+Sekce Aktualizace dole na Domů se dřív ořízla na pár položek s odkazem
+"Zobrazit vše" - teď se načítá úplně celá (nekonečné scrollování), stejně
+jako to má ComicK.
+
+### Záložka "Aktualizace" nahoře nahrazena "Procházet"
+Protože je teď celý feed Aktualizací rovnou na Domů, samostatná záložka
+"Aktualizace" nahoře (vedle "Domů") byla zbytečná - nahrazena tlačítkem
+"Procházet", které otevře obrazovku hledání a filtrů (stejná, kterou appka
+otevírala z lupy nahoře).
+
 ## v1.2.13
 
 ### Aktualizace (Hot/New) jako mřížka obálek, stylem ComicK

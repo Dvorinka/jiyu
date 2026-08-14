@@ -26,11 +26,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.GridItemSpan
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items as gridItems
-import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Button
@@ -91,10 +87,10 @@ import java.util.Locale
 fun ComicKHomeScreen(
     onOpenManga: (String) -> Unit,
     onOpenSearch: () -> Unit,
+    onOpenBrowse: () -> Unit,
     onOpenSection: (section: String, window: String?, title: String) -> Unit,
     viewModel: ComicKHomeViewModel = hiltViewModel(),
 ) {
-    val tab by viewModel.tab.collectAsState()
     val topFeed by viewModel.topFeed.collectAsState()
     val loading by viewModel.loading.collectAsState()
     val error by viewModel.error.collectAsState()
@@ -136,19 +132,30 @@ fun ComicKHomeScreen(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    listOf(HomeTab.HOME to stringResource(R.string.comick_home_tab_home), HomeTab.UPDATES to stringResource(R.string.comick_home_tab_updates)).forEach { (t, label) ->
-                        val selected = tab == t
-                        Button(
-                            onClick = { if (!selected) viewModel.setTab(t) },
-                            modifier = Modifier.weight(1f),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = if (selected) Violet.copy(alpha = 0.2f) else Color.Transparent,
-                                contentColor = if (selected) Violet else TextSecondary,
-                            ),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, if (selected) Violet.copy(alpha = 0.5f) else TextSecondary.copy(alpha = 0.15f)),
-                            elevation = null,
-                        ) { Text(label, fontSize = 13.sp) }
-                    }
+                    // "Domu" uz neni prepinatelna zalozka (Aktualizace je od teď rovnou
+                    // soucasti Domu, viz uzivatelsky pozadavek) - zustava jako vizualni
+                    // "jsi tady" indikator. Misto Aktualizace je tlacitko na Prochazet
+                    // (search+filtry obrazovka, viz ComicKBrowseScreen).
+                    Button(
+                        onClick = {},
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Violet.copy(alpha = 0.2f),
+                            contentColor = Violet,
+                        ),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Violet.copy(alpha = 0.5f)),
+                        elevation = null,
+                    ) { Text(stringResource(R.string.comick_home_tab_home), fontSize = 13.sp) }
+                    Button(
+                        onClick = onOpenBrowse,
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color.Transparent,
+                            contentColor = TextSecondary,
+                        ),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, TextSecondary.copy(alpha = 0.15f)),
+                        elevation = null,
+                    ) { Text(stringResource(R.string.main_screen_tab_browse), fontSize = 13.sp) }
                 }
             }
         },
@@ -170,7 +177,7 @@ fun ComicKHomeScreen(
                         OutlinedButton(onClick = { viewModel.retry() }) { Text(stringResource(R.string.common_retry), color = Violet) }
                     }
                 }
-                tab == HomeTab.HOME -> {
+                else -> {
                     val feed = topFeed
                     if (feed == null) {
                         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -178,7 +185,27 @@ fun ComicKHomeScreen(
                         }
                     } else {
                         val navBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-                        LazyColumn(contentPadding = PaddingValues(bottom = 16.dp + navBottom)) {
+                        val updates by viewModel.updates.collectAsState()
+                        val updatesOrder by viewModel.updatesOrder.collectAsState()
+                        val updatesLoading by viewModel.updatesLoading.collectAsState()
+                        val updatesError by viewModel.updatesError.collectAsState()
+                        val homeListState = rememberLazyListState()
+
+                        // Aktualizace na Domu uz nejsou oreznuty nahled s "Zobrazit vse" -
+                        // uzivatelsky pozadavek: maji se nacitat vsechny, rovnou tady dole,
+                        // stejne jako na vlastni zalozce Aktualizace.
+                        val shouldLoadMoreUpdates by remember {
+                            derivedStateOf {
+                                val lastVisible = homeListState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+                                val totalItems = homeListState.layoutInfo.totalItemsCount
+                                lastVisible >= totalItems - 4 && totalItems > 0
+                            }
+                        }
+                        LaunchedEffect(shouldLoadMoreUpdates) {
+                            if (shouldLoadMoreUpdates && !updatesLoading) viewModel.loadMoreUpdates()
+                        }
+
+                        LazyColumn(state = homeListState, contentPadding = PaddingValues(bottom = 16.dp + navBottom)) {
                             item {
                                 val recentlyAddedLabel = stringResource(R.string.comick_home_recently_added)
                                 val completedLabel = stringResource(R.string.comick_home_completed)
@@ -223,85 +250,48 @@ fun ComicKHomeScreen(
                                 )
                             }
                             item {
-                                val updates by viewModel.updates.collectAsState()
-                                val updatesOrder by viewModel.updatesOrder.collectAsState()
-                                UpdatesPreviewSection(
-                                    updates = updates.take(8),
+                                UpdatesFeedHeader(
                                     order = updatesOrder,
                                     onOrderChange = { viewModel.setUpdatesOrder(it) },
-                                    onOpenManga = ::openManga,
-                                    onViewAll = { viewModel.setTab(HomeTab.UPDATES) },
                                 )
                             }
-                        }
-                    }
-                }
-                tab == HomeTab.UPDATES -> {
-                    val updates by viewModel.updates.collectAsState()
-                    val updatesOrder by viewModel.updatesOrder.collectAsState()
-                    val updatesLoading by viewModel.updatesLoading.collectAsState()
-                    val updatesError by viewModel.updatesError.collectAsState()
-                    val listState = rememberLazyGridState()
-
-                    val shouldLoadMore by remember {
-                        derivedStateOf {
-                            val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
-                            val totalItems = listState.layoutInfo.totalItemsCount
-                            lastVisible >= totalItems - 6 && totalItems > 0
-                        }
-                    }
-                    LaunchedEffect(shouldLoadMore) {
-                        if (shouldLoadMore && !updatesLoading) viewModel.loadMoreUpdates()
-                    }
-
-                    Column {
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            listOf("hot" to stringResource(R.string.source_browse_popular), "new" to stringResource(R.string.source_browse_latest)).forEach { (value, label) ->
-                                val selected = updatesOrder == value
-                                Button(
-                                    onClick = { if (!selected) viewModel.setUpdatesOrder(value) },
-                                    modifier = Modifier.weight(1f),
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = if (selected) Violet.copy(alpha = 0.2f) else Color.Transparent,
-                                        contentColor = if (selected) Violet else TextSecondary,
-                                    ),
-                                    border = androidx.compose.foundation.BorderStroke(1.dp, if (selected) Violet.copy(alpha = 0.5f) else TextSecondary.copy(alpha = 0.15f)),
-                                    elevation = null,
-                                ) { Text(label, fontSize = 13.sp) }
-                            }
-                        }
-                        if (updatesError != null) {
-                            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(32.dp)) {
-                                    Text(stringResource(R.string.comick_home_load_failed), color = TextSecondary, fontSize = 14.sp)
-                                    Text(updatesError ?: "", color = TextSecondary.copy(alpha = 0.6f), fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp, bottom = 16.dp))
-                                    OutlinedButton(onClick = { viewModel.retry() }) { Text(stringResource(R.string.common_retry), color = Violet) }
+                            if (updatesError != null) {
+                                item {
+                                    Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+                                        Text(stringResource(R.string.comick_home_load_failed), color = TextSecondary, fontSize = 13.sp)
+                                        Text(updatesError ?: "", color = TextSecondary.copy(alpha = 0.6f), fontSize = 11.sp, modifier = Modifier.padding(top = 2.dp, bottom = 8.dp))
+                                        OutlinedButton(onClick = { viewModel.retryUpdates() }) { Text(stringResource(R.string.common_retry), color = Violet) }
+                                    }
                                 }
-                            }
-                        } else if (updates.isEmpty() && !updatesLoading) {
-                            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                Text(stringResource(R.string.comick_home_empty), color = TextSecondary, fontSize = 14.sp)
-                            }
-                        } else {
-                            val navBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-                            LazyVerticalGrid(
-                                columns = GridCells.Fixed(2),
-                                state = listState,
-                                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                                verticalArrangement = Arrangement.spacedBy(14.dp),
-                                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 16.dp + navBottom),
-                            ) {
-                                gridItems(updates, key = { it.chapter.sourceId + it.chapter.url }) { update ->
-                                    UpdateGridCard(update = update, onClick = { openManga(update.comic) })
+                            } else if (updates.isEmpty() && !updatesLoading) {
+                                item {
+                                    Text(
+                                        stringResource(R.string.comick_home_empty),
+                                        color = TextSecondary,
+                                        fontSize = 13.sp,
+                                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                                    )
                                 }
-                                if (updatesLoading) {
-                                    item(span = { GridItemSpan(maxLineSpan) }) {
-                                        Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
-                                            JiyuLoadingIndicator(size = 24.dp, strokeWidth = 2.dp)
+                            } else {
+                                items(
+                                    updates.chunked(2),
+                                    key = { pair -> pair.joinToString("|") { it.chapter.sourceId + it.chapter.url } },
+                                ) { rowItems ->
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                    ) {
+                                        rowItems.forEach { update ->
+                                            UpdateGridCard(update = update, onClick = { openManga(update.comic) }, modifier = Modifier.weight(1f))
                                         }
+                                        if (rowItems.size == 1) Spacer(modifier = Modifier.weight(1f))
+                                    }
+                                }
+                            }
+                            if (updatesLoading) {
+                                item {
+                                    Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                                        JiyuLoadingIndicator(size = 24.dp, strokeWidth = 2.dp)
                                     }
                                 }
                             }
@@ -433,21 +423,19 @@ private fun ReviewSection(reviews: List<ReviewItem>, onOpenManga: (SManga) -> Un
 }
 
 /**
- * Krátký náhled Aktualizací přímo na Domů (uživatelský požadavek - dřív šlo
- * vidět jen po přepnutí na záložku Aktualizace). Hot/New přepínač sdílí stejný
- * [ComicKHomeViewModel.updates]/[ComicKHomeViewModel.updatesOrder] stav jako
- * plná záložka - "Zobrazit vše" na ni jen přepne, nenačítá nic znovu.
+ * Nadpis + Hot/New přepínač pro Aktualizace přímo na Domů. Feed pod ním se
+ * teď načítá celý (nekonečné scrollování ve stejném LazyColumn jako zbytek
+ * Domů, viz [ComicKHomeScreen]) - uživatelský požadavek, žádné "Zobrazit vše"
+ * omezení, protože už nic dalšího není kam zobrazit.
  */
 @Composable
-private fun UpdatesPreviewSection(
-    updates: List<ChapterUpdate>,
-    order: String,
-    onOrderChange: (String) -> Unit,
-    onOpenManga: (SManga) -> Unit,
-    onViewAll: () -> Unit,
-) {
+private fun UpdatesFeedHeader(order: String, onOrderChange: (String) -> Unit) {
     Column {
-        SectionHeader(stringResource(R.string.comick_home_tab_updates), onViewAll)
+        Text(
+            stringResource(R.string.comick_home_tab_updates),
+            color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+        )
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 2.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -466,31 +454,6 @@ private fun UpdatesPreviewSection(
                 selected = order == "new",
                 onClick = { onOrderChange("new") },
             )
-        }
-        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
-            if (updates.isEmpty()) {
-                Text(
-                    stringResource(R.string.comick_home_empty),
-                    color = TextSecondary,
-                    fontSize = 13.sp,
-                    modifier = Modifier.padding(vertical = 12.dp),
-                )
-            } else {
-                // Nahled neni lazy (jen par polozek predem oreznutych) - staci proste
-                // rucne rozdelit po dvou do radku, misto zanorovat dalsi lazy mrizku
-                // do uz scrollujiciho LazyColumn na Domu.
-                updates.chunked(2).forEach { rowItems ->
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(bottom = 14.dp),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    ) {
-                        rowItems.forEach { update ->
-                            UpdateGridCard(update = update, onClick = { onOpenManga(update.comic) }, modifier = Modifier.weight(1f))
-                        }
-                        if (rowItems.size == 1) Spacer(modifier = Modifier.weight(1f))
-                    }
-                }
-            }
         }
     }
 }

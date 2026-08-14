@@ -16,17 +16,18 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-enum class HomeTab { HOME, UPDATES }
-
-/** ComicK domovská obrazovka - Domů (5 sekcí z /top) + Aktualizace (chapter feed z /chapter). */
+/**
+ * ComicK domovská obrazovka - 5 sekcí z /top + Aktualizace (chapter feed z
+ * /chapter) jako poslední, nekonečně scrollovatelná sekce v témže seznamu.
+ * Dřív měla vlastní záložku ("Aktualizace" nahoře vedle "Domů") - zrušeno,
+ * protože feed je teď celý rovnou tady (uživatelský požadavek); to místo
+ * v horní liště zabralo tlačítko "Procházet" (viz [ComicKHomeScreen]).
+ */
 @HiltViewModel
 class ComicKHomeViewModel @Inject constructor(
     private val comicKSource: ComicKSource,
     private val repository: MangaRepository,
 ) : ViewModel() {
-
-    private val _tab = MutableStateFlow(HomeTab.HOME)
-    val tab: StateFlow<HomeTab> = _tab.asStateFlow()
 
     private val _topFeed = MutableStateFlow<TopFeed?>(null)
     val topFeed: StateFlow<TopFeed?> = _topFeed.asStateFlow()
@@ -75,8 +76,12 @@ class ComicKHomeViewModel @Inject constructor(
     }
 
     fun retry() {
-        if (_tab.value == HomeTab.HOME) loadTop() else loadUpdatesFirstPage()
+        loadTop()
+        if (_updates.value.isEmpty()) loadUpdatesFirstPage()
     }
+
+    /** Retry jen pro Aktualizace feed (dole na Domů) - nemusi znovu tahat /top. */
+    fun retryUpdates() = loadUpdatesFirstPage()
 
     private fun loadTop() {
         viewModelScope.launch {
@@ -91,11 +96,6 @@ class ComicKHomeViewModel @Inject constructor(
                 _loading.value = false
             }
         }
-    }
-
-    fun setTab(newTab: HomeTab) {
-        _tab.value = newTab
-        if (newTab == HomeTab.UPDATES && _updates.value.isEmpty()) loadUpdatesFirstPage()
     }
 
     fun setShowCompleted(completed: Boolean) { _showCompleted.value = completed }

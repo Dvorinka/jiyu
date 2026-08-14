@@ -272,6 +272,7 @@ fun JiyuNavGraph(
             ComicKHomeScreen(
                 onOpenManga = { mangaId -> navController.navigate(Routes.detail(mangaId)) },
                 onOpenSearch = { navController.navigate(Routes.COMICK_BROWSE) },
+                onOpenBrowse = { navController.navigate(Routes.COMICK_BROWSE) },
                 onOpenSection = { section, window, title -> navController.navigate(Routes.comickSection(section, window, title)) },
             )
         }
