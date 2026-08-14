@@ -164,15 +164,15 @@ fun ReaderScreen(
         )
     }
 
-    // Fullscreen immersive (conditionally)
+    // Fullscreen immersive (podle nastavení čtečky); mimo čtečku appka lišty
+    // schovává vždy (viz MainActivity), takže po odchodu je necháváme schované
     val view = LocalView.current
     DisposableEffect(fullscreenEnabled) {
         val ctrl = WindowCompat.getInsetsController((view.context as Activity).window, view)
-        if (fullscreenEnabled) {
-            ctrl.hide(WindowInsetsCompat.Type.systemBars())
-            ctrl.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-        }
-        onDispose { ctrl.show(WindowInsetsCompat.Type.systemBars()) }
+        ctrl.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        if (fullscreenEnabled) ctrl.hide(WindowInsetsCompat.Type.systemBars())
+        else ctrl.show(WindowInsetsCompat.Type.systemBars())
+        onDispose { ctrl.hide(WindowInsetsCompat.Type.systemBars()) }
     }
 
     DisposableEffect(keepScreenOn) {

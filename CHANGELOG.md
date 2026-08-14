@@ -4,6 +4,36 @@
 > vidět v historii commitů a v popisech jednotlivých vydání na GitHubu; zpětně to sem
 > nedopisuju, abych si nevymýšlel.
 
+## v1.2.4
+
+### Appka nechávala nahoře pruh se status barem, i kolem výřezu kamery
+Mimo čtečku appka pořád rezervovala plnou výšku status baru (naschvál zvětšenou
+systémem kvůli výřezu přední kamery), takže nahoře byl vidět prázdný pruh -
+zvlášť nápadné na telefonech se středovým "punch-hole" výřezem (např. Galaxy S26
+Ultra). Čtečka už dřív běžela na celou obrazovku (systémové lišty schované,
+vytáhnou se tažením od okraje) - teď stejné chování platí všude v appce, ne jen
+při čtení kapitoly.
+
+### Asura Scans nezobrazoval autora/kresliče/status
+`AsuraScansSource` měl rozbitý CSS selektor na autora (vracel text "Search"
+místo jména) a vůbec nečetl kresliče ani status vydávání. Opraveno přesným
+hledáním podle popisku pole místo hádání podle okolí v HTML.
+
+### Detail titulu předělaný podle vzoru ComicK
+Větší obálka, méně zaoblená a vyváženěji široká tlačítka, popis díla přesunutý
+až pod tlačítka akcí (dřív byl nad nimi) - odpovídá rozvržení, jaké má ComicK
+na svém webu.
+
+### Obálky v knihovně byly moc "vytáhlé"
+Poměr stran karet s obálkami byl napříč appkou nastavený na 0.68 - sjednoceno
+na 0.74, obálky teď vypadají přirozeněji.
+
+### Nová funkce: galerie všech historických obálek titulu (jen ComicK agregátor)
+Klepnutím na obálku titulu z ComicK zdroje appka teď (stejně jako web comick.io)
+zobrazí mřížku všech obálek, které kdy byly k titulu použity, včetně čísla
+svazku. Data appka bere z veřejného MangaDex Cover Art API, protože ComicK je
+u sebe nedrží.
+
 ## v1.2.3
 
 ### Asura Scans ukazoval manhwa tituly jako Manga

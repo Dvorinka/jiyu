@@ -18,6 +18,8 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.compose.rememberNavController
 import com.haise.jiyu.settings.SettingsRepository
@@ -63,6 +65,12 @@ class MainActivity : AppCompatActivity() {
         // Obsah se kreslí kolem výřezu přední kamery (notch / punch-hole)
         window.attributes.layoutInDisplayCutoutMode =
             WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
+
+        // Appka běží na celou obrazovku bez rezervovaného pruhu pro status/nav bar
+        // (stejně jako čtečka); lišty jdou dočasně vytáhnout tažením od okraje
+        val insetsController = WindowCompat.getInsetsController(window, window.decorView)
+        insetsController.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        insetsController.hide(WindowInsetsCompat.Type.systemBars())
 
         // Cold start: notifikace nebo widget tap, appka nebyla v paměti
         intent?.data?.takeIf { it.scheme == "jiyu" && it.host != "anilist" && it.host != "mal-auth" }
