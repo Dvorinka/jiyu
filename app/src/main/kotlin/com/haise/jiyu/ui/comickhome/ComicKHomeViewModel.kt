@@ -68,6 +68,10 @@ class ComicKHomeViewModel @Inject constructor(
 
     init {
         loadTop()
+        // Nacte se hned, ne az pri prepnuti na zalozku Aktualizace - Domu ted
+        // ukazuje kratky nahled Hot/New aktualizaci rovnou na sobe (uzivatelsky
+        // pozadavek, "stylem jak to ma comic").
+        loadUpdatesFirstPage()
     }
 
     fun retry() {

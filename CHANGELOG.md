@@ -4,6 +4,15 @@
 > vidět v historii commitů a v popisech jednotlivých vydání na GitHubu; zpětně to sem
 > nedopisuju, abych si nevymýšlel.
 
+## v1.2.10
+
+### Aktualizace (Hot/New) teď rovnou na Domů, ne jen na vlastní záložce
+Přidána nová sekce dole na ComicK Domů, hned pod "Nedávné recenze" - krátký
+náhled posledních aktualizací kapitol s přepínačem Hot (🔥)/New (☀️), stylem
+podobně jako na ComicK webu. "Zobrazit vše" přepne na plnou záložku
+Aktualizace se stejným řazením. Data se teď načtou hned při otevření Domů,
+ne až při prvním přepnutí na Aktualizace.
+
 ## v1.2.9
 
 ### Nová obrazovka: Procházet ComicK se všemi filtry, co má web

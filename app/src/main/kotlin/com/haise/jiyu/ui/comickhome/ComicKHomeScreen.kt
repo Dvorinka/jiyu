@@ -75,7 +75,9 @@ import com.haise.jiyu.ui.theme.Violet
 import com.haise.jiyu.ui.theme.screenGradient
 import compose.icons.TablerIcons
 import compose.icons.tablericons.Book
+import compose.icons.tablericons.Flame
 import compose.icons.tablericons.Search
+import compose.icons.tablericons.Sun
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -213,6 +215,17 @@ fun ComicKHomeScreen(
                                     reviews = feed.recentReviews.take(15),
                                     onOpenManga = ::openManga,
                                     onViewAll = { onOpenSection("recent_reviews", null, label) },
+                                )
+                            }
+                            item {
+                                val updates by viewModel.updates.collectAsState()
+                                val updatesOrder by viewModel.updatesOrder.collectAsState()
+                                UpdatesPreviewSection(
+                                    updates = updates.take(6),
+                                    order = updatesOrder,
+                                    onOrderChange = { viewModel.setUpdatesOrder(it) },
+                                    onOpenManga = ::openManga,
+                                    onViewAll = { viewModel.setTab(HomeTab.UPDATES) },
                                 )
                             }
                         }
@@ -410,6 +423,86 @@ private fun ReviewSection(reviews: List<ReviewItem>, onOpenManga: (SManga) -> Un
                 ReviewCard(review = review, onClick = { onOpenManga(review.comic) })
             }
         }
+    }
+}
+
+/**
+ * Krátký náhled Aktualizací přímo na Domů (uživatelský požadavek - dřív šlo
+ * vidět jen po přepnutí na záložku Aktualizace). Hot/New přepínač sdílí stejný
+ * [ComicKHomeViewModel.updates]/[ComicKHomeViewModel.updatesOrder] stav jako
+ * plná záložka - "Zobrazit vše" na ni jen přepne, nenačítá nic znovu.
+ */
+@Composable
+private fun UpdatesPreviewSection(
+    updates: List<ChapterUpdate>,
+    order: String,
+    onOrderChange: (String) -> Unit,
+    onOpenManga: (SManga) -> Unit,
+    onViewAll: () -> Unit,
+) {
+    Column {
+        SectionHeader(stringResource(R.string.comick_home_tab_updates), onViewAll)
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 2.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            UpdatesOrderChip(
+                label = stringResource(R.string.source_browse_popular),
+                icon = TablerIcons.Flame,
+                selectedColor = Color(0xFFF97316),
+                selected = order == "hot",
+                onClick = { onOrderChange("hot") },
+            )
+            UpdatesOrderChip(
+                label = stringResource(R.string.source_browse_latest),
+                icon = TablerIcons.Sun,
+                selectedColor = Violet,
+                selected = order == "new",
+                onClick = { onOrderChange("new") },
+            )
+        }
+        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
+            if (updates.isEmpty()) {
+                Text(
+                    stringResource(R.string.comick_home_empty),
+                    color = TextSecondary,
+                    fontSize = 13.sp,
+                    modifier = Modifier.padding(vertical = 12.dp),
+                )
+            } else {
+                updates.forEach { update ->
+                    UpdateRow(update = update, onClick = { onOpenManga(update.comic) })
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun UpdatesOrderChip(
+    label: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    selectedColor: Color,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        modifier = Modifier
+            .clip(RoundedCornerShape(50.dp))
+            .background(if (selected) selectedColor.copy(alpha = 0.18f) else Color.Transparent)
+            .border(1.dp, if (selected) selectedColor.copy(alpha = 0.5f) else TextSecondary.copy(alpha = 0.15f), RoundedCornerShape(50.dp))
+            .pointerInput(Unit) { detectTapGestures(onTap = { onClick() }) }
+            .padding(horizontal = 12.dp, vertical = 6.dp),
+    ) {
+        Icon(icon, contentDescription = null, tint = if (selected) selectedColor else TextSecondary, modifier = Modifier.size(14.dp))
+        Text(
+            label,
+            color = if (selected) selectedColor else TextSecondary,
+            fontSize = 12.sp,
+            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+        )
     }
 }
 
