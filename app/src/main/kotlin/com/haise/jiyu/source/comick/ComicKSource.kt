@@ -186,6 +186,47 @@ class ComicKSource @Inject constructor(
             )
         }
 
+    /**
+     * Vsechny historicke obalky titulu (vsechny svazky, vcetne starsich/fanouskovskych
+     * uploadu) - viz uzivatelsky pozadavek "galerie obalek jako na ComicK webu".
+     *
+     * ComicKovo vlastni API (`apiBase`) tohle NEMA - "md_covers" v odpovedi `/comic/{slug}`
+     * vraci jen JEDNU aktualni obalku na svazek. Overeno zive: cela galerie je ve
+     * skutecnosti data z MangaDexu, ktere ComicK jen zobrazuje na strance
+     * `comick.io/comic/{slug}/cover` (jednotne cislo - "/covers" 404uje). ComicKovo API
+     * navic nikde neuvadi MangaDex ID titulu primo (proverovano v poli `links`), takze se
+     * musi vytahnout regexem z te HTML stranky - az pak jde zavolat MangaDexi VEREJNE,
+     * dokumentovane Cover Art API pro cisty strukturovany seznam.
+     *
+     * Zamerne jen pro ComicK: pro jine zdroje by se MangaDex ID muselo hledat fuzzy
+     * shodou nazvu, coz nese realne riziko spatneho parovani u podobnych/obecnych nazvu.
+     */
+    suspend fun getCoverGallery(mangaUrl: String): List<SCover> = withContext(Dispatchers.IO) {
+        try {
+            val slug = mangaUrl.substringAfterLast("/")
+            val html = requestBuilder("$homepageUrl/comic/$slug/cover").build().let { req ->
+                client.newCall(req).execute().use { it.body?.string().orEmpty() }
+            }
+            val mangaDexId = Regex("""uploads\.mangadex\.org/covers/([a-f0-9-]{36})/""")
+                .find(html)?.groupValues?.get(1) ?: return@withContext emptyList()
+
+            val json = getObject("https://api.mangadex.org/cover?manga[]=$mangaDexId&limit=100")
+            val data = json.optJSONArray("data") ?: return@withContext emptyList()
+            (0 until data.length()).mapNotNull { i ->
+                val attrs = data.getJSONObject(i).optJSONObject("attributes") ?: return@mapNotNull null
+                val fileName = attrs.optString("fileName").takeIf { it.isNotBlank() } ?: return@mapNotNull null
+                SCover(
+                    // isNull() guard: org.json.optString() na poli s JSON hodnotou null (ne
+                    // chybejicim poli) vraci doslovny retezec "null", ne prazdny string.
+                    volume = if (attrs.isNull("volume")) null else attrs.optString("volume").ifBlank { null },
+                    imageUrl = "https://uploads.mangadex.org/covers/$mangaDexId/$fileName",
+                )
+            }.sortedByDescending { it.volume?.toFloatOrNull() ?: -1f }
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
     private var cachedTop: TopFeed? = null
 
     /**
@@ -466,6 +507,12 @@ data class GroupInfo(
     val followCount: Int,
     val chapterCount: Int,
     val comics: List<SManga>,
+)
+
+/** Jedna obálka ze seznamu [ComicKSource.getCoverGallery] - svazek může být neznámý (staré/fan uploady). */
+data class SCover(
+    val volume: String?,
+    val imageUrl: String,
 )
 
 /** Výsledek [ComicKSource.getTop] - data pro ComicK domovskou obrazovku (5 sekcí). Klíče map jsou "7"/"30"/"90" (dny). */

@@ -362,6 +362,9 @@
     <string name="detail_reading_status_plan">Plan to read</string>
     <string name="detail_status_placeholder">Status</string>
     <string name="detail_info_origination">Origin</string>
+    <string name="detail_cover_gallery_title">All covers</string>
+    <string name="detail_cover_gallery_empty">No other covers found.</string>
+    <string name="detail_cover_gallery_volume">Volume %1$s</string>
     <string name="detail_info_demographic">Demographic</string>
     <string name="detail_info_published">Published</string>
     <string name="detail_info_translation">Translation</string>

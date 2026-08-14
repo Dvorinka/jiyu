@@ -359,6 +359,9 @@
     <string name="detail_reading_status_plan">Planeo leer</string>
     <string name="detail_status_placeholder">Estado</string>
     <string name="detail_info_origination">Origen</string>
+    <string name="detail_cover_gallery_title">Todas las portadas</string>
+    <string name="detail_cover_gallery_empty">No se encontraron más portadas.</string>
+    <string name="detail_cover_gallery_volume">Volumen %1$s</string>
     <string name="detail_info_demographic">Demografía</string>
     <string name="detail_info_published">Publicado</string>
     <string name="detail_info_translation">Traducción</string>

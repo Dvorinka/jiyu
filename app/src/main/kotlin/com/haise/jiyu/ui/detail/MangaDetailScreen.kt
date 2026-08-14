@@ -111,6 +111,7 @@ fun MangaDetailScreen(
     viewModel: MangaDetailViewModel = hiltViewModel(),
 ) {
     val manga            by viewModel.manga.collectAsState()
+    val coverGallery     by viewModel.coverGallery.collectAsState()
     val chapters         by viewModel.chapters.collectAsState()
     val continueChapter  by viewModel.continueChapter.collectAsState()
     val firstUnread      by viewModel.firstUnreadChapter.collectAsState()
@@ -146,6 +147,10 @@ fun MangaDetailScreen(
     var groupByVolume by remember { mutableStateOf(false) }
     var descriptionExpanded by remember { mutableStateOf(false) }
     var showCoverFullscreen by remember { mutableStateOf(false) }
+    var showCoverGallery by remember { mutableStateOf(false) }
+    // Kdyz je null, fullscreen dialog ukazuje puvodni manga.coverUrl - nastavi se jen kdyz
+    // uzivatel v galerii klepne na jinou obalku.
+    var selectedCoverUrl by remember { mutableStateOf<String?>(null) }
     var statusDropdownExpanded by remember { mutableStateOf(false) }
 
     // Koordinace pull-to-refresh se stavem ViewModelu řeší od Material3 1.3 přímo
@@ -251,7 +256,17 @@ fun MangaDetailScreen(
                                 .width(130.dp)
                                 .height(176.dp)
                                 .clip(RoundedCornerShape(12.dp))
-                                .clickable { showCoverFullscreen = true },
+                                .clickable {
+                                    // ComicK: galerie vsech historickych obalek (uzivatelsky
+                                    // pozadavek - viz ComicKSource.getCoverGallery). Jine zdroje:
+                                    // puvodni chovani, jen zvetsit tu jednu obalku, co maji.
+                                    if (manga?.sourceId == "comick") {
+                                        viewModel.loadCoverGallery()
+                                        showCoverGallery = true
+                                    } else {
+                                        showCoverFullscreen = true
+                                    }
+                                },
                         ) {
                             AsyncImage(
                                 model = manga?.coverUrl,
@@ -273,11 +288,98 @@ fun MangaDetailScreen(
                                     contentAlignment = Alignment.Center,
                                 ) {
                                     AsyncImage(
-                                        model = manga?.coverUrl,
+                                        model = selectedCoverUrl ?: manga?.coverUrl,
                                         contentDescription = null,
                                         contentScale = ContentScale.Fit,
                                         modifier = Modifier.fillMaxSize(),
                                     )
+                                }
+                            }
+                        }
+                        if (showCoverGallery) {
+                            Dialog(
+                                onDismissRequest = { showCoverGallery = false },
+                                properties = DialogProperties(usePlatformDefaultWidth = false),
+                            ) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .background(Color.Black),
+                                ) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .statusBarsPadding()
+                                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        Text(
+                                            text = stringResource(R.string.detail_cover_gallery_title),
+                                            color = Color.White,
+                                            fontSize = 16.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            modifier = Modifier.weight(1f),
+                                        )
+                                        IconButton(onClick = { showCoverGallery = false }) {
+                                            Icon(TablerIcons.X, contentDescription = stringResource(R.string.common_close), tint = Color.White)
+                                        }
+                                    }
+                                    when {
+                                        coverGallery == null -> {
+                                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                                JiyuLoadingIndicator()
+                                            }
+                                        }
+                                        coverGallery.isNullOrEmpty() -> {
+                                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                                Text(
+                                                    text = stringResource(R.string.detail_cover_gallery_empty),
+                                                    color = TextSecondary,
+                                                    fontSize = 13.sp,
+                                                )
+                                            }
+                                        }
+                                        else -> {
+                                            LazyVerticalGrid(
+                                                columns = GridCells.Fixed(3),
+                                                contentPadding = PaddingValues(12.dp),
+                                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                                                modifier = Modifier.fillMaxSize(),
+                                            ) {
+                                                items(coverGallery.orEmpty()) { cover ->
+                                                    Column {
+                                                        Box(
+                                                            modifier = Modifier
+                                                                .fillMaxWidth()
+                                                                .aspectRatio(0.74f)
+                                                                .clip(RoundedCornerShape(8.dp))
+                                                                .clickable {
+                                                                    selectedCoverUrl = cover.imageUrl
+                                                                    showCoverGallery = false
+                                                                    showCoverFullscreen = true
+                                                                },
+                                                        ) {
+                                                            AsyncImage(
+                                                                model = cover.imageUrl,
+                                                                contentDescription = cover.volume,
+                                                                contentScale = ContentScale.Crop,
+                                                                modifier = Modifier.fillMaxSize(),
+                                                            )
+                                                        }
+                                                        cover.volume?.let { vol ->
+                                                            Text(
+                                                                text = stringResource(R.string.detail_cover_gallery_volume, vol),
+                                                                color = TextSecondary,
+                                                                fontSize = 10.sp,
+                                                                modifier = Modifier.padding(top = 2.dp),
+                                                            )
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }

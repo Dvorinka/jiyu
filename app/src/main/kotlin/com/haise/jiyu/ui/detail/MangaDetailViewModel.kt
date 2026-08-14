@@ -28,6 +28,8 @@ import com.haise.jiyu.data.repository.MangaRepository
 import com.haise.jiyu.download.DownloadQueue
 import com.haise.jiyu.source.SManga
 import com.haise.jiyu.source.SourceManager
+import com.haise.jiyu.source.comick.ComicKSource
+import com.haise.jiyu.source.comick.SCover
 import com.haise.jiyu.util.ChapterStorage
 import com.haise.jiyu.util.NetworkMonitor
 import kotlinx.coroutines.flow.Flow
@@ -65,6 +67,7 @@ class MangaDetailViewModel @Inject constructor(
     private val kitsuRepository: KitsuRepository,
     private val muRepository: MangaUpdatesRepository,
     private val sourceManager: SourceManager,
+    private val comicKSource: ComicKSource,
 ) : ViewModel() {
 
     private val mangaId: String = checkNotNull(savedStateHandle["mangaId"])
@@ -100,6 +103,28 @@ class MangaDetailViewModel @Inject constructor(
 
     val manga: StateFlow<MangaEntity?> = repository.observeMangaById(mangaId)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+    // Galerie vsech historickych obalek - jen ComicK (viz ComicKSource.getCoverGallery
+    // proc jinde nejde). null = jeste nenacteno, prazdny seznam = nacteno a fakt nic neni.
+    private val _coverGallery = MutableStateFlow<List<SCover>?>(null)
+    val coverGallery: StateFlow<List<SCover>?> = _coverGallery.asStateFlow()
+    private var coverGalleryLoading = false
+
+    fun loadCoverGallery() {
+        val current = manga.value ?: return
+        if (current.sourceId != "comick" || coverGalleryLoading || _coverGallery.value != null) return
+        coverGalleryLoading = true
+        viewModelScope.launch {
+            try {
+                _coverGallery.value = comicKSource.getCoverGallery(current.url)
+            } catch (e: Exception) {
+                e.report("detail:loadCoverGallery")
+                _coverGallery.value = emptyList()
+            } finally {
+                coverGalleryLoading = false
+            }
+        }
+    }
 
     val relatedManga: StateFlow<List<SManga>> = flow {
         emit(emptyList())

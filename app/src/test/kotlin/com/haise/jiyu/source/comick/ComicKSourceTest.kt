@@ -39,6 +39,29 @@ class ComicKSourceTest {
         {"chapter": {"md_images": [{"b2key": "test/1/01.jpg"}]}}
     """.trimIndent()
 
+    // "cover" (jednotne cislo, ne "covers") stranka na comick.io ma v sobe zabudovane
+    // MangaDex ID titulu jako soucast adres nahranych obalek - z toho ho getCoverGallery
+    // vytahuje regexem. Ostatni text okolo je jen sum, aby test overil, ze regex opravdu
+    // hleda vzor a nespoleha na presnou pozici v HTML.
+    private val coverPageHtml = """
+        <html><body><h1>Covers</h1>
+        <img src="https://uploads.mangadex.org/covers/11111111-1111-1111-1111-111111111111/a.jpg">
+        <p>nejaky dalsi text okolo, ktery se ma ignorovat</p>
+        </body></html>
+    """.trimIndent()
+
+    private val coverPageHtmlNoMangaDex = """
+        <html><body><h1>Covers</h1><p>zadny odkaz na mangadex tady neni</p></body></html>
+    """.trimIndent()
+
+    private val mangaDexCoversJson = """
+        {"data": [
+            {"attributes": {"fileName": "b.jpg", "volume": "1"}},
+            {"attributes": {"fileName": "a.jpg", "volume": "2"}},
+            {"attributes": {"fileName": "c.jpg", "volume": null}}
+        ]}
+    """.trimIndent()
+
     @Before
     fun setUp() {
         server = MockWebServer()
@@ -50,6 +73,9 @@ class ComicKSourceTest {
                     path == "/comic/test-series" -> MockResponse().setBody(mangaDetailJson)
                     path.startsWith("/comic/abcd/chapters") -> MockResponse().setBody(chaptersJson)
                     path.startsWith("/chapter/ch1") -> MockResponse().setBody(pagesJson)
+                    path == "/comic/test-series/cover" -> MockResponse().setBody(coverPageHtml)
+                    path == "/comic/no-mangadex-link/cover" -> MockResponse().setBody(coverPageHtmlNoMangaDex)
+                    path.startsWith("/cover") -> MockResponse().setBody(mangaDexCoversJson)
                     else -> MockResponse().setResponseCode(404)
                 }
             }
@@ -91,6 +117,37 @@ class ComicKSourceTest {
         assertEquals("MANHUA", source.contentTypeFromCountry("cn"))
         assertEquals("MANGA", source.contentTypeFromCountry("xx"))
         assertEquals("MANGA", source.contentTypeFromCountry(""))
+    }
+
+    // ── getCoverGallery (viz komentar u funkce - ComicK vlastni API MangaDex ID
+    // titulu nikde neuvadi, musi se vytahnout regexem z /comic/{slug}/cover stranky) ──
+
+    @Test
+    fun `getCoverGallery extracts MangaDex id from the cover page and sorts newest volume first`() = runTest {
+        val manga = source.getPopular(1).first()
+        val covers = source.getCoverGallery(manga.url)
+
+        assertEquals(3, covers.size)
+        // sestupne podle svazku (2, 1), neznamy svazek (null) na konci
+        assertEquals("2", covers[0].volume)
+        assertEquals("1", covers[1].volume)
+        assertEquals(null, covers[2].volume)
+        assertTrue(covers[0].imageUrl.contains("11111111-1111-1111-1111-111111111111"))
+        assertTrue(covers[0].imageUrl.endsWith("/a.jpg"))
+    }
+
+    @Test
+    fun `getCoverGallery returns empty list when the cover page has no MangaDex link`() = runTest {
+        val covers = source.getCoverGallery("https://api.comick.dev/manga/no-mangadex-link")
+        assertTrue(covers.isEmpty())
+    }
+
+    @Test
+    fun `getCoverGallery returns empty list instead of throwing when the cover page 404s`() = runTest {
+        // Neznamy slug spadne az na dispatcheruv vychozi 404 branch (prazdne telo) -
+        // overuje, ze se to chova stejne jako "zadny odkaz na MangaDex", ne ze to spadne.
+        val covers = source.getCoverGallery("https://api.comick.dev/manga/does-not-exist-at-all")
+        assertTrue(covers.isEmpty())
     }
 
     @Test
