@@ -72,26 +72,50 @@ class AsuraScansSource @Inject constructor(private val client: OkHttpClient) : M
                     ?: manga.coverUrl,
                 description = doc.selectFirst("meta[property=og:description]")?.attr("content")?.trim(),
                 genres = doc.select("a[href*=genre]").map { it.text().trim() }.filter { it.isNotBlank() },
-                author = doc.selectFirst("div:contains(Author) span")?.text()?.trim(),
+                author = parseCreator(doc, "Author"),
+                artist = parseCreator(doc, "Artist"),
+                status = parseInfoCard(doc, "Status")?.lowercase(),
                 contentType = parseContentType(doc),
             )
         } catch (_: Exception) { manga }
     }
 
     /**
+     * Info karty ("Status", "Type") maji tvar: label DIV bez potomku, jeho SOUROZENEC je
+     * dalsi div, ve kterem je hodnota jako posledni span (prvni span je jen barevna teckova
+     * znacka). "Type" byl overeny drive (viz parseContentType) - "Status" ma stejny tvar.
+     */
+    private fun parseInfoCard(doc: org.jsoup.nodes.Document, label: String): String? {
+        val labelDiv = doc.select("div").firstOrNull { it.ownText().trim().equals(label, ignoreCase = true) }
+        return labelDiv?.nextElementSibling()?.select("span")?.lastOrNull()?.text()?.trim()
+    }
+
+    /**
      * Detailni stranka ma info kartu s labelem "Type" (Manga/Manhwa/Manhua/Novel) - overeno
      * zive na "Return of The Unrivaled Spear Knight" (Manhwa, ne Manga jak appka ukazovala
      * pred timhle fixem, protoze contentType se nikde nenastavoval a ticha vychozi hodnota
-     * SManga je "MANGA"). Label je jediny element s presnym textem "Type" na cele strance -
-     * overeno na dvou ruznych titulech, zadny falesny zasah.
+     * SManga je "MANGA").
      */
     private fun parseContentType(doc: org.jsoup.nodes.Document): String {
-        val label = doc.select("div").firstOrNull { it.ownText().trim().equals("Type", ignoreCase = true) }
-        val raw = label?.nextElementSibling()?.select("span")?.lastOrNull()?.text()?.trim()?.uppercase()
+        val raw = parseInfoCard(doc, "Type")?.uppercase()
         return when (raw) {
             "MANHWA", "MANHUA", "NOVEL" -> raw
             else -> "MANGA"
         }
+    }
+
+    /**
+     * Autor/kresli udaj ma JINY tvar nez info karty vyse - LABEL je span (ne div), jeho
+     * rodicovsky div ma jako SOUROZENCE odkaz <a> s hodnotou. Puvodni selektor
+     * "div:contains(Author) span" byl chybny - jsoup :contains() hleda text KDEKOLI
+     * v potomcich, takze vybral prvni (velky) obalujici div a z nej prvni span na cele
+     * strance ("Search", ne jmeno autora) - overeno zive, ze puvodni selektor vraci
+     * spatnou hodnotu. Tenhle vyhledava presne label span a bere jeho sourozence.
+     */
+    private fun parseCreator(doc: org.jsoup.nodes.Document, label: String): String? {
+        val labelSpan = doc.select("span").firstOrNull { it.ownText().trim().equals(label, ignoreCase = true) }
+        val wrapper = labelSpan?.parent() ?: return null
+        return wrapper.nextElementSibling()?.text()?.trim()?.ifBlank { null }
     }
 
     override suspend fun getChapterList(manga: SManga): List<SChapter> = withContext(Dispatchers.IO) {
