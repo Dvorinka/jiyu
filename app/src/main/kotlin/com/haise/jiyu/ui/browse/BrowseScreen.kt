@@ -229,11 +229,11 @@ fun BrowseScreen(
             item(span = { GridItemSpan(maxLineSpan) }) {
                 val languages = listOf(
                     "ALL" to stringResource(R.string.browse_lang_all),
-                    "en"  to "🇺🇸 EN",
-                    "fr"  to "🇫🇷 FR",
-                    "es"  to "🇪🇸 ES",
-                    "pt"  to "🇧🇷 PT",
-                    "ja"  to "🇯🇵 RAW",
+                    "en"  to "EN",
+                    "fr"  to "FR",
+                    "es"  to "ES",
+                    "pt"  to "PT",
+                    "ja"  to "RAW",
                 )
                 LazyRow(
                     contentPadding = PaddingValues(vertical = 4.dp),

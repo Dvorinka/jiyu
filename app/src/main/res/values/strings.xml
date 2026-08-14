@@ -671,7 +671,7 @@
     <string name="browse_filter_manga">Manga</string>
     <string name="browse_filter_novels">Novely</string>
     <string name="browse_filter_comics">Komiksy</string>
-    <string name="browse_lang_all">🌐 Vše</string>
+    <string name="browse_lang_all">Vše</string>
     <string name="browse_no_sources_match">Žádné zdroje neodpovídají filtru</string>
     <string name="browse_source_menu_desc">Možnosti zdroje</string>
     <string name="browse_favorites_section">Oblíbené</string>

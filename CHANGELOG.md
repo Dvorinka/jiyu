@@ -16,6 +16,16 @@ dlouhých sérií (300+ kapitol) se tak muselo ručně scrollovat k té, na kter
 - otevře se rovnou u aktuálně čtené kapitoly (pár řádků nad ní)
 - aktuální kapitola je v seznamu zvýrazněná fialovým podkladem
 
+### Appka teď používá font Inter
+Celá appka běžela na výchozím systémovém fontu (Roboto). Přepnuto na Inter
+(zdarma, SIL OFL licence, Google Fonts) - jeden variabilní soubor pokrývá
+všechny váhy písma napříč appkou.
+
+### Vlaječky a globus pryč z horního jazykového filtru na Procházet
+Filtr "Vše/EN/FR/ES/PT/RAW" nahoře na obrazovce Procházet měl u každé
+položky vlaječku (a "Vše" glóbus) - odstraněno, zůstal jen text. Vlaječky
+u jednotlivých zdrojů v mřížce níž zůstávají beze změny.
+
 ## v1.2.7
 
 ### Detail titulu na ComicK měl málo informací oproti webu

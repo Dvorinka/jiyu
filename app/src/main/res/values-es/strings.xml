@@ -634,7 +634,7 @@
     <string name="browse_filter_manga">Manga</string>
     <string name="browse_filter_novels">Novelas</string>
     <string name="browse_filter_comics">Cómics</string>
-    <string name="browse_lang_all">🌐 Todos</string>
+    <string name="browse_lang_all">Todos</string>
     <string name="browse_no_sources_match">Ninguna fuente coincide con el filtro</string>
     <string name="browse_source_type_manga">Manga</string>
     <string name="browse_source_type_manhwa">Manhwa</string>

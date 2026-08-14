@@ -71,6 +71,7 @@ fun JiyuTheme(mode: String = ThemeOption.SYSTEM, content: @Composable () -> Unit
     MaterialTheme(
         colorScheme = colorScheme,
         shapes = JiyuShapes,
+        typography = JiyuTypography,
         content = content,
     )
 }
