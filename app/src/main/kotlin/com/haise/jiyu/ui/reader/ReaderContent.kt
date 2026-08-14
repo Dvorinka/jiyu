@@ -242,6 +242,8 @@ fun ReaderContent(
                     readerOrientation = readerOrientation,
                     onSetReaderOrientation = onSetReaderOrientation,
                     translateMode = translateMode,
+                    isTranslating = translationProgress != null,
+                    onToggleTranslate = onToggleTranslate,
                     batchTranslating = batchTranslating,
                     batchProgress = batchProgress,
                     showOriginal = showOriginal,
@@ -249,6 +251,8 @@ fun ReaderContent(
                     onTranslateAll = onTranslateAll,
                     onCancelBatch = onCancelBatch,
                     translationProgress = translationProgress,
+                    hasNextChapter = hasNextChapter,
+                    onNavigateNext = onNavigateNext,
                 )
             }
         }

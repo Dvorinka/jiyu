@@ -62,10 +62,13 @@ import compose.icons.tablericons.ArrowRight
 import compose.icons.tablericons.Check
 import compose.icons.tablericons.Eye
 import compose.icons.tablericons.EyeOff
+import compose.icons.tablericons.DotsVertical
 import compose.icons.tablericons.Language
 import compose.icons.tablericons.LayoutRows
-import compose.icons.tablericons.ListCheck
+import compose.icons.tablericons.Menu2
 import compose.icons.tablericons.Moon
+import compose.icons.tablericons.PlayerSkipBack
+import compose.icons.tablericons.PlayerSkipForward
 import compose.icons.tablericons.Sun
 import compose.icons.tablericons.WifiOff
 import compose.icons.tablericons.X
@@ -187,14 +190,26 @@ fun ReaderTopBar(
                 )
             }
 
-            // Chapter picker
+            // Incognito mode
+            IconButton(onClick = onToggleIncognito, modifier = Modifier.size(40.dp)) {
+                Icon(
+                    if (incognitoMode) TablerIcons.EyeOff else TablerIcons.Eye,
+                    contentDescription = stringResource(if (incognitoMode) R.string.reader_incognito_off_desc else R.string.reader_incognito_on_desc),
+                    tint = if (incognitoMode) Color(0xFFCE93D8) else Color.White.copy(alpha = 0.5f),
+                    modifier = Modifier.size(20.dp),
+                )
+            }
+
+            // Seznam kapitol - vedomě posledni ikona pred sipkou na dalsi kapitolu, tesne
+            // u pravého rohu, aby byla jasne oddelena od zbytku (uzivatelsky pozadavek na
+            // redesign: kdysi zapadala mezi ostatni ikony, ted ma vlastni misto v rohu).
             if (allChapters.isNotEmpty()) {
                 var showChapterSheet by remember { mutableStateOf(false) }
                 IconButton(onClick = { showChapterSheet = true }, modifier = Modifier.size(40.dp)) {
                     Icon(
-                        TablerIcons.ListCheck,
+                        TablerIcons.Menu2,
                         contentDescription = stringResource(R.string.reader_pick_chapter_desc),
-                        tint = Color.White.copy(alpha = 0.7f),
+                        tint = Color.White.copy(alpha = 0.85f),
                         modifier = Modifier.size(20.dp),
                     )
                 }
@@ -250,16 +265,6 @@ fun ReaderTopBar(
                 }
             }
 
-            // Incognito mode
-            IconButton(onClick = onToggleIncognito, modifier = Modifier.size(40.dp)) {
-                Icon(
-                    if (incognitoMode) TablerIcons.EyeOff else TablerIcons.Eye,
-                    contentDescription = stringResource(if (incognitoMode) R.string.reader_incognito_off_desc else R.string.reader_incognito_on_desc),
-                    tint = if (incognitoMode) Color(0xFFCE93D8) else Color.White.copy(alpha = 0.5f),
-                    modifier = Modifier.size(20.dp),
-                )
-            }
-
             // Překlad
             IconButton(onClick = onToggleTranslate, modifier = Modifier.size(40.dp)) {
                 Icon(
@@ -302,8 +307,16 @@ fun ReaderTopBar(
     }
 }
 
-// ── Spodní panel (jazyky, jas, scrubber, orientace, hromadný překlad) ────────
+// ── Spodní lišta ─────────────────────────────────────────────────────────────
+//
+// Redesign na uzivatelsky pozadavek: drivejsi verze mela VZDY viditelny tezky
+// panel se vsim najednou (jazyky, posuvnik, jas, orientace, hromadny preklad).
+// Ted je dole tenka lista jen s nejcasteji pouzivanymi akcemi (skok na prvni/
+// posledni stranku, preklad, dalsi kapitola, jas) a vse pokrocile (jazyky,
+// orientace, hromadny preklad, slovnik) se schova za "Dalsi moznosti" (⋯) do
+// bottom sheetu - nic se nemaze, jen to neni porad na ocich.
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReaderBottomPanel(
     sourceLanguage: String,
@@ -319,6 +332,8 @@ fun ReaderBottomPanel(
     readerOrientation: String,
     onSetReaderOrientation: (String) -> Unit,
     translateMode: Boolean,
+    isTranslating: Boolean,
+    onToggleTranslate: () -> Unit,
     batchTranslating: Boolean,
     batchProgress: TranslationProgress?,
     showOriginal: Boolean,
@@ -326,13 +341,170 @@ fun ReaderBottomPanel(
     onTranslateAll: () -> Unit,
     onCancelBatch: () -> Unit,
     translationProgress: TranslationProgress?,
+    hasNextChapter: Boolean,
+    onNavigateNext: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    var showBrightness by remember { mutableStateOf(false) }
+    var showMore by remember { mutableStateOf(false) }
+    val canJumpPage = pageCount > 1
+    val dimTint = Color.White.copy(alpha = 0.25f)
+    val liveTint = Color.White.copy(alpha = 0.85f)
+
     Column(
         modifier = modifier
             .fillMaxWidth()
             .background(Color.Black.copy(alpha = 0.75f))
-            .windowInsetsPadding(WindowInsets.safeDrawing)
+            .windowInsetsPadding(WindowInsets.safeDrawing),
+    ) {
+        if (showBrightness) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(TablerIcons.Moon, contentDescription = null, tint = Color.White.copy(alpha = 0.5f), modifier = Modifier.size(16.dp))
+                Slider(
+                    value = if (brightness < 0f) 0.5f else brightness,
+                    onValueChange = onBrightnessChange,
+                    valueRange = 0.05f..1f,
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(horizontal = 8.dp)
+                        .semantics { contentDescription = "Jas obrazovky" },
+                    colors = SliderDefaults.colors(
+                        thumbColor = Color.White,
+                        activeTrackColor = Color(0xFF4FC3F7),
+                        inactiveTrackColor = Color.White.copy(alpha = 0.2f),
+                    ),
+                )
+                Icon(TablerIcons.Sun, contentDescription = null, tint = Color.White.copy(alpha = 0.9f), modifier = Modifier.size(16.dp))
+            }
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            IconButton(onClick = { onJumpToPage(0) }, enabled = canJumpPage, modifier = Modifier.size(40.dp)) {
+                Icon(
+                    TablerIcons.PlayerSkipBack,
+                    contentDescription = stringResource(R.string.reader_first_page_desc),
+                    tint = if (canJumpPage) liveTint else dimTint,
+                    modifier = Modifier.size(19.dp),
+                )
+            }
+            IconButton(onClick = onToggleTranslate, modifier = Modifier.size(40.dp)) {
+                Icon(
+                    TablerIcons.Language,
+                    contentDescription = stringResource(
+                        when {
+                            isTranslating -> R.string.reader_stop_translation_desc
+                            translateMode -> R.string.reader_hide_translation_desc
+                            else          -> R.string.reader_translate_chapter_action_desc
+                        },
+                    ),
+                    tint = when {
+                        isTranslating -> Color(0xFFFFB74D)
+                        translateMode -> Color(0xFF4FC3F7)
+                        else          -> liveTint
+                    },
+                    modifier = Modifier.size(19.dp),
+                )
+            }
+            IconButton(onClick = onNavigateNext, enabled = hasNextChapter, modifier = Modifier.size(40.dp)) {
+                Icon(
+                    TablerIcons.ArrowRight,
+                    contentDescription = stringResource(R.string.reader_next_chapter_desc),
+                    tint = if (hasNextChapter) liveTint else dimTint,
+                    modifier = Modifier.size(19.dp),
+                )
+            }
+            IconButton(onClick = { onJumpToPage(pageCount - 1) }, enabled = canJumpPage, modifier = Modifier.size(40.dp)) {
+                Icon(
+                    TablerIcons.PlayerSkipForward,
+                    contentDescription = stringResource(R.string.reader_last_page_desc),
+                    tint = if (canJumpPage) liveTint else dimTint,
+                    modifier = Modifier.size(19.dp),
+                )
+            }
+            IconButton(onClick = { showBrightness = !showBrightness }, modifier = Modifier.size(40.dp)) {
+                Icon(
+                    TablerIcons.Sun,
+                    contentDescription = stringResource(R.string.reader_brightness_desc),
+                    tint = if (showBrightness) Color(0xFFFFD54F) else liveTint,
+                    modifier = Modifier.size(19.dp),
+                )
+            }
+            IconButton(onClick = { showMore = true }, modifier = Modifier.size(40.dp)) {
+                Icon(
+                    TablerIcons.DotsVertical,
+                    contentDescription = stringResource(R.string.reader_more_options_desc),
+                    tint = liveTint,
+                    modifier = Modifier.size(19.dp),
+                )
+            }
+        }
+    }
+
+    if (showMore) {
+        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        ModalBottomSheet(
+            onDismissRequest = { showMore = false },
+            sheetState = sheetState,
+            containerColor = Color(0xFF111B35),
+        ) {
+            ReaderAdvancedSheetContent(
+                sourceLanguage = sourceLanguage,
+                targetLanguage = targetLanguage,
+                onSourceLanguageChange = onSourceLanguageChange,
+                onTargetLanguageChange = onTargetLanguageChange,
+                onShowGlossary = onShowGlossary,
+                pageCount = pageCount,
+                currentPage = currentPage,
+                onJumpToPage = onJumpToPage,
+                readerOrientation = readerOrientation,
+                onSetReaderOrientation = onSetReaderOrientation,
+                translateMode = translateMode,
+                batchTranslating = batchTranslating,
+                batchProgress = batchProgress,
+                showOriginal = showOriginal,
+                onToggleShowOriginal = onToggleShowOriginal,
+                onTranslateAll = onTranslateAll,
+                onCancelBatch = onCancelBatch,
+                translationProgress = translationProgress,
+            )
+        }
+    }
+}
+
+// ── Pokročilé nastavení čtečky (jazyky, scrubber, orientace, hromadný překlad) ─
+// Dřív žilo přímo v [ReaderBottomPanel], teď je to obsah bottom sheetu za "⋯".
+
+@Composable
+private fun ReaderAdvancedSheetContent(
+    sourceLanguage: String,
+    targetLanguage: String,
+    onSourceLanguageChange: (String) -> Unit,
+    onTargetLanguageChange: (String) -> Unit,
+    onShowGlossary: () -> Unit,
+    pageCount: Int,
+    currentPage: Int,
+    onJumpToPage: (Int) -> Unit,
+    readerOrientation: String,
+    onSetReaderOrientation: (String) -> Unit,
+    translateMode: Boolean,
+    batchTranslating: Boolean,
+    batchProgress: TranslationProgress?,
+    showOriginal: Boolean,
+    onToggleShowOriginal: () -> Unit,
+    onTranslateAll: () -> Unit,
+    onCancelBatch: () -> Unit,
+    translationProgress: TranslationProgress?,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 6.dp),
     ) {
         // Výběr zdrojového a cílového jazyka překladu
@@ -444,26 +616,6 @@ fun ReaderBottomPanel(
                     textAlign = TextAlign.Center,
                 )
             }
-        }
-
-        // Slider jasu
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(TablerIcons.Moon, contentDescription = null, tint = Color.White.copy(alpha = 0.5f), modifier = Modifier.size(18.dp))
-            Slider(
-                value = if (brightness < 0f) 0.5f else brightness,
-                onValueChange = onBrightnessChange,
-                valueRange = 0.05f..1f,
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(horizontal = 8.dp)
-                    .semantics { contentDescription = "Jas obrazovky" },
-                colors = SliderDefaults.colors(
-                    thumbColor = Color.White,
-                    activeTrackColor = Color(0xFF4FC3F7),
-                    inactiveTrackColor = Color.White.copy(alpha = 0.2f),
-                ),
-            )
-            Icon(TablerIcons.Sun, contentDescription = null, tint = Color.White.copy(alpha = 0.9f), modifier = Modifier.size(18.dp))
         }
 
         // Orientace + volume klávesy

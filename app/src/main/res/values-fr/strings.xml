@@ -594,6 +594,10 @@
     <string name="reader_hide_translation_desc">Masquer la traduction</string>
     <string name="reader_translate_chapter_action_desc">Traduire le chapitre</string>
     <string name="reader_next_chapter_desc">Chapitre suivant</string>
+    <string name="reader_first_page_desc">Première page</string>
+    <string name="reader_last_page_desc">Dernière page</string>
+    <string name="reader_brightness_desc">Luminosité</string>
+    <string name="reader_more_options_desc">Plus d\'options</string>
     <string name="reader_translation_label">Traduction :</string>
     <string name="reader_orientation_label">Orientation :</string>
     <string name="reader_orientation_auto">Auto</string>
