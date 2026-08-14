@@ -4,6 +4,16 @@
 > vidět v historii commitů a v popisech jednotlivých vydání na GitHubu; zpětně to sem
 > nedopisuju, abych si nevymýšlel.
 
+## v1.2.1
+
+### Spodní lišta čtečky vypadala jinak, než měla
+v1.2.0 zavedla novou tenkou spodní lištu, ale vizuálně to byl jen tenký černý
+povlak přes celou šířku obrazovky, přilepený na spodní hranu bez zaoblení -
+neodpovídalo to zamýšlenému vzhledu (ověřeno živě na zařízení, screenshot od
+uživatele). Lišta je teď zaoblená plovoucí karta s mezerou od okrajů obrazovky,
+pozadí skoro neprůhledné v tmavě námořnické barvě (stejná jako ostatní panely
+ve čtečce) místo tenkého povlaku, ikony mírně zvětšeny pro výraznější vzhled.
+
 ## v1.2.0
 
 ### Appka nově cílí na Android 13 a novější
