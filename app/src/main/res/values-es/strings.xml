@@ -540,6 +540,7 @@
     <string name="library_recently_added">AÑADIDOS RECIENTEMENTE</string>
     <string name="library_completed">COMPLETADOS</string>
     <string name="library_section_empty">Todavía no hay nada aquí</string>
+    <string name="library_section_chapter_number">Capítulo %1$s</string>
     <string name="library_show_all">Ver todo</string>
     <string name="library_refresh_error">Fallo al actualizar: %1$s%2$s</string>
     <string name="library_refresh_error_and_more"> y más</string>

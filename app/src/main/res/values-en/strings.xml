@@ -543,6 +543,7 @@
     <string name="library_recently_added">RECENTLY ADDED</string>
     <string name="library_completed">COMPLETED</string>
     <string name="library_section_empty">Nothing here yet</string>
+    <string name="library_section_chapter_number">Chapter %1$s</string>
     <string name="library_show_all">Show all</string>
     <string name="library_refresh_error">Update failed: %1$s%2$s</string>
     <string name="library_refresh_error_and_more"> and more</string>

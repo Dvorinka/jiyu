@@ -1,21 +1,24 @@
 package com.haise.jiyu.ui.library
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -28,21 +31,28 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import coil.compose.AsyncImage
 import com.haise.jiyu.R
 import com.haise.jiyu.data.db.entity.MangaEntity
 import com.haise.jiyu.ui.theme.NightBlue
+import com.haise.jiyu.ui.theme.TextPrimary
 import com.haise.jiyu.ui.theme.TextSecondary
 import com.haise.jiyu.ui.theme.screenGradient
 import com.haise.jiyu.ui.theme.titleGradient
 import compose.icons.TablerIcons
 import compose.icons.tablericons.ArrowBack
+import compose.icons.tablericons.X
+import java.util.Locale
 
 /**
  * Sekce knihovny, kterou umí [LibrarySectionScreen] zobrazit celou. Název konstanty je i tím,
@@ -55,14 +65,14 @@ enum class LibrarySection(val titleRes: Int) {
 }
 
 /**
- * Celá sekce knihovny v mřížce - to, co se otevře po klepnutí na "Zobrazit vše".
+ * Celá sekce knihovny jako seznam - to, co se otevře po klepnutí na "Zobrazit vše".
  *
  * Proč to vzniklo: "Zobrazit vše" na Knihovně byl obyčejný `Text` s šipkou BEZ jakéhokoli
  * `clickable`. Vypadalo to jako odkaz, chovalo se to jako výplň.
  *
- * Karusely přitom nejsou zkrácené - obsahují všechny položky sekce. Přínos téhle obrazovky
- * proto není "víc položek", ale způsob zobrazení: mřížka po třech místo vodorovného
- * posuvníku, ve kterém se u dvaceti titulů nedá nic najít.
+ * Dřív mřížka po třech (jako zbytek Knihovny) - uživatelský požadavek: styl řádků jako má
+ * ComicK na "Read History" (malá obálka vlevo, název, kapitola, relativní čas, X na smazání
+ * vpravo místo dlouhého podržení).
  */
 @Composable
 fun LibrarySectionScreen(
@@ -77,6 +87,11 @@ fun LibrarySectionScreen(
     val completed       by viewModel.completed.collectAsState()
 
     var pendingRemoval by remember { mutableStateOf<Pair<String, String>?>(null) }
+
+    // Kapitola/cas se lisi podle sekce - continueReading nese navic posledni kapitolu,
+    // ostatni sekce jen holy MangaEntity.
+    val chapterInfoByMangaId: Map<String, com.haise.jiyu.data.db.ContinueReadingItem> =
+        if (section == LibrarySection.CONTINUE_READING) continueReading.associateBy { it.manga.id } else emptyMap()
 
     val items: List<MangaEntity> = when (section) {
         LibrarySection.CONTINUE_READING -> continueReading.map { it.manga }
@@ -132,18 +147,24 @@ fun LibrarySectionScreen(
                 )
             }
         } else {
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(3),
-                contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 16.dp + navBottom),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
+            LazyColumn(
+                contentPadding = PaddingValues(top = 4.dp, bottom = 16.dp + navBottom),
                 modifier = Modifier.fillMaxSize(),
             ) {
                 items(items, key = { it.id }) { manga ->
-                    SearchResultCard(
+                    val chapterInfo = chapterInfoByMangaId[manga.id]
+                    val subtitle = when (section) {
+                        LibrarySection.CONTINUE_READING -> chapterInfo?.lastChapterName
+                            ?: chapterInfo?.lastChapterNumber?.let { stringResource(R.string.library_section_chapter_number, chapterLabel(it)) }
+                        else -> null
+                    }
+                    val timeMs = if (section == LibrarySection.CONTINUE_READING) manga.lastReadAt else manga.addedAt
+                    LibrarySectionRow(
                         manga = manga,
+                        subtitle = subtitle,
+                        timeLabel = timeMs.takeIf { it > 0 }?.let { relativeTimeLabel(it) },
                         onClick = { openItem(manga) },
-                        onLongPress = { pendingRemoval = manga.id to manga.title },
+                        onRemove = { pendingRemoval = manga.id to manga.title },
                     )
                 }
             }
@@ -156,5 +177,80 @@ fun LibrarySectionScreen(
             onConfirm = { viewModel.removeFromLibrary(mangaId) },
             onDismiss = { pendingRemoval = null },
         )
+    }
+}
+
+/** ComicK styl řádku (Read History) - malá obálka, název, kapitola/čas, X na smazání vpravo. */
+@Composable
+private fun LibrarySectionRow(
+    manga: MangaEntity,
+    subtitle: String?,
+    timeLabel: String?,
+    onClick: () -> Unit,
+    onRemove: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 6.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(NightBlue.copy(alpha = 0.4f))
+            .clickable(onClick = onClick)
+            .padding(10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        AsyncImage(
+            model = manga.coverUrl,
+            contentDescription = manga.title,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.size(52.dp, 74.dp).clip(RoundedCornerShape(8.dp)),
+        )
+        Column(modifier = Modifier.weight(1f).padding(start = 12.dp)) {
+            Text(
+                text = manga.title,
+                color = TextPrimary,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            if (!subtitle.isNullOrBlank()) {
+                Text(
+                    text = subtitle,
+                    color = TextSecondary,
+                    fontSize = 12.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(top = 2.dp),
+                )
+            }
+            if (!timeLabel.isNullOrBlank()) {
+                Text(
+                    text = timeLabel,
+                    color = TextSecondary.copy(alpha = 0.6f),
+                    fontSize = 11.sp,
+                    modifier = Modifier.padding(top = 4.dp),
+                )
+            }
+        }
+        IconButton(onClick = onRemove) {
+            Icon(TablerIcons.X, contentDescription = stringResource(R.string.common_delete), tint = TextSecondary)
+        }
+    }
+}
+
+/** "318.0" -> "318", "318.5" -> "318.5" - stejny vzor jako na detailu titulu/aktualizacich. */
+private fun chapterLabel(n: Float): String =
+    if (n == n.toInt().toFloat()) n.toInt().toString() else n.toString()
+
+/** "před 2 h", "před 3 dny" apod. - stejny vzor jako u Aktualizaci na ComicK Domu. */
+private fun relativeTimeLabel(ms: Long): String {
+    val diffMin = (System.currentTimeMillis() - ms) / 60_000L
+    return when {
+        diffMin < 1     -> "teď"
+        diffMin < 60    -> "před ${diffMin} min"
+        diffMin < 1440  -> "před ${diffMin / 60} h"
+        diffMin < 43200 -> "před ${diffMin / 1440} dny"
+        else            -> java.text.SimpleDateFormat("d. M. yyyy", Locale.getDefault()).format(java.util.Date(ms))
     }
 }

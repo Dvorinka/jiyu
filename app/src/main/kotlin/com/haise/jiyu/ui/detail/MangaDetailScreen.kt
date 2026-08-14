@@ -407,28 +407,13 @@ fun MangaDetailScreen(
                             manga?.author?.let { author ->
                                 Text(text = author, color = TextSecondary, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 3.dp))
                             }
-                            manga?.status?.let { status ->
-                                val (label, statusColor) = when (status.lowercase()) {
-                                    "ongoing"   -> "📖 " + stringResource(R.string.detail_status_ongoing)   to Color(0xFF4CAF50)
-                                    "completed" -> "✅ " + stringResource(R.string.detail_status_completed) to Color(0xFF4FC3F7)
-                                    "hiatus"    -> "⏸ " + stringResource(R.string.detail_status_hiatus)     to Color(0xFFFFB74D)
-                                    "cancelled" -> "🚫 " + stringResource(R.string.detail_status_cancelled)  to Color(0xFFEF5350)
-                                    else        -> status      to TextSecondary
-                                }
-                                Box(
-                                    modifier = Modifier
-                                        .padding(top = 6.dp)
-                                        .clip(RoundedCornerShape(8.dp))
-                                        .background(statusColor.copy(alpha = 0.15f))
-                                        .border(1.dp, statusColor.copy(alpha = 0.4f), RoundedCornerShape(8.dp))
-                                        .padding(horizontal = 10.dp, vertical = 3.dp),
-                                ) {
-                                    Text(text = label, color = statusColor, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
-                                }
-                            }
                             val allGenres = manga?.genres?.split(",")?.map { it.trim() }?.filter { it.isNotBlank() && it.length <= 30 } ?: emptyList()
                             val demographicGenre = allGenres.firstOrNull { it.lowercase() in DEMOGRAPHIC_TAGS }
                             val genres = allGenres.filter { it != demographicGenre }
+                            // Cely sloupec presne v poradi/stylu, jaky ma ComicK (uzivatelsky
+                            // pozadavek "zkopirujete to") - Status uz neni samostatna barevna
+                            // pilulka nad seznamem (to pusobilo rozhazene), ale radek uvnitr
+                            // stejneho seznamu jako vsechno ostatni, se stejnymi emoji.
                             Column(modifier = Modifier.padding(top = 6.dp)) {
                                 DetailInfoRow(stringResource(R.string.detail_info_origination), "${originationFlag(manga?.contentType)} ${originationLabel(manga?.contentType)}")
                                 (manga?.demographic ?: demographicGenre)?.let { DetailInfoRow(stringResource(R.string.detail_info_demographic), it) }
@@ -436,10 +421,20 @@ fun MangaDetailScreen(
                                     DetailInfoRow(stringResource(R.string.detail_info_genres), genres.take(4).joinToString(", "))
                                 }
                                 manga?.year?.takeIf { it > 0 }?.let { DetailInfoRow(stringResource(R.string.detail_info_published), it.toString()) }
+                                manga?.status?.let { status ->
+                                    val label = when (status.lowercase()) {
+                                        "ongoing"   -> "📖 " + stringResource(R.string.detail_status_ongoing)
+                                        "completed" -> "📗 " + stringResource(R.string.detail_status_completed)
+                                        "hiatus"    -> "⏸ " + stringResource(R.string.detail_status_hiatus)
+                                        "cancelled" -> "🚫 " + stringResource(R.string.detail_status_cancelled)
+                                        else        -> status
+                                    }
+                                    DetailInfoRow(stringResource(R.string.detail_status_placeholder), label)
+                                }
                                 manga?.translationCompleted?.let {
                                     DetailInfoRow(
                                         stringResource(R.string.detail_info_translation),
-                                        if (it) "✅ " + stringResource(R.string.detail_info_translation_completed) else "📖 " + stringResource(R.string.detail_info_translation_ongoing),
+                                        if (it) "📗 " + stringResource(R.string.detail_info_translation_completed) else "📖 " + stringResource(R.string.detail_info_translation_ongoing),
                                     )
                                 }
                                 manga?.hasAnime?.let {

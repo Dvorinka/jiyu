@@ -4,6 +4,21 @@
 > vidět v historii commitů a v popisech jednotlivých vydání na GitHubu; zpětně to sem
 > nedopisuju, abych si nevymýšlel.
 
+## v1.2.15
+
+### Sloupec s informacemi na detailu titulu sjednocen podle ComicK
+Status (Vychází/Dokončeno/...) byl dřív samostatná barevná pilulka nad
+seznamem info řádků - jediný prvek se stylem odlišným od zbytku, což
+působilo rozházeně. Teď je Status obyčejný řádek uvnitř stejného seznamu
+jako Typ/Demografie/Vydáno/Překlad, přesně jako na ComicK, včetně stejných
+emoji (📗 Dokončeno, 📖 Vychází/Probíhá, 🚫 Zrušeno, ⏸ Přerušeno).
+
+### "Zobrazit vše" na Knihovně (Pokračovat ve čtení, Nedávno přidané) jako seznam
+Tahle obrazovka byla mřížka po třech obálkách bez dalších informací - teď
+je to seznam řádků stylem ComicK Read History: malá obálka vlevo, název,
+kapitola (u Pokračovat ve čtení), relativní čas a tlačítko X na odebrání
+z knihovny vpravo (místo dřívějšího dlouhého podržení).
+
 ## v1.2.14
 
 ### Aktualizace na Domů se teď načítají celé, ne jen náhled
