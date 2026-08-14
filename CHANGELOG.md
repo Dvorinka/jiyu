@@ -4,7 +4,80 @@
 > vidět v historii commitů a v popisech jednotlivých vydání na GitHubu; zpětně to sem
 > nedopisuju, abych si nevymýšlel.
 
-## Nevydáno
+## v1.2.0
+
+### Appka nově cílí na Android 13 a novější
+Update overlay používá AGSL `RuntimeShader` (viz níže), který na starších verzích
+neexistuje - `minSdk` zvednut z 26 na 33. Appku nepůjde nainstalovat na Android 12
+a starší; osm míst v kódu s vlastní kontrolou verze (`Build.VERSION.SDK_INT`)
+zjednodušeno, protože se vždy vyhodnotí stejně.
+
+### Nová animace stahování aktualizace - meditující postava, ne plochá "bublina"
+Dřívější animace byla plochý drátěný tvar kreslený z primitiv Canvasu. Nahrazena
+skutečným AGSL fragment shaderem: meditující postava kultivuje - rozptýlená čchi
+(fialová, drží barvu appky) je vtahována po hedvábných stuhách do dolního tantienu,
+kde se zjemňuje a zhušťuje v **zlaté jádro** (金丹, Jindan), na těle svítí rudá pečeť,
+při dokončení jádro ztuhne a vyšle rázovou vlnu. Postava je celá procedurální
+geometrie (ne obrázek), takže s ní světlo doopravdy interaguje - obrys se rozsvěcuje
+podle vzdálenosti od jádra, tělo má skutečné anatomické proporce (Loomisův kánon).
+Přidán bloom kolem jádra, tep (dvě pulzace za cyklus), jemné zrno v mlze a
+chromatická disperze na rázové vlně pro filmovější vzhled.
+
+### Redesign spodní lišty čtečky
+Dřív byl dole pořád viditelný těžký panel se vším najednou (jazyky překladu,
+posuvník stránek, jas, orientace, hromadný překlad). Nahrazen tenkou lištou
+s nejčastějšími akcemi (první/poslední stránka, překlad, další kapitola, jas);
+pokročilé nastavení se schovává za tlačítko "Další možnosti" místo aby bylo
+pořád na očích. Seznam kapitol nahoře dostal skutečnou ikonu tří čar a vlastní
+místo u pravého rohu místo aby zapadal mezi čtyři další ikony.
+
+### Nová domovská obrazovka pro ComicK agregovaný režim
+Browse v ComicK režimu měl dřív jen jednoduchou mřížku s přepínačem Populární/
+Nejnovější. Nahrazeno bohatší domovskou stránkou podle vzoru webu comick.io: pět
+sekcí (Nedávno přidané, Populární nové s přepínačem 7d/1m/3m, Nejpopulárnější,
+Nedávné recenze, Aktualizace s taby Hot/New a nekonečným scrollováním), každá
+s vlastní "Zobrazit vše" obrazovkou.
+
+### Nová stránka skupiny (kliknutelné chipy autorů/týmů na ComicK)
+Klepnutí na jméno skupiny/autora u ComicK titulu dřív nikam nevedlo. Teď otevře
+mřížku všech titulů dané skupiny.
+
+### Redesign obrazovky Statistiky
+Sloupcový graf bez os/popisků a stohované pruhy stavu čtení nahrazeny ikonami
+(Tabler Icons místo emoji), kalendářní mřížkou aktivity za 30 dní (styl GitHub
+kontribučního grafu) a prstenem pro stav čtení.
+
+### Redesign detailu titulu
+Podle vzoru appky ComicK (referenční screenshoty od uživatele): název titulu se
+přesunul nad obálku/metadata místo vedle ní, popis dostal vlastní nadpis, tlačítko
+Pokračovat/Začít číst je větší a plnou barvou místo tenké pilulky.
+
+### Přesná pozice čtení (stránka + scroll) se pamatuje 10 dní
+Dřív se při návratu do kapitoly appka vracela vždy na začátek. Teď si kapitola
+pamatuje přesnou stránku i posun scrollu, pokud je čtení mladší než 10 dní -
+starší kapitoly se otevřou od začátku, ale pořád na správné kapitole.
+
+### Odznak "NOVÉ" v Knihovně odstraněn, karty v Procházet už nejsou nesouměrné
+Krátký jednořádkový název zdroje ("Comics Kingdom") nechával kartu v mřížce nižší
+než souseda se dvouřádkovým názvem ("ReadFreeComicsOnline"), takže se řady
+neposouvaly stejně. Název teď vždy rezervuje místo na dva řádky bez ohledu na
+skutečnou délku.
+
+### Drobné opravy v Procházet
+Hledací pole a přepínač Populární/Nejnovější zůstávají přišpendlené nahoře při
+scrollování výsledků (dřív se posouvaly pryč se stránkou). Odstraněno plovoucí
+tlačítko "+" z Můj seznam. Zmenšen padding kolem favicony zdroje v kartě, aby
+všechny ikony vyšly vizuálně stejně velké.
+
+### Nastavení zjednodušené
+Obrazovka "Čtení" sloučena do hlavního seznamu Nastavení (méně kliknutí),
+sekce Čtečka rozdělena na 3 tematické podsekce místo jedné dlouhé.
+
+### 49 nových zdrojů
+Napříč několika koly auditu přidáno 49 zdrojů (manhwa/webtoon, hentai/doujin,
+RAW čínské/korejské/japonské weby, americké komiksy). ComicK resolver navíc
+přestal prohledávat 18+ zdroje u běžných (ne-adult) titulů bez ohledu na globální
+nastavení - teď respektuje adult stav konkrétního titulu.
 
 ### V karuselu "Pokračovat ve čtení" šlo jen skočit rovnou do poslední kapitoly
 Klepnutí na kartu vždycky otevřelo přímo rozečtenou kapitolu - nešlo se přes obálku
