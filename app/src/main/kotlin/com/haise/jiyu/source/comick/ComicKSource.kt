@@ -410,7 +410,10 @@ class ComicKSource @Inject constructor(
         withContext(Dispatchers.IO) {
             // Krok 1: získat hid z detailu mangy
             val slug = manga.url.substringAfterLast("/")
-            val detailJson = getObject("$apiBase/comic/$slug")
+            val detailJson = getObject(
+                "$apiBase/comic/$slug",
+                notFoundMessage = "ComicK tenhle titul přes veřejné API neposkytuje (časté u 18+ obsahu)",
+            )
             val hid = detailJson.getJSONObject("comic").getString("hid")
 
             // Krok 2: stránkovat přes všechny kapitoly

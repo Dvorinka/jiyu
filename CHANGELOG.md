@@ -4,6 +4,19 @@
 > vidět v historii commitů a v popisech jednotlivých vydání na GitHubu; zpětně to sem
 > nedopisuju, abych si nevymýšlel.
 
+## v1.2.17
+
+### Ošklivá "ComicK API chyba 404" hláška při otevření titulu
+`getChapterList` (volá se při otevření titulu z Procházet/Aktualizací) volal
+stejný `/comic/{slug}` endpoint jako `getMangaDetails`, ale bez už dřív
+napsané přátelské hlášky pro 404 - ukazovala se tak syrová technická chyba
+místo vysvětlení.
+
+Zjištěno živě: jde konkrétně o `content_rating: "pornographic"` tituly (ne
+o "suggestive"/"erotica", ty appka otevře normálně) - ComicK sám tenhle
+nejexplicitnější stupeň přes veřejné API neposkytuje vůbec (ani přes
+web bez přihlášení), appka to nemá jak obejít.
+
 ## v1.2.16
 
 ### Nové: Předvolby (Preferences) pro Aktualizace na ComicK
