@@ -231,6 +231,7 @@ fun JiyuNavGraph(
             val chapterId = backStackEntry.arguments?.getString("chapterId")
             ReaderScreen(
                 onFindSource = { chapterId?.let { navController.navigate(Routes.sourceResolver(it)) } },
+                onOpenManga = { mangaId -> navController.navigate(Routes.detail(mangaId)) },
             )
         }
 

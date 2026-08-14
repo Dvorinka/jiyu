@@ -55,7 +55,11 @@ import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ReaderScreen(onFindSource: () -> Unit = {}, viewModel: ReaderViewModel = hiltViewModel()) {
+fun ReaderScreen(
+    onFindSource: () -> Unit = {},
+    onOpenManga: (String) -> Unit = {},
+    viewModel: ReaderViewModel = hiltViewModel(),
+) {
     val pages               by viewModel.pages.collectAsState()
     val comickUnavailable   by viewModel.comickUnavailable.collectAsState()
     val loading             by viewModel.loading.collectAsState()
@@ -72,6 +76,8 @@ fun ReaderScreen(onFindSource: () -> Unit = {}, viewModel: ReaderViewModel = hil
     val hasPrevChapter      by viewModel.hasPrevChapter.collectAsState()
     val hasNextChapter      by viewModel.hasNextChapter.collectAsState()
     val chapterTitle        by viewModel.chapterTitle.collectAsState()
+    val mangaTitle           by viewModel.mangaTitle.collectAsState()
+    val mangaId              by viewModel.mangaId.collectAsState()
     val sourceLanguage      by viewModel.sourceLanguage.collectAsState()
     val targetLanguage      by viewModel.targetLanguage.collectAsState()
     val tapZonesEnabled     by viewModel.tapZonesEnabled.collectAsState()
@@ -250,7 +256,8 @@ fun ReaderScreen(onFindSource: () -> Unit = {}, viewModel: ReaderViewModel = hil
                 reverseLayout = reverseLayout,
                 readingMode = readingMode,
                 chapterTitle = chapterTitle,
-                hasPrevChapter = hasPrevChapter,
+                mangaTitle = mangaTitle,
+                onOpenManga = { mangaId?.let(onOpenManga) },
                 hasNextChapter = hasNextChapter,
                 controlsVisible = controlsVisible,
                 onToggleControlsVisible = { viewModel.toggleControlsVisible() },

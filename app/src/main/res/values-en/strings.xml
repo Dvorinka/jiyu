@@ -586,7 +586,6 @@
     <string name="reader_theme_white">☀️ White</string>
     <string name="reader_prev_novel">← Previous</string>
     <string name="reader_next_novel">Next →</string>
-    <string name="reader_prev_chapter_desc">Previous chapter</string>
     <string name="reader_offline_desc">Offline</string>
     <string name="reader_panel_mode_desc">Panel by panel</string>
     <string name="reader_pick_chapter_desc">Pick chapter</string>
@@ -600,7 +599,7 @@
     <string name="reader_first_page_desc">First page</string>
     <string name="reader_last_page_desc">Last page</string>
     <string name="reader_brightness_desc">Brightness</string>
-    <string name="reader_more_options_desc">More options</string>
+    <string name="reader_translate_settings_desc">Translation settings</string>
     <string name="reader_translation_label">Translation:</string>
     <string name="reader_orientation_label">Orientation:</string>
     <string name="reader_orientation_auto">Auto</string>

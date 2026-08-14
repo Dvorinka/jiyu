@@ -620,7 +620,6 @@
     <string name="reader_theme_white">☀️ Bílé</string>
     <string name="reader_prev_novel">← Předchozí</string>
     <string name="reader_next_novel">Další →</string>
-    <string name="reader_prev_chapter_desc">Předchozí kapitola</string>
     <string name="reader_offline_desc">Offline</string>
     <string name="reader_panel_mode_desc">Panel po panelu</string>
     <string name="reader_pick_chapter_desc">Vybrat kapitolu</string>
@@ -634,7 +633,7 @@
     <string name="reader_first_page_desc">První stránka</string>
     <string name="reader_last_page_desc">Poslední stránka</string>
     <string name="reader_brightness_desc">Jas</string>
-    <string name="reader_more_options_desc">Další možnosti</string>
+    <string name="reader_translate_settings_desc">Nastavení překladu</string>
     <string name="reader_translation_label">Překlad:</string>
     <string name="reader_orientation_label">Orientace:</string>
     <string name="reader_orientation_auto">Auto</string>

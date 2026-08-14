@@ -47,7 +47,8 @@ fun ReaderContent(
     reverseLayout: Boolean,
     readingMode: String,
     chapterTitle: String,
-    hasPrevChapter: Boolean,
+    mangaTitle: String = "",
+    onOpenManga: () -> Unit = {},
     hasNextChapter: Boolean,
     controlsVisible: Boolean,
     onToggleControlsVisible: () -> Unit,
@@ -205,26 +206,16 @@ fun ReaderContent(
             Box(modifier = Modifier.fillMaxSize()) {
                 ReaderTopBar(
                     modifier = Modifier.align(Alignment.TopCenter),
+                    mangaTitle = mangaTitle,
                     chapterTitle = chapterTitle,
                     currentPage = currentPage,
                     pageCount = pages.size,
-                    hasPrevChapter = hasPrevChapter,
-                    hasNextChapter = hasNextChapter,
                     isOfflineChapter = isOfflineChapter,
                     sessionElapsed = sessionElapsed,
-                    panelMode = panelMode,
-                    incognitoMode = incognitoMode,
-                    translateMode = translateMode,
-                    isTranslating = translationProgress != null,
                     chapterProgress = chapterProgress,
                     allChapters = allChapters,
-                    onNavigatePrev = onNavigatePrev,
-                    onNavigateNext = onNavigateNext,
-                    onTogglePanelMode = onTogglePanelMode,
-                    onSleepTimerClick = onSleepTimerClick,
+                    onOpenManga = onOpenManga,
                     onJumpToChapter = onJumpToChapter,
-                    onToggleIncognito = onToggleIncognito,
-                    onToggleTranslate = onToggleTranslate,
                 )
 
                 ReaderBottomPanel(
@@ -253,6 +244,11 @@ fun ReaderContent(
                     translationProgress = translationProgress,
                     hasNextChapter = hasNextChapter,
                     onNavigateNext = onNavigateNext,
+                    panelMode = panelMode,
+                    onTogglePanelMode = onTogglePanelMode,
+                    onSleepTimerClick = onSleepTimerClick,
+                    incognitoMode = incognitoMode,
+                    onToggleIncognito = onToggleIncognito,
                 )
             }
         }

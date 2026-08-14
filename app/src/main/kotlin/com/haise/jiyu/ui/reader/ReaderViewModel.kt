@@ -106,6 +106,11 @@ class ReaderViewModel @Inject constructor(
     private val _chapterTitle = MutableStateFlow("")
     val chapterTitle: StateFlow<String> = _chapterTitle.asStateFlow()
 
+    // Nazev titulu (ne kapitoly) - horni lista ho zobrazuje klikatelny, viz onOpenManga
+    // v ReaderScreen.
+    private val _mangaTitle = MutableStateFlow("")
+    val mangaTitle: StateFlow<String> = _mangaTitle.asStateFlow()
+
     // ── Nastavení čtení ──────────────────────────────────────────────────────
     private val _mangaDirectionOverride = MutableStateFlow<String?>(null)
 
@@ -281,6 +286,7 @@ class ReaderViewModel @Inject constructor(
 
     // ── Slovník AI překladu (rychlý přístup z čtečky) ────────────────────────
     private val _currentMangaId = MutableStateFlow<String?>(null)
+    val mangaId: StateFlow<String?> = _currentMangaId.asStateFlow()
 
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     val glossary: StateFlow<List<GlossaryEntity>> = kotlinx.coroutines.flow.combine(
@@ -575,6 +581,7 @@ class ReaderViewModel @Inject constructor(
         val mangaForDir = repository.getManga(chapter.mangaId)
         currentManga = mangaForDir
         _currentMangaId.value = mangaForDir?.id
+        _mangaTitle.value = mangaForDir?.title ?: ""
         _mangaDirectionOverride.value = mangaForDir?.readerDirectionOverride
 
         if (chapter.sourceId == "comick") {

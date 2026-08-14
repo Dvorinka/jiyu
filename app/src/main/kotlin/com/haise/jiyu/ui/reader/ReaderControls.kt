@@ -57,12 +57,10 @@ import com.haise.jiyu.R
 import com.haise.jiyu.data.db.entity.ChapterEntity
 import com.haise.jiyu.source.LanguageMap
 import compose.icons.TablerIcons
-import compose.icons.tablericons.ArrowBack
 import compose.icons.tablericons.ArrowRight
 import compose.icons.tablericons.Check
 import compose.icons.tablericons.Eye
 import compose.icons.tablericons.EyeOff
-import compose.icons.tablericons.DotsVertical
 import compose.icons.tablericons.Language
 import compose.icons.tablericons.LayoutRows
 import compose.icons.tablericons.Menu2
@@ -78,26 +76,16 @@ import compose.icons.tablericons.X
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReaderTopBar(
+    mangaTitle: String,
     chapterTitle: String,
     currentPage: Int,
     pageCount: Int,
-    hasPrevChapter: Boolean,
-    hasNextChapter: Boolean,
     isOfflineChapter: Boolean,
     sessionElapsed: Long,
-    panelMode: Boolean,
-    incognitoMode: Boolean,
-    translateMode: Boolean,
-    isTranslating: Boolean,
     chapterProgress: Float,
     allChapters: List<ChapterEntity>,
-    onNavigatePrev: () -> Unit,
-    onNavigateNext: () -> Unit,
-    onTogglePanelMode: () -> Unit,
-    onSleepTimerClick: () -> Unit,
+    onOpenManga: () -> Unit,
     onJumpToChapter: (String) -> Unit,
-    onToggleIncognito: () -> Unit,
-    onToggleTranslate: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -109,31 +97,33 @@ fun ReaderTopBar(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 4.dp, vertical = 2.dp),
+                .padding(horizontal = 12.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            // Předchozí kapitola
-            IconButton(
-                onClick = onNavigatePrev,
-                enabled = hasPrevChapter,
-                modifier = Modifier.size(40.dp),
-            ) {
-                Icon(
-                    TablerIcons.ArrowBack,
-                    contentDescription = stringResource(R.string.reader_prev_chapter_desc),
-                    tint = if (hasPrevChapter) Color.White else Color.White.copy(alpha = 0.25f),
-                )
-            }
-
-            // Název + stránka
+            // Nazev titulu + kapitola/stranka. Vse ostatni (predchozi/dalsi kapitola, rezim
+            // panelu, casovac spanku, inkognito, preklad) se z horni listy odstranilo na
+            // uzivatelsky pozadavek - zustava jen tohle a seznam kapitol napravo. Predchozi/
+            // dalsi kapitola porad funguje pres gesto (swipe), jen bez tlacitka tady.
             Column(
-                modifier = Modifier.weight(1f).padding(horizontal = 2.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.weight(1f).padding(end = 8.dp),
             ) {
+                Text(
+                    text = mangaTitle.ifBlank { chapterTitle },
+                    color = Color.White,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.clickable(
+                        interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                        indication = null,
+                        onClick = onOpenManga,
+                    ),
+                )
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = chapterTitle,
-                        color = Color.White.copy(alpha = 0.9f),
+                        color = Color.White.copy(alpha = 0.75f),
                         fontSize = 12.sp,
                         fontWeight = FontWeight.SemiBold,
                         maxLines = 1,
@@ -170,39 +160,7 @@ fun ReaderTopBar(
                 }
             }
 
-            // Panel mode toggle (#38)
-            IconButton(onClick = onTogglePanelMode, modifier = Modifier.size(40.dp)) {
-                Icon(
-                    TablerIcons.LayoutRows,
-                    contentDescription = stringResource(R.string.reader_panel_mode_desc),
-                    tint = if (panelMode) Color(0xFFCE93D8) else Color.White.copy(alpha = 0.7f),
-                    modifier = Modifier.size(20.dp),
-                )
-            }
-
-            // Sleep timer (#42)
-            IconButton(onClick = onSleepTimerClick, modifier = Modifier.size(40.dp)) {
-                Icon(
-                    TablerIcons.Moon,
-                    contentDescription = stringResource(R.string.reader_sleep_timer_title),
-                    tint = Color.White.copy(alpha = 0.7f),
-                    modifier = Modifier.size(20.dp),
-                )
-            }
-
-            // Incognito mode
-            IconButton(onClick = onToggleIncognito, modifier = Modifier.size(40.dp)) {
-                Icon(
-                    if (incognitoMode) TablerIcons.EyeOff else TablerIcons.Eye,
-                    contentDescription = stringResource(if (incognitoMode) R.string.reader_incognito_off_desc else R.string.reader_incognito_on_desc),
-                    tint = if (incognitoMode) Color(0xFFCE93D8) else Color.White.copy(alpha = 0.5f),
-                    modifier = Modifier.size(20.dp),
-                )
-            }
-
-            // Seznam kapitol - vedomě posledni ikona pred sipkou na dalsi kapitolu, tesne
-            // u pravého rohu, aby byla jasne oddelena od zbytku (uzivatelsky pozadavek na
-            // redesign: kdysi zapadala mezi ostatni ikony, ted ma vlastni misto v rohu).
+            // Seznam kapitol - jediná ikona, co v horní liště zůstala (uživatelský požadavek).
             if (allChapters.isNotEmpty()) {
                 var showChapterSheet by remember { mutableStateOf(false) }
                 IconButton(onClick = { showChapterSheet = true }, modifier = Modifier.size(40.dp)) {
@@ -264,36 +222,6 @@ fun ReaderTopBar(
                     }
                 }
             }
-
-            // Překlad
-            IconButton(onClick = onToggleTranslate, modifier = Modifier.size(40.dp)) {
-                Icon(
-                    TablerIcons.Language,
-                    contentDescription = stringResource(when {
-                        isTranslating -> R.string.reader_stop_translation_desc
-                        translateMode -> R.string.reader_hide_translation_desc
-                        else          -> R.string.reader_translate_chapter_action_desc
-                    }),
-                    tint = when {
-                        isTranslating -> Color(0xFFFFB74D)
-                        translateMode -> Color(0xFF4FC3F7)
-                        else          -> Color.White
-                    },
-                )
-            }
-
-            // Další kapitola
-            IconButton(
-                onClick = onNavigateNext,
-                enabled = hasNextChapter,
-                modifier = Modifier.size(40.dp),
-            ) {
-                Icon(
-                    TablerIcons.ArrowRight,
-                    contentDescription = stringResource(R.string.reader_next_chapter_desc),
-                    tint = if (hasNextChapter) Color.White else Color.White.copy(alpha = 0.25f),
-                )
-            }
         }
         // Postup v rámci manga (počet kapitol)
         if (chapterProgress > 0f) {
@@ -343,6 +271,13 @@ fun ReaderBottomPanel(
     translationProgress: TranslationProgress?,
     hasNextChapter: Boolean,
     onNavigateNext: () -> Unit,
+    // Presunuto sem z horni listy (uzivatelsky pozadavek) - zit ted v sheetu za
+    // prekladovou ikonou spolu se zbytkem pokrocilych nastaveni.
+    panelMode: Boolean,
+    onTogglePanelMode: () -> Unit,
+    onSleepTimerClick: () -> Unit,
+    incognitoMode: Boolean,
+    onToggleIncognito: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var showBrightness by remember { mutableStateOf(false) }
@@ -410,29 +345,18 @@ fun ReaderBottomPanel(
                     modifier = Modifier.size(21.dp),
                 )
             }
-            IconButton(onClick = onToggleTranslate, modifier = Modifier.size(40.dp)) {
+            // Preklad: klik neprepina rovnou, ale otevre sheet s nastavenim jazyku a
+            // vsim souvisejicim (uzivatelsky pozadavek) - "Dalsi moznosti" tlacitko tim
+            // padem odpadlo, tohle je ted jediny vstup do stejneho obsahu.
+            IconButton(onClick = { showMore = true }, modifier = Modifier.size(40.dp)) {
                 Icon(
                     TablerIcons.Language,
-                    contentDescription = stringResource(
-                        when {
-                            isTranslating -> R.string.reader_stop_translation_desc
-                            translateMode -> R.string.reader_hide_translation_desc
-                            else          -> R.string.reader_translate_chapter_action_desc
-                        },
-                    ),
+                    contentDescription = stringResource(R.string.reader_translate_settings_desc),
                     tint = when {
                         isTranslating -> Color(0xFFFFB74D)
                         translateMode -> Color(0xFF4FC3F7)
                         else          -> liveTint
                     },
-                    modifier = Modifier.size(21.dp),
-                )
-            }
-            IconButton(onClick = onNavigateNext, enabled = hasNextChapter, modifier = Modifier.size(40.dp)) {
-                Icon(
-                    TablerIcons.ArrowRight,
-                    contentDescription = stringResource(R.string.reader_next_chapter_desc),
-                    tint = if (hasNextChapter) liveTint else dimTint,
                     modifier = Modifier.size(21.dp),
                 )
             }
@@ -452,11 +376,13 @@ fun ReaderBottomPanel(
                     modifier = Modifier.size(21.dp),
                 )
             }
-            IconButton(onClick = { showMore = true }, modifier = Modifier.size(40.dp)) {
+            // Dalsi kapitola - vedome posledni ikona v rade (uzivatelsky pozadavek presunout
+            // ji na konec).
+            IconButton(onClick = onNavigateNext, enabled = hasNextChapter, modifier = Modifier.size(40.dp)) {
                 Icon(
-                    TablerIcons.DotsVertical,
-                    contentDescription = stringResource(R.string.reader_more_options_desc),
-                    tint = liveTint,
+                    TablerIcons.ArrowRight,
+                    contentDescription = stringResource(R.string.reader_next_chapter_desc),
+                    tint = if (hasNextChapter) liveTint else dimTint,
                     modifier = Modifier.size(21.dp),
                 )
             }
@@ -482,6 +408,8 @@ fun ReaderBottomPanel(
                 readerOrientation = readerOrientation,
                 onSetReaderOrientation = onSetReaderOrientation,
                 translateMode = translateMode,
+                isTranslating = isTranslating,
+                onToggleTranslate = onToggleTranslate,
                 batchTranslating = batchTranslating,
                 batchProgress = batchProgress,
                 showOriginal = showOriginal,
@@ -489,13 +417,20 @@ fun ReaderBottomPanel(
                 onTranslateAll = onTranslateAll,
                 onCancelBatch = onCancelBatch,
                 translationProgress = translationProgress,
+                panelMode = panelMode,
+                onTogglePanelMode = onTogglePanelMode,
+                onSleepTimerClick = onSleepTimerClick,
+                incognitoMode = incognitoMode,
+                onToggleIncognito = onToggleIncognito,
             )
         }
     }
 }
 
-// ── Pokročilé nastavení čtečky (jazyky, scrubber, orientace, hromadný překlad) ─
-// Dřív žilo přímo v [ReaderBottomPanel], teď je to obsah bottom sheetu za "⋯".
+// ── Pokročilé nastavení čtečky (jazyky, scrubber, orientace, hromadný překlad,
+// překlad zapnuto/vypnuto, panel-po-panelu, časovač spánku, inkognito) ────────
+// Dřív žilo přímo v [ReaderBottomPanel] nebo v horní liště, teď je to obsah
+// bottom sheetu otevíraného kliknutím na ikonu překladu.
 
 @Composable
 private fun ReaderAdvancedSheetContent(
@@ -510,6 +445,8 @@ private fun ReaderAdvancedSheetContent(
     readerOrientation: String,
     onSetReaderOrientation: (String) -> Unit,
     translateMode: Boolean,
+    isTranslating: Boolean,
+    onToggleTranslate: () -> Unit,
     batchTranslating: Boolean,
     batchProgress: TranslationProgress?,
     showOriginal: Boolean,
@@ -517,12 +454,89 @@ private fun ReaderAdvancedSheetContent(
     onTranslateAll: () -> Unit,
     onCancelBatch: () -> Unit,
     translationProgress: TranslationProgress?,
+    panelMode: Boolean,
+    onTogglePanelMode: () -> Unit,
+    onSleepTimerClick: () -> Unit,
+    incognitoMode: Boolean,
+    onToggleIncognito: () -> Unit,
 ) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 6.dp),
     ) {
+        // Rychle prepinace presunute z horni listy (rezim panelu, casovac spanku,
+        // inkognito) - drivejsi verze je mela jako samostatne ikony nahore.
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            IconButton(onClick = onTogglePanelMode) {
+                Icon(
+                    TablerIcons.LayoutRows,
+                    contentDescription = stringResource(R.string.reader_panel_mode_desc),
+                    tint = if (panelMode) Color(0xFFCE93D8) else Color.White.copy(alpha = 0.7f),
+                )
+            }
+            IconButton(onClick = onSleepTimerClick) {
+                Icon(
+                    TablerIcons.Moon,
+                    contentDescription = stringResource(R.string.reader_sleep_timer_title),
+                    tint = Color.White.copy(alpha = 0.7f),
+                )
+            }
+            IconButton(onClick = onToggleIncognito) {
+                Icon(
+                    if (incognitoMode) TablerIcons.EyeOff else TablerIcons.Eye,
+                    contentDescription = stringResource(if (incognitoMode) R.string.reader_incognito_off_desc else R.string.reader_incognito_on_desc),
+                    tint = if (incognitoMode) Color(0xFFCE93D8) else Color.White.copy(alpha = 0.5f),
+                )
+            }
+        }
+        HorizontalDivider(color = Color.White.copy(alpha = 0.08f))
+        Spacer(Modifier.height(8.dp))
+
+        // Preklad zapnuto/vypnuto pro TUTO kapitolu (nezavisle na "Prelozit vse" nize).
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                TablerIcons.Language,
+                contentDescription = null,
+                tint = when {
+                    isTranslating -> Color(0xFFFFB74D)
+                    translateMode -> Color(0xFF4FC3F7)
+                    else          -> Color.White.copy(alpha = 0.7f)
+                },
+                modifier = Modifier.size(18.dp),
+            )
+            Spacer(Modifier.width(8.dp))
+            Text(
+                text = stringResource(
+                    when {
+                        isTranslating -> R.string.reader_stop_translation_desc
+                        translateMode -> R.string.reader_hide_translation_desc
+                        else          -> R.string.reader_translate_chapter_action_desc
+                    },
+                ),
+                color = Color.White,
+                fontSize = 13.sp,
+                modifier = Modifier.weight(1f),
+            )
+            Switch(
+                checked = translateMode,
+                onCheckedChange = { onToggleTranslate() },
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = Color(0xFF4FC3F7),
+                    checkedTrackColor = Color(0xFF4FC3F7).copy(alpha = 0.4f),
+                    uncheckedThumbColor = Color.White,
+                    uncheckedTrackColor = Color.White.copy(alpha = 0.2f),
+                ),
+            )
+        }
+
         // Výběr zdrojového a cílového jazyka překladu
         var showSourceMenu by remember { mutableStateOf(false) }
         var showTargetMenu by remember { mutableStateOf(false) }
