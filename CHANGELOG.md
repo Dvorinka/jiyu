@@ -6,6 +6,14 @@
 
 ## v1.2.6
 
+### Žánry na detailu titulu vypadaly jako fialová pilulka nafouklá do kruhu
+Poslední oprava (v1.2.5) omezila jen délku jednotlivých žánrů, ale u titulů
+se spoustou krátkých "špinavých" žánrů (Bato.to) se pořád mohla fialová
+pilulka roztáhnout přes celou stránku. Žánry teď appka zobrazuje jako
+obyčejný textový řádek (stejný styl jako Typ/Demografie/Vydáno) - žádné
+pozadí, žádné ohraničení, max jeden řádek s třemi tečkami na konci. Nemůže
+se to vizuálně rozjet bez ohledu na to, co zdroj vrátí.
+
 ### Přepnutí na jinou záložku dole a zpátky tě vrátilo přesně tam, kde jsi skončil
 Spodní navigace (Knihovna/Seznam/Novinky/Procházet/Historie/Nastavení) si podle
 standardního Android vzoru pamatovala celý stav každé záložky - když jsi měl
