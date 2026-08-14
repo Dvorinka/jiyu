@@ -242,6 +242,13 @@ class ComicKSourceTest {
     }
 
     @Test
+    fun `searchAdvanced maps average_rating sortBy to the API's own average_rating sort key`() = runTest {
+        source.searchAdvanced(page = 1, filters = ComicKSearchFilters(sortBy = "average_rating"))
+        val request = server.takeRequest()
+        assertTrue(request.path.orEmpty().contains("sort=average_rating"))
+    }
+
+    @Test
     fun `getMangaDetails combines final_chapter and final_volume into one label`() = runTest {
         val manga = source.getPopular(1).first()
         val details = source.getMangaDetails(manga)

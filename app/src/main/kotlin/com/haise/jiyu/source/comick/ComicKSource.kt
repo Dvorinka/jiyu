@@ -100,10 +100,11 @@ class ComicKSource @Inject constructor(
     suspend fun searchAdvanced(page: Int, filters: ComicKSearchFilters): List<SManga> =
         withContext(Dispatchers.IO) {
             val sort = when (filters.sortBy) {
-                "latest" -> "uploaded"
-                "rating" -> "rating"
-                "title"  -> "title"
-                else     -> "follow"
+                "latest"         -> "uploaded"
+                "rating"         -> "rating"
+                "average_rating" -> "average_rating"
+                "title"          -> "title"
+                else             -> "follow"
             }
             val url = buildString {
                 append("$apiBase/v1.0/search?sort=$sort&limit=20&page=$page")

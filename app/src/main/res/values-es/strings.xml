@@ -441,6 +441,11 @@
     <string name="comick_browse_sort">Ordenar</string>
     <string name="comick_browse_sort_rating">Valoración</string>
     <string name="comick_browse_sort_title">Título</string>
+    <string name="comick_browse_sort_average">Valoración media</string>
+    <string name="comick_browse_sort_rating_desc">Valoración bayesiana: más votos, más confianza.</string>
+    <string name="comick_browse_sort_average_desc">Media simple de todas las valoraciones.</string>
+    <string name="comick_browse_sort_latest_desc">Por última actualización.</string>
+    <string name="comick_browse_sort_follow_desc">Por número de seguidores.</string>
     <string name="comick_browse_type">Tipo</string>
     <string name="comick_browse_type_others">Otros</string>
     <string name="comick_browse_demographic">Demografía</string>

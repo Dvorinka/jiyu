@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.asPaddingValues
@@ -25,7 +26,11 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items as gridItems
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Button
@@ -221,7 +226,7 @@ fun ComicKHomeScreen(
                                 val updates by viewModel.updates.collectAsState()
                                 val updatesOrder by viewModel.updatesOrder.collectAsState()
                                 UpdatesPreviewSection(
-                                    updates = updates.take(6),
+                                    updates = updates.take(8),
                                     order = updatesOrder,
                                     onOrderChange = { viewModel.setUpdatesOrder(it) },
                                     onOpenManga = ::openManga,
@@ -236,13 +241,13 @@ fun ComicKHomeScreen(
                     val updatesOrder by viewModel.updatesOrder.collectAsState()
                     val updatesLoading by viewModel.updatesLoading.collectAsState()
                     val updatesError by viewModel.updatesError.collectAsState()
-                    val listState = rememberLazyListState()
+                    val listState = rememberLazyGridState()
 
                     val shouldLoadMore by remember {
                         derivedStateOf {
                             val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
                             val totalItems = listState.layoutInfo.totalItemsCount
-                            lastVisible >= totalItems - 5 && totalItems > 0
+                            lastVisible >= totalItems - 6 && totalItems > 0
                         }
                     }
                     LaunchedEffect(shouldLoadMore) {
@@ -282,17 +287,18 @@ fun ComicKHomeScreen(
                             }
                         } else {
                             val navBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-                            LazyColumn(
+                            LazyVerticalGrid(
+                                columns = GridCells.Fixed(2),
                                 state = listState,
-                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp).let {
-                                    PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 16.dp + navBottom)
-                                },
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                verticalArrangement = Arrangement.spacedBy(14.dp),
+                                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 16.dp + navBottom),
                             ) {
-                                items(updates, key = { it.chapter.sourceId + it.chapter.url }) { update ->
-                                    UpdateRow(update = update, onClick = { openManga(update.comic) })
+                                gridItems(updates, key = { it.chapter.sourceId + it.chapter.url }) { update ->
+                                    UpdateGridCard(update = update, onClick = { openManga(update.comic) })
                                 }
                                 if (updatesLoading) {
-                                    item {
+                                    item(span = { GridItemSpan(maxLineSpan) }) {
                                         Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
                                             JiyuLoadingIndicator(size = 24.dp, strokeWidth = 2.dp)
                                         }
@@ -470,8 +476,19 @@ private fun UpdatesPreviewSection(
                     modifier = Modifier.padding(vertical = 12.dp),
                 )
             } else {
-                updates.forEach { update ->
-                    UpdateRow(update = update, onClick = { onOpenManga(update.comic) })
+                // Nahled neni lazy (jen par polozek predem oreznutych) - staci proste
+                // rucne rozdelit po dvou do radku, misto zanorovat dalsi lazy mrizku
+                // do uz scrollujiciho LazyColumn na Domu.
+                updates.chunked(2).forEach { rowItems ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 14.dp),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        rowItems.forEach { update ->
+                            UpdateGridCard(update = update, onClick = { onOpenManga(update.comic) }, modifier = Modifier.weight(1f))
+                        }
+                        if (rowItems.size == 1) Spacer(modifier = Modifier.weight(1f))
+                    }
                 }
             }
         }
@@ -604,19 +621,39 @@ internal fun ComicKMangaCard(manga: SManga, onClick: () -> Unit) {
     }
 }
 
+/** "před 2 h", "před 3 dny" apod. - ComicK styl relativniho casu misto data. */
+private fun relativeTimeLabel(uploadMs: Long): String {
+    if (uploadMs <= 0L) return ""
+    val diffMin = (System.currentTimeMillis() - uploadMs) / 60_000L
+    return when {
+        diffMin < 1     -> "teď"
+        diffMin < 60    -> "před ${diffMin} min"
+        diffMin < 1440  -> "před ${diffMin / 60} h"
+        diffMin < 43200 -> "před ${diffMin / 1440} dny"
+        else            -> SimpleDateFormat("d. M. yyyy", Locale.getDefault()).format(Date(uploadMs))
+    }
+}
+
+/** "318.0" -> "318", "318.5" -> "318.5" - stejny vzor jako na detailu titulu. */
+private fun chapterNumLabel(n: Float): String =
+    if (n == n.toInt().toFloat()) n.toInt().toString() else n.toString()
+
+/**
+ * Aktualizace jako mřížka obálek (ComicK styl - uživatelský požadavek "abych
+ * viděl lépe ty covery"), místo dřívějších úzkých textových řádků.
+ */
 @Composable
-private fun UpdateRow(update: ChapterUpdate, onClick: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp)
-            .clip(RoundedCornerShape(10.dp))
-            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.35f))
-            .pointerInput(Unit) { detectTapGestures(onTap = { onClick() }) }
-            .padding(10.dp),
-        verticalAlignment = Alignment.CenterVertically,
+private fun UpdateGridCard(update: ChapterUpdate, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier
+            .pointerInput(Unit) { detectTapGestures(onTap = { onClick() }) },
     ) {
-        Box(modifier = Modifier.size(48.dp).clip(RoundedCornerShape(8.dp))) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(0.74f)
+                .clip(RoundedCornerShape(10.dp)),
+        ) {
             SubcomposeAsyncImage(
                 model = update.comic.coverUrl,
                 contentDescription = update.comic.title,
@@ -631,25 +668,30 @@ private fun UpdateRow(update: ChapterUpdate, onClick: () -> Unit) {
                 }
             }
         }
-        Column(modifier = Modifier.weight(1f).padding(start = 10.dp)) {
-            Text(update.comic.title, color = TextPrimary, fontSize = 13.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(update.chapter.name, color = TextSecondary, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            val groupName = update.chapter.scanlationGroup
-            if (!groupName.isNullOrBlank()) {
-                Text(groupName, color = TextSecondary.copy(alpha = 0.6f), fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            }
-        }
-        Column(horizontalAlignment = Alignment.End) {
-            if (update.chapter.dateUpload > 0L) {
-                Text(
-                    SimpleDateFormat("d. M.", Locale.getDefault()).format(Date(update.chapter.dateUpload)),
-                    color = TextSecondary.copy(alpha = 0.6f), fontSize = 10.sp,
-                )
-            }
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                "Ch.${chapterNumLabel(update.chapter.chapterNumber)}",
+                color = Violet, fontSize = 12.sp, fontWeight = FontWeight.Bold,
+                maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false),
+            )
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text("${update.upCount}▲", color = TextSecondary.copy(alpha = 0.6f), fontSize = 10.sp)
-                Text("${update.commentCount}💬", color = TextSecondary.copy(alpha = 0.6f), fontSize = 10.sp)
+                if (update.upCount > 0) Text("${update.upCount}▲", color = TextSecondary.copy(alpha = 0.6f), fontSize = 10.sp)
+                if (update.commentCount > 0) Text("${update.commentCount}💬", color = TextSecondary.copy(alpha = 0.6f), fontSize = 10.sp)
             }
         }
+        Text(relativeTimeLabel(update.chapter.dateUpload), color = TextSecondary.copy(alpha = 0.6f), fontSize = 10.sp, modifier = Modifier.padding(top = 2.dp))
+        val groupName = update.chapter.scanlationGroup
+        if (!groupName.isNullOrBlank()) {
+            Text(groupName, color = TextSecondary.copy(alpha = 0.6f), fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+        Text(
+            update.comic.title, color = TextPrimary, fontSize = 12.sp, fontWeight = FontWeight.SemiBold,
+            maxLines = 2, overflow = TextOverflow.Ellipsis, lineHeight = 14.sp,
+            modifier = Modifier.padding(top = 2.dp),
+        )
     }
 }

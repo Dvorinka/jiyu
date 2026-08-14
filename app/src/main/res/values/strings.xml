@@ -461,7 +461,12 @@
     <string name="comick_browse_clear_filters">Vymazat filtry</string>
     <string name="comick_browse_sort">Řazení</string>
     <string name="comick_browse_sort_rating">Hodnocení</string>
+    <string name="comick_browse_sort_average">Průměrné hodnocení</string>
     <string name="comick_browse_sort_title">Název</string>
+    <string name="comick_browse_sort_rating_desc">Bayesovské hodnocení - víc hlasů znamená větší důvěryhodnost.</string>
+    <string name="comick_browse_sort_average_desc">Prostý průměr všech hodnocení.</string>
+    <string name="comick_browse_sort_latest_desc">Podle poslední aktualizace.</string>
+    <string name="comick_browse_sort_follow_desc">Podle počtu sledujících.</string>
     <string name="comick_browse_type">Typ</string>
     <string name="comick_browse_type_others">Ostatní</string>
     <string name="comick_browse_demographic">Demografie</string>

@@ -441,6 +441,11 @@
     <string name="comick_browse_sort">Trier</string>
     <string name="comick_browse_sort_rating">Note</string>
     <string name="comick_browse_sort_title">Titre</string>
+    <string name="comick_browse_sort_average">Note moyenne</string>
+    <string name="comick_browse_sort_rating_desc">Note bayésienne - plus de votes, plus de confiance.</string>
+    <string name="comick_browse_sort_average_desc">Moyenne simple de toutes les notes.</string>
+    <string name="comick_browse_sort_latest_desc">Par dernière mise à jour.</string>
+    <string name="comick_browse_sort_follow_desc">Par nombre d\'abonnés.</string>
     <string name="comick_browse_type">Type</string>
     <string name="comick_browse_type_others">Autres</string>
     <string name="comick_browse_demographic">Démographie</string>

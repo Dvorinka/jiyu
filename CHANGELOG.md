@@ -4,6 +4,21 @@
 > vidět v historii commitů a v popisech jednotlivých vydání na GitHubu; zpětně to sem
 > nedopisuju, abych si nevymýšlel.
 
+## v1.2.13
+
+### Aktualizace (Hot/New) jako mřížka obálek, stylem ComicK
+Feed kapitol (na Domů i na vlastní záložce Aktualizace) dřív vypadal jako
+úzké textové řádky - teď je to mřížka o dvou sloupcích s velkými obálkami,
+číslem kapitoly, relativním časem ("před 2 h"), skupinou a lajky/komentáři,
+podobně jako na ComicK webu/appce. Náhled na Domů zůstává (rozšířen na 8
+položek), plná záložka Aktualizace má pořád nekonečné scrollování.
+
+### Filtry na Procházet (ComicK): přidané "Průměrné hodnocení" + vysvětlivky u řazení
+Vedle "Hodnocení" (bayesovské - víc hlasů, víc důvěryhodnosti) teď appka
+nabízí i "Průměrné hodnocení" (prostý průměr) jako samostatnou možnost
+řazení, stejně jako na ComicK webu. Pod řazením se navíc zobrazí krátké
+vysvětlení aktuálně vybrané možnosti.
+
 ## v1.2.12
 
 ### Nová ikona appky

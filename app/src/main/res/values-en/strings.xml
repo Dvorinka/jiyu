@@ -444,6 +444,11 @@
     <string name="comick_browse_sort">Sort</string>
     <string name="comick_browse_sort_rating">Rating</string>
     <string name="comick_browse_sort_title">Title</string>
+    <string name="comick_browse_sort_average">Average Rating</string>
+    <string name="comick_browse_sort_rating_desc">Bayesian rating - more votes, more trust.</string>
+    <string name="comick_browse_sort_average_desc">Simple average of all ratings.</string>
+    <string name="comick_browse_sort_latest_desc">By last update.</string>
+    <string name="comick_browse_sort_follow_desc">By number of followers.</string>
     <string name="comick_browse_type">Type</string>
     <string name="comick_browse_type_others">Others</string>
     <string name="comick_browse_demographic">Demographic</string>

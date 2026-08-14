@@ -290,16 +290,30 @@ private fun ComicKFilterSheet(
             LazyColumn(modifier = Modifier.weight(1f).padding(horizontal = 20.dp)) {
                 item { SheetSectionLabel(stringResource(R.string.comick_browse_sort)) }
                 item {
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(bottom = 12.dp)) {
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         listOf(
                             "follow" to stringResource(R.string.source_browse_popular),
                             "latest" to stringResource(R.string.source_browse_latest),
                             "rating" to stringResource(R.string.comick_browse_sort_rating),
+                            "average_rating" to stringResource(R.string.comick_browse_sort_average),
                             "title" to stringResource(R.string.comick_browse_sort_title),
                         ).forEach { (value, label) ->
                             SheetChip(label, sortBy == value) { sortBy = value }
                         }
                     }
+                    // Popisky u razeni - stejne vysvetlivky jako ma ComicKuv vlastni
+                    // filtr u "Popular" (Bayesian vs Average rating), uzivatelsky pozadavek.
+                    val sortCaption = when (sortBy) {
+                        "rating"         -> stringResource(R.string.comick_browse_sort_rating_desc)
+                        "average_rating" -> stringResource(R.string.comick_browse_sort_average_desc)
+                        "latest"         -> stringResource(R.string.comick_browse_sort_latest_desc)
+                        "follow"         -> stringResource(R.string.comick_browse_sort_follow_desc)
+                        else             -> null
+                    }
+                    if (sortCaption != null) {
+                        Text(sortCaption, color = TextSecondary, fontSize = 11.sp, modifier = Modifier.padding(top = 6.dp))
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
                 }
                 item { SheetSectionLabel(stringResource(R.string.comick_browse_type)) }
                 item {
