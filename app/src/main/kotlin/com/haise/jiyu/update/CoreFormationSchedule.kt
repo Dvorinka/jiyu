@@ -28,6 +28,12 @@ internal object CoreFormationSchedule {
     private const val SHOCK_OVERSHOOT = 1.15f
 
     /**
+     * Postup, od kterého čchi začíná stoupat páteří k temeni. Záměrně až za [HEAT_ONSET]:
+     * stoupat může teprve to, co se předtím v tantienu nashromáždilo a zahřálo.
+     */
+    private const val MERIDIAN_ONSET = 0.55f
+
+    /**
      * @return hustota pole: 0f = rozptýlená mlha na začátku, 1f = plně zhuštěné jádro.
      *   Mírně akcelerující (exponent nad 1), protože stlačování se samo urychluje - ale jen
      *   mírně, aby zůstal postup čitelný i v první polovině.
@@ -43,6 +49,16 @@ internal object CoreFormationSchedule {
         val p = progress.coerceIn(0f, 1f)
         val t = ((p - HEAT_ONSET) / (1f - HEAT_ONSET)).coerceIn(0f, 1f)
         return t * t
+    }
+
+    /**
+     * @return jak daleko vystoupala čchi páteří: 0f = pořád jen v tantienu, 1f = dosáhla
+     *   temene (bai-hui). Smoothstep, aby se linie nerozjela ani nezastavila trhnutím.
+     */
+    fun meridianReach(progress: Float): Float {
+        val p = progress.coerceIn(0f, 1f)
+        val t = ((p - MERIDIAN_ONSET) / (1f - MERIDIAN_ONSET)).coerceIn(0f, 1f)
+        return t * t * (3f - 2f * t)
     }
 
     /**

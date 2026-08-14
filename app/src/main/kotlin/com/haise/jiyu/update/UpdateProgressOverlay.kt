@@ -151,11 +151,13 @@ private const val INDETERMINATE_SWING = 0.05f
 private const val FLASH_MILLIS = 520
 
 /**
- * Formování jádra (凝丹) řízené postupem stahování [progress] (0f–1f): rozptýlená čchi je
- * vtahována po spirálách dovnitř, stlačuje se a zhušťuje v zářící jádro. Při dokončení jádro
- * ztuhne a vyšle jednu rázovou vlnu.
+ * Meditující postava, která kultivuje, řízená postupem stahování [progress] (0f–1f):
+ * rozptýlená čchi je vtahována po spirálách do dolního tantienu, stlačuje se a zhušťuje
+ * v zářící jádro. Jak jádro sílí, čchi stoupá páteří vzhůru a nakonec se rozsvítí temeno.
+ * Při dokončení jádro ztuhne a vyšle jednu rázovou vlnu.
  *
- * Postup nesou dva nezávislé kanály, hustota a teplota - viz [CoreFormationSchedule].
+ * Postup nesou tři nezávislé kanály - hustota, teplota a výstup čchi páteří; všechny žijí
+ * v [CoreFormationSchedule]. Samotné vykreslení je v [QiFieldShader].
  *
  * Záporná hodnota [progress] = neurčitý postup (appka ještě nezná velikost souboru): pole
  * zůstane rozptýlené a jen mírně dýchá. Zhušťovat ho by bylo lhaní o postupu, který neznáme.
@@ -209,6 +211,7 @@ private fun QiCore(progress: Float, modifier: Modifier = Modifier) {
         CoreFormationSchedule.density(eased)
     }
     val heat = if (indeterminate) 0f else CoreFormationSchedule.heat(eased)
+    val meridian = if (indeterminate) 0f else CoreFormationSchedule.meridianReach(eased)
 
     Canvas(modifier) {
         val s = shader
@@ -236,12 +239,15 @@ private fun QiCore(progress: Float, modifier: Modifier = Modifier) {
         s.setFloatUniform("uTime", timeSec)
         s.setFloatUniform("uDensity", density.coerceIn(0f, 1f))
         s.setFloatUniform("uHeat", heat)
+        s.setFloatUniform("uMeridian", meridian)
         s.setFloatUniform("uFlashR", CoreFormationSchedule.flashRadius(flashT))
         s.setFloatUniform("uFlashA", CoreFormationSchedule.flashAlpha(flashT))
-        // Fialova mlha appky (#7C5CFC) a bily zar s jemnym fialovym nadechem. Kanon by chtel
-        // zlate jadro, ale zlata by se tloukla s celou appkou - soudrznost prebiji trop.
+        // Tri barvy, tri vyznamy: fialova (#7C5CFC) drzi identitu appky a znaci syrovou
+        // cchi; zlata je doslovny preklad 金丹 (Jindan, "zlate jadro") - vrchol tohohle
+        // stadia kultivace; ruda je nemenna pecet na tantienu.
         s.setFloatUniform("uMist", 0.486f, 0.361f, 0.988f)
-        s.setFloatUniform("uHot", 1f, 0.94f, 1f)
+        s.setFloatUniform("uGold", 1f, 0.78f, 0.32f)
+        s.setFloatUniform("uSeal", 0.98f, 0.20f, 0.16f)
 
         drawRect(brush = ShaderBrush(s))
     }
