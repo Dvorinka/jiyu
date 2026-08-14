@@ -4,6 +4,23 @@
 > vidět v historii commitů a v popisech jednotlivých vydání na GitHubu; zpětně to sem
 > nedopisuju, abych si nevymýšlel.
 
+## v1.2.11
+
+### Tlačítko Pokračovat na detailu titulu - úprava podle ComicK
+- Nižší, jeden řádek textu místo dvou (mizelo tam "Pokračovat" rozdělené
+  na "Pokračova" + "t" na vlastním řádku - text se do dvouřádkového
+  layoutu nevešel)
+- Míň tučné písmo, číslo kapitoly rovnou v textu ("Pokračovat 318")
+- Šipka dolů na tlačítku pryč - **podržení tlačítka** teď otevře nabídku
+  číst normálně/anonymně (dřív k tomu byla ta šipka)
+- Status vedle (Sleduji/Dokončeno/...) má teď stejnou výšku jako Pokračovat
+- Odznak stavu (Vychází/Dokončeno/...) sjednocen na stejné zaoblení rohů
+  jako tlačítka pod ním (dřív byl jako plná pilulka, tlačítka míň kulatá)
+
+### Emoji u polí na detailu titulu, jako má ComicK
+- Typ: vlaječka podle původu (🇯🇵 Manga, 🇰🇷 Manhwa, 🇨🇳 Manhua)
+- Status a Překlad: 📖 vychází/probíhá, ✅ dokončeno, 🚫 zrušeno, ⏸ přerušeno
+
 ## v1.2.10
 
 ### Aktualizace (Hot/New) teď rovnou na Domů, ne jen na vlastní záložce

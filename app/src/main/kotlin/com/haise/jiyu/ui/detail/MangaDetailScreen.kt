@@ -11,7 +11,9 @@ import compose.icons.tablericons.*
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -101,7 +103,7 @@ import com.haise.jiyu.ui.theme.glassGradient
 import com.haise.jiyu.ui.theme.screenGradient
 import com.haise.jiyu.ui.theme.titleGradient
 
-@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun MangaDetailScreen(
     onBack: () -> Unit = {},
@@ -407,18 +409,18 @@ fun MangaDetailScreen(
                             }
                             manga?.status?.let { status ->
                                 val (label, statusColor) = when (status.lowercase()) {
-                                    "ongoing"   -> stringResource(R.string.detail_status_ongoing)   to Color(0xFF4CAF50)
-                                    "completed" -> stringResource(R.string.detail_status_completed) to Color(0xFF4FC3F7)
-                                    "hiatus"    -> stringResource(R.string.detail_status_hiatus)     to Color(0xFFFFB74D)
-                                    "cancelled" -> stringResource(R.string.detail_status_cancelled)  to Color(0xFFEF5350)
+                                    "ongoing"   -> "📖 " + stringResource(R.string.detail_status_ongoing)   to Color(0xFF4CAF50)
+                                    "completed" -> "✅ " + stringResource(R.string.detail_status_completed) to Color(0xFF4FC3F7)
+                                    "hiatus"    -> "⏸ " + stringResource(R.string.detail_status_hiatus)     to Color(0xFFFFB74D)
+                                    "cancelled" -> "🚫 " + stringResource(R.string.detail_status_cancelled)  to Color(0xFFEF5350)
                                     else        -> status      to TextSecondary
                                 }
                                 Box(
                                     modifier = Modifier
                                         .padding(top = 6.dp)
-                                        .clip(RoundedCornerShape(50))
+                                        .clip(RoundedCornerShape(8.dp))
                                         .background(statusColor.copy(alpha = 0.15f))
-                                        .border(1.dp, statusColor.copy(alpha = 0.4f), RoundedCornerShape(50))
+                                        .border(1.dp, statusColor.copy(alpha = 0.4f), RoundedCornerShape(8.dp))
                                         .padding(horizontal = 10.dp, vertical = 3.dp),
                                 ) {
                                     Text(text = label, color = statusColor, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
@@ -428,7 +430,7 @@ fun MangaDetailScreen(
                             val demographicGenre = allGenres.firstOrNull { it.lowercase() in DEMOGRAPHIC_TAGS }
                             val genres = allGenres.filter { it != demographicGenre }
                             Column(modifier = Modifier.padding(top = 6.dp)) {
-                                DetailInfoRow(stringResource(R.string.detail_info_origination), originationLabel(manga?.contentType))
+                                DetailInfoRow(stringResource(R.string.detail_info_origination), "${originationFlag(manga?.contentType)} ${originationLabel(manga?.contentType)}")
                                 (manga?.demographic ?: demographicGenre)?.let { DetailInfoRow(stringResource(R.string.detail_info_demographic), it) }
                                 if (genres.isNotEmpty()) {
                                     DetailInfoRow(stringResource(R.string.detail_info_genres), genres.take(4).joinToString(", "))
@@ -437,7 +439,7 @@ fun MangaDetailScreen(
                                 manga?.translationCompleted?.let {
                                     DetailInfoRow(
                                         stringResource(R.string.detail_info_translation),
-                                        if (it) stringResource(R.string.detail_info_translation_completed) else stringResource(R.string.detail_info_translation_ongoing),
+                                        if (it) "✅ " + stringResource(R.string.detail_info_translation_completed) else "📖 " + stringResource(R.string.detail_info_translation_ongoing),
                                     )
                                 }
                                 manga?.hasAnime?.let {
@@ -511,46 +513,45 @@ fun MangaDetailScreen(
                         continueChapter?.let { chapter ->
                             val hasHistory = manga?.lastReadChapterId != null
                             var showReadMenu by remember { mutableStateOf(false) }
-                            Row(
-                                modifier = Modifier
-                                    .weight(3f)
-                                    .clip(RoundedCornerShape(10.dp))
-                                    .background(Brush.linearGradient(listOf(GlowViolet, GlowCyan.copy(alpha = 0.9f)))),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
+                            val chapterNumberLabel = chapter.chapterNumber.let { n ->
+                                if (n == n.toInt().toFloat()) n.toInt().toString() else n.toString()
+                            }
+                            Box(modifier = Modifier.weight(3f)) {
                                 Row(
                                     modifier = Modifier
-                                        .weight(1f)
-                                        .clickable { openChapter(chapter) }
-                                        .padding(horizontal = 18.dp, vertical = 16.dp),
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .background(Brush.linearGradient(listOf(GlowViolet, GlowCyan.copy(alpha = 0.9f))))
+                                        .combinedClickable(
+                                            onClick = { openChapter(chapter) },
+                                            onLongClick = { showReadMenu = true },
+                                        )
+                                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                                    horizontalArrangement = Arrangement.Center,
                                     verticalAlignment = Alignment.CenterVertically,
                                 ) {
-                                    Icon(TablerIcons.PlayerPlay, contentDescription = null, tint = Color.White, modifier = Modifier.size(22.dp))
-                                    Column(modifier = Modifier.padding(start = 10.dp)) {
-                                        Text(text = if (hasHistory) stringResource(R.string.detail_continue_short) else stringResource(R.string.action_start_reading), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                                        Text(
-                                            text = if (hasHistory) "${chapter.name} · str. ${chapter.lastPageRead + 1}" else chapter.name,
-                                            color = Color.White.copy(alpha = 0.8f), fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                                        )
-                                    }
+                                    Icon(TablerIcons.PlayerPlay, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+                                    Text(
+                                        text = if (hasHistory) "${stringResource(R.string.detail_continue_short)} $chapterNumberLabel" else stringResource(R.string.action_start_reading),
+                                        color = Color.White,
+                                        fontWeight = FontWeight.SemiBold,
+                                        fontSize = 14.sp,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        modifier = Modifier.padding(start = 8.dp),
+                                    )
                                 }
-                                Box(modifier = Modifier.width(1.dp).height(40.dp).background(Color.White.copy(alpha = 0.25f)))
-                                Box {
-                                    IconButton(onClick = { showReadMenu = true }, modifier = Modifier.padding(horizontal = 2.dp)) {
-                                        Icon(TablerIcons.ChevronDown, contentDescription = stringResource(R.string.detail_read_options), tint = Color.White)
-                                    }
-                                    DropdownMenu(expanded = showReadMenu, onDismissRequest = { showReadMenu = false }) {
-                                        DropdownMenuItem(
-                                            text = { Text(stringResource(R.string.action_read_normal)) },
-                                            leadingIcon = { Icon(TablerIcons.PlayerPlay, contentDescription = null) },
-                                            onClick = { showReadMenu = false; openChapter(chapter) },
-                                        )
-                                        DropdownMenuItem(
-                                            text = { Text(stringResource(R.string.action_read_incognito)) },
-                                            leadingIcon = { Icon(TablerIcons.EyeOff, contentDescription = null) },
-                                            onClick = { showReadMenu = false; openChapter(chapter, incognito = true) },
-                                        )
-                                    }
+                                DropdownMenu(expanded = showReadMenu, onDismissRequest = { showReadMenu = false }) {
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(R.string.action_read_normal)) },
+                                        leadingIcon = { Icon(TablerIcons.PlayerPlay, contentDescription = null) },
+                                        onClick = { showReadMenu = false; openChapter(chapter) },
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(R.string.action_read_incognito)) },
+                                        leadingIcon = { Icon(TablerIcons.EyeOff, contentDescription = null) },
+                                        onClick = { showReadMenu = false; openChapter(chapter, incognito = true) },
+                                    )
                                 }
                             }
                         }
@@ -563,7 +564,7 @@ fun MangaDetailScreen(
                                     .background(statusColor.copy(alpha = 0.15f))
                                     .border(1.dp, statusColor.copy(alpha = 0.4f), RoundedCornerShape(10.dp))
                                     .clickable { statusDropdownExpanded = true }
-                                    .padding(horizontal = 12.dp, vertical = 16.dp),
+                                    .padding(horizontal = 12.dp, vertical = 12.dp),
                                 horizontalArrangement = Arrangement.Center,
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
@@ -1120,6 +1121,15 @@ private fun originationLabel(contentType: String?): String = when (contentType) 
     "NOVEL"  -> stringResource(R.string.mylist_content_novel)
     "COMIC"  -> stringResource(R.string.mylist_content_comic)
     else     -> stringResource(R.string.browse_source_type_manga)
+}
+
+/** Vlaječka podle typu obsahu, stejně jako to ComicK ukazuje u "Origination". */
+private fun originationFlag(contentType: String?): String = when (contentType) {
+    "MANHWA" -> "🇰🇷"
+    "MANHUA" -> "🇨🇳"
+    "COMIC"  -> "🇺🇸"
+    "NOVEL"  -> "📖"
+    else     -> "🇯🇵"
 }
 
 @Composable
