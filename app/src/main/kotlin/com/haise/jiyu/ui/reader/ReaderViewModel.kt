@@ -106,6 +106,11 @@ class ReaderViewModel @Inject constructor(
     private val _chapterTitle = MutableStateFlow("")
     val chapterTitle: StateFlow<String> = _chapterTitle.asStateFlow()
 
+    // ID aktualne otevrene kapitoly - seznam kapitol v horni liste na nej scrolluje
+    // a zvyraznuje ho, viz ReaderTopBar.
+    private val _currentChapterId = MutableStateFlow<String?>(null)
+    val currentChapterId: StateFlow<String?> = _currentChapterId.asStateFlow()
+
     // Nazev titulu (ne kapitoly) - horni lista ho zobrazuje klikatelny, viz onOpenManga
     // v ReaderScreen.
     private val _mangaTitle = MutableStateFlow("")
@@ -565,6 +570,7 @@ class ReaderViewModel @Inject constructor(
         val chapter = repository.getChapter(id) ?: run { _loading.value = false; return }
         currentChapter = chapter
         _chapterTitle.value = chapter.name
+        _currentChapterId.value = chapter.id
         // Presna pozice (stranka + scroll) se pamatuje jen POSITION_FRESHNESS_MS od posledniho
         // cteni - starsi otevreme rovnou od zacatku kapitoly, viz [POSITION_FRESHNESS_MS].
         val positionIsFresh = System.currentTimeMillis() - chapter.lastReadAt <= POSITION_FRESHNESS_MS

@@ -85,6 +85,7 @@ fun ReaderContent(
     onJumpToPage: (Int) -> Unit = {},
     onJumpConsumed: () -> Unit = {},
     allChapters: List<ChapterEntity> = emptyList(),
+    currentChapterId: String? = null,
     onJumpToChapter: (String) -> Unit = {},
     autoNextChapter: Boolean = false,
     onAutoNextChapter: () -> Unit = {},
@@ -214,6 +215,7 @@ fun ReaderContent(
                     sessionElapsed = sessionElapsed,
                     chapterProgress = chapterProgress,
                     allChapters = allChapters,
+                    currentChapterId = currentChapterId,
                     onOpenManga = onOpenManga,
                     onJumpToChapter = onJumpToChapter,
                 )

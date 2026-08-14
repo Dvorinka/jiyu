@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -18,6 +19,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
@@ -37,6 +39,7 @@ import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -84,6 +87,7 @@ fun ReaderTopBar(
     sessionElapsed: Long,
     chapterProgress: Float,
     allChapters: List<ChapterEntity>,
+    currentChapterId: String? = null,
     onOpenManga: () -> Unit,
     onJumpToChapter: (String) -> Unit,
     modifier: Modifier = Modifier,
@@ -173,6 +177,16 @@ fun ReaderTopBar(
                 }
                 if (showChapterSheet) {
                     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+                    val listState = rememberLazyListState()
+                    val currentIndex = remember(allChapters, currentChapterId) {
+                        allChapters.indexOfFirst { it.id == currentChapterId }
+                    }
+                    // Otevri seznam rovnou u aktualne cetene kapitoly (par radku nad ni,
+                    // ne uplne nahore) - uzivatel na kapitole 200 z 322 se jinak musel
+                    // sam proscrollovat, misto nahore videl vzdy nejnovejsi kapitolu.
+                    LaunchedEffect(showChapterSheet) {
+                        if (currentIndex >= 0) listState.scrollToItem((currentIndex - 4).coerceAtLeast(0))
+                    }
                     ModalBottomSheet(
                         onDismissRequest = { showChapterSheet = false },
                         sheetState = sheetState,
@@ -186,13 +200,17 @@ fun ReaderTopBar(
                             modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp),
                         )
                         LazyColumn(
-                            modifier = Modifier.fillMaxWidth(),
+                            state = listState,
+                            // Ne pres celou obrazovku (uzivatelsky pozadavek) - max 70 % vysky.
+                            modifier = Modifier.fillMaxWidth().fillMaxHeight(0.7f),
                             contentPadding = PaddingValues(bottom = 32.dp),
                         ) {
                             items(allChapters, key = { it.id }) { chapter ->
+                                val isCurrent = chapter.id == currentChapterId
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
+                                        .then(if (isCurrent) Modifier.background(Color(0xFF8B5CF6).copy(alpha = 0.18f)) else Modifier)
                                         .clickable { onJumpToChapter(chapter.id); showChapterSheet = false }
                                         .padding(horizontal = 24.dp, vertical = 12.dp),
                                     verticalAlignment = Alignment.CenterVertically,
@@ -200,9 +218,13 @@ fun ReaderTopBar(
                                     Column(modifier = Modifier.weight(1f)) {
                                         Text(
                                             text = chapter.name,
-                                            color = if (chapter.read) Color.White.copy(alpha = 0.45f) else Color.White,
+                                            color = when {
+                                                isCurrent    -> Color(0xFFB39DFF)
+                                                chapter.read -> Color.White.copy(alpha = 0.45f)
+                                                else         -> Color.White
+                                            },
                                             fontSize = 14.sp,
-                                            fontWeight = if (chapter.read) FontWeight.Normal else FontWeight.SemiBold,
+                                            fontWeight = if (isCurrent || !chapter.read) FontWeight.SemiBold else FontWeight.Normal,
                                             maxLines = 1,
                                             overflow = TextOverflow.Ellipsis,
                                         )

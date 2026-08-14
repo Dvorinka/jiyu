@@ -78,6 +78,7 @@ fun ReaderScreen(
     val chapterTitle        by viewModel.chapterTitle.collectAsState()
     val mangaTitle           by viewModel.mangaTitle.collectAsState()
     val mangaId              by viewModel.mangaId.collectAsState()
+    val currentChapterId     by viewModel.currentChapterId.collectAsState()
     val sourceLanguage      by viewModel.sourceLanguage.collectAsState()
     val targetLanguage      by viewModel.targetLanguage.collectAsState()
     val tapZonesEnabled     by viewModel.tapZonesEnabled.collectAsState()
@@ -300,6 +301,7 @@ fun ReaderScreen(
                 onJumpToPage = { viewModel.jumpToPage(it) },
                 onJumpConsumed = { viewModel.clearJump() },
                 allChapters = allChapters,
+                currentChapterId = currentChapterId,
                 onJumpToChapter = { viewModel.jumpToChapter(it) },
                 autoNextChapter = autoNextChapter,
                 onAutoNextChapter = { viewModel.navigateNext() },

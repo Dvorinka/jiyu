@@ -4,6 +4,18 @@
 > vidět v historii commitů a v popisech jednotlivých vydání na GitHubu; zpětně to sem
 > nedopisuju, abych si nevymýšlel.
 
+## v1.2.8
+
+### Seznam kapitol ve čtečce se otevíral přes celou obrazovku a vždy od nejnovější kapitoly
+Klepnutí na ikonu se třemi čárkami v horní liště čtečky otevřelo seznam všech
+kapitol na celou výšku obrazovky a vždy shora (nejnovější kapitola) - u
+dlouhých sérií (300+ kapitol) se tak muselo ručně scrollovat k té, na které
+člověk zrovna je. Teď:
+
+- seznam zabírá max. 70 % výšky obrazovky, ne celou
+- otevře se rovnou u aktuálně čtené kapitoly (pár řádků nad ní)
+- aktuální kapitola je v seznamu zvýrazněná fialovým podkladem
+
 ## v1.2.7
 
 ### Detail titulu na ComicK měl málo informací oproti webu
