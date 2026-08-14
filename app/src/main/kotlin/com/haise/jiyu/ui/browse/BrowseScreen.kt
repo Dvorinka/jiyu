@@ -452,6 +452,7 @@ private fun FeaturedSourceCard(source: MangaSource, onClick: () -> Unit) {
                 color = TextPrimary,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.SemiBold,
+                minLines = 2,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
                 lineHeight = 15.sp,
@@ -593,6 +594,11 @@ private fun SourceCard(
             color = TextPrimary,
             fontSize = 12.sp,
             fontWeight = FontWeight.SemiBold,
+            // minLines = maxLines = 2: nazev vzdy rezervuje misto na DVA radky bez ohledu
+            // na skutecnou delku - jinak karta s jednoradkovym nazvem ("Comics Kingdom")
+            // vyjde niz nez soused se dvouradkovym ("ReadFreeComicsOnline") a rady v gridu
+            // nedosedaji na stejnou vysku.
+            minLines = 2,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
             lineHeight = 14.sp,

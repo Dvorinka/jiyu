@@ -844,7 +844,6 @@
     <string name="library_minutes_short">min</string>
     <string name="library_percent_read">%1$d %% lu</string>
     <string name="library_filter">Filtrer</string>
-    <string name="library_new_badge">NOUVEAU</string>
 
     <string name="mylist_content_novel">Roman</string>
     <string name="mylist_content_comic">BD</string>

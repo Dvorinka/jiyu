@@ -298,7 +298,6 @@ fun LibraryScreen(
                             items(recentlyAdded, key = { it.id }) { manga ->
                                 SimpleMangaCard(
                                     manga = manga,
-                                    showNewBadge = true,
                                     onClick = { onOpenManga(manga.id) },
                                     onLongPress = { pendingRemoval = manga.id to manga.title },
                                 )
@@ -316,7 +315,6 @@ fun LibraryScreen(
                             items(completed, key = { it.id }) { manga ->
                                 SimpleMangaCard(
                                     manga = manga,
-                                    showNewBadge = false,
                                     onClick = { onOpenManga(manga.id) },
                                     onLongPress = { pendingRemoval = manga.id to manga.title },
                                 )
@@ -693,7 +691,7 @@ private fun formatChapterNumber(number: Float?): String {
 }
 
 @Composable
-private fun SimpleMangaCard(manga: MangaEntity, showNewBadge: Boolean, onClick: () -> Unit, onLongPress: () -> Unit) {
+private fun SimpleMangaCard(manga: MangaEntity, onClick: () -> Unit, onLongPress: () -> Unit) {
     Column(
         modifier = Modifier
             .width(96.dp)
@@ -713,17 +711,6 @@ private fun SimpleMangaCard(manga: MangaEntity, showNewBadge: Boolean, onClick: 
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize(),
             )
-            if (showNewBadge) {
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.TopStart)
-                        .padding(5.dp)
-                        .background(GlowViolet, RoundedCornerShape(6.dp))
-                        .padding(horizontal = 6.dp, vertical = 2.dp),
-                ) {
-                    Text(stringResource(R.string.library_new_badge), color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Bold)
-                }
-            }
         }
         Spacer(Modifier.height(6.dp))
         Text(

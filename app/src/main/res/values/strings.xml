@@ -537,7 +537,6 @@
     <string name="library_minutes_short">min</string>
     <string name="library_percent_read">%1$d %% přečteno</string>
     <string name="library_filter">Filtrovat</string>
-    <string name="library_new_badge">NOVÉ</string>
     <string name="library_refresh_error">Nepodařilo se aktualizovat: %1$s%2$s</string>
     <string name="library_refresh_error_and_more"> a další</string>
 
