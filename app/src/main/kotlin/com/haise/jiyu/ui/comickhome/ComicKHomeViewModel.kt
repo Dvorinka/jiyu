@@ -7,12 +7,15 @@ import com.haise.jiyu.source.SManga
 import com.haise.jiyu.source.comick.ChapterUpdate
 import com.haise.jiyu.source.comick.ComicKSource
 import com.haise.jiyu.source.comick.TopFeed
+import com.haise.jiyu.settings.SettingsRepository
 import com.haise.jiyu.util.report
 import com.haise.jiyu.util.toFriendlyMessage
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -27,7 +30,27 @@ import javax.inject.Inject
 class ComicKHomeViewModel @Inject constructor(
     private val comicKSource: ComicKSource,
     private val repository: MangaRepository,
+    private val settings: SettingsRepository,
 ) : ViewModel() {
+
+    val updatesCountries: StateFlow<Set<String>> =
+        settings.comickUpdatesCountries.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), setOf("jp", "kr", "cn", "others"))
+    val updatesDemographics: StateFlow<Set<String>> =
+        settings.comickUpdatesDemographics.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), setOf("0", "1", "2", "3", "4"))
+    val updatesMatureFlags: StateFlow<Set<String>> =
+        settings.comickUpdatesMatureFlags.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptySet())
+    val showAdultContent: StateFlow<Boolean> =
+        settings.showAdultSources.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
+    /** Uloží Preferences a znovu načte Aktualizace od první stránky s novým filtrem. */
+    fun setUpdatesPreferences(countries: Set<String>, demographics: Set<String>, matureFlags: Set<String>) {
+        viewModelScope.launch {
+            settings.setComickUpdatesCountries(countries)
+            settings.setComickUpdatesDemographics(demographics)
+            settings.setComickUpdatesMatureFlags(matureFlags)
+            loadUpdatesFirstPage()
+        }
+    }
 
     private val _topFeed = MutableStateFlow<TopFeed?>(null)
     val topFeed: StateFlow<TopFeed?> = _topFeed.asStateFlow()

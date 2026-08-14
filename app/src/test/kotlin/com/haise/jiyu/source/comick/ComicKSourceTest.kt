@@ -22,6 +22,7 @@ class ComicKSourceTest {
 
     private lateinit var server: MockWebServer
     private lateinit var source: ComicKSource
+    private lateinit var settings: SettingsRepository
 
     private val searchArrayJson = """
         [ {"title": "Test Series", "slug": "test-series", "country": "kr", "md_covers": [{"b2key": "cover.jpg"}]} ]
@@ -90,7 +91,7 @@ class ComicKSourceTest {
             }
         }
         server.start()
-        val settings = SettingsRepository(FakeDataStore())
+        settings = SettingsRepository(FakeDataStore())
         source = ComicKSource(redirectingClient(server), settings)
     }
 
@@ -740,6 +741,68 @@ class ComicKSourceTest {
         }
         val updates = source.getUpdates(order = "new", page = 1)
         assertTrue(updates.isEmpty())
+    }
+
+    private val mixedUpdatesJson = """
+        [
+            {"chap": "1", "hid": "h1", "created_at": "2026-01-01T00:00:00Z", "up_count": 0, "comment_count": 0, "group_name": [],
+             "md_comics": {"title": "Manga Title", "slug": "manga-title", "country": "jp", "demographic": 1, "content_rating": "safe", "violence_rating": "none", "md_covers": []}},
+            {"chap": "1", "hid": "h2", "created_at": "2026-01-01T00:00:00Z", "up_count": 0, "comment_count": 0, "group_name": [],
+             "md_comics": {"title": "Manhwa Title", "slug": "manhwa-title", "country": "kr", "demographic": 3, "content_rating": "safe", "violence_rating": "none", "md_covers": []}},
+            {"chap": "1", "hid": "h3", "created_at": "2026-01-01T00:00:00Z", "up_count": 0, "comment_count": 0, "group_name": [],
+             "md_comics": {"title": "Suggestive Title", "slug": "suggestive-title", "country": "jp", "demographic": 1, "content_rating": "suggestive", "violence_rating": "none", "md_covers": []}},
+            {"chap": "1", "hid": "h4", "created_at": "2026-01-01T00:00:00Z", "up_count": 0, "comment_count": 0, "group_name": [],
+             "md_comics": {"title": "Erotica Title", "slug": "erotica-title", "country": "jp", "demographic": 1, "content_rating": "erotica", "violence_rating": "none", "md_covers": []}},
+            {"chap": "1", "hid": "h5", "created_at": "2026-01-01T00:00:00Z", "up_count": 0, "comment_count": 0, "group_name": [],
+             "md_comics": {"title": "Graphic Violence Title", "slug": "graphic-violence-title", "country": "jp", "demographic": 1, "content_rating": "safe", "violence_rating": "graphic", "md_covers": []}}
+        ]
+    """.trimIndent()
+
+    private fun setUpdatesDispatcher() {
+        server.dispatcher = object : Dispatcher() {
+            override fun dispatch(request: RecordedRequest): MockResponse {
+                val path = request.path.orEmpty()
+                return when {
+                    path.startsWith("/chapter") && !path.startsWith("/chapter/") -> MockResponse().setBody(mixedUpdatesJson)
+                    else -> MockResponse().setResponseCode(404)
+                }
+            }
+        }
+    }
+
+    @Test
+    fun `getUpdates defaults to showing safe content from every country and demographic, but not mature content`() = runTest {
+        setUpdatesDispatcher()
+        val updates = source.getUpdates(order = "hot", page = 1)
+        val titles = updates.map { it.comic.title }
+        assertEquals(listOf("Manga Title", "Manhwa Title"), titles)
+    }
+
+    @Test
+    fun `getUpdates - Preferences - country filter hides updates from unselected countries`() = runTest {
+        setUpdatesDispatcher()
+        settings.setComickUpdatesCountries(setOf("jp"))
+        val titles = source.getUpdates(order = "hot", page = 1).map { it.comic.title }
+        assertEquals(listOf("Manga Title"), titles)
+    }
+
+    @Test
+    fun `getUpdates - Preferences - demographic filter hides updates from unselected demographics`() = runTest {
+        setUpdatesDispatcher()
+        settings.setComickUpdatesDemographics(setOf("3"))
+        val titles = source.getUpdates(order = "hot", page = 1).map { it.comic.title }
+        assertEquals(listOf("Manhwa Title"), titles)
+    }
+
+    @Test
+    fun `getUpdates - Preferences - mature content flags add suggestive, erotica or graphic violence on top of safe`() = runTest {
+        setUpdatesDispatcher()
+        settings.setComickUpdatesMatureFlags(setOf("suggestive", "adult", "violence"))
+        val titles = source.getUpdates(order = "hot", page = 1).map { it.comic.title }
+        assertEquals(
+            listOf("Manga Title", "Manhwa Title", "Suggestive Title", "Erotica Title", "Graphic Violence Title"),
+            titles,
+        )
     }
 
     private fun request() = server.takeRequest()

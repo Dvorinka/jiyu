@@ -81,8 +81,6 @@
     <string name="settings_main_services_subtitle">Sync cloud, MyAnimeList, Kitsu, MangaUpdates</string>
     <string name="settings_main_backup_title">Sauvegarder et restaurer</string>
     <string name="settings_main_backup_subtitle">Sauvegarde bibliothèque, Sauvegarde paramètres, Import Mihon</string>
-    <string name="settings_main_goals_subtitle">Objectif quotidien, Série</string>
-    <string name="settings_main_community_subtitle">Listes manga partagées</string>
     <string name="settings_main_duplicates_subtitle">Rechercher les doublons dans la bibliothèque</string>
     <string name="settings_main_about_title">À propos</string>
     <string name="settings_main_about_subtitle">Version, Mises à jour</string>
@@ -264,8 +262,6 @@
     <string name="settings_backup_settings_export_success">Paramètres exportés</string>
 
     <!-- Paramètres : Lecture -->
-    <string name="settings_reading_goals_button">Objectifs de lecture &amp; Série</string>
-    <string name="settings_reading_community_button">Listes manga communautaires</string>
     <string name="settings_reading_duplicates_button">Détecteur de doublons</string>
 
     <!-- Paramètres : À propos -->
@@ -458,6 +454,15 @@
     <string name="comick_browse_year_from">Année de début</string>
     <string name="comick_browse_year_to">Année de fin</string>
     <string name="comick_browse_tags">Tags</string>
+    <string name="comick_prefs_title">Préférences des mises à jour</string>
+    <string name="comick_prefs_type">Type</string>
+    <string name="comick_prefs_demographic">Démographie</string>
+    <string name="comick_prefs_no_demographic">Sans démographie</string>
+    <string name="comick_prefs_mature">Contenu pour adultes</string>
+    <string name="comick_prefs_mature_suggestive">Contenu suggestif</string>
+    <string name="comick_prefs_mature_violence">Violence ou gore fréquent (18+)</string>
+    <string name="comick_prefs_mature_adult">Contenu pour adultes (nudité, sexe)</string>
+    <string name="comick_prefs_button">Préférences</string>
 
     <string name="detail_chapter_downloaded">Téléchargé</string>
     <string name="detail_mark_read_up_to">Marquer celui-ci et les plus anciens comme lus</string>
@@ -737,9 +742,6 @@
     <string name="account_error_signup_generic">Erreur d\'inscription</string>
 
     <!-- Communauté -->
-    <string name="community_title">Manga communautaires</string>
-    <string name="community_load_error">Impossible de charger la liste communautaire</string>
-    <string name="community_empty">Aucune liste manga publique</string>
 
     <!-- Gestionnaire de téléchargements -->
     <string name="downloads_manager_title">Chapitres téléchargés</string>
@@ -773,13 +775,6 @@
     <string name="duplicates_remove_from_library">Retirer de la bibliothèque</string>
 
     <!-- Objectifs de lecture -->
-    <string name="goals_title">Objectifs de lecture</string>
-    <string name="goals_streak_day_singular">jour de série</string>
-    <string name="goals_streak_day_plural">jours de série</string>
-    <string name="goals_weekly_title">Objectif hebdomadaire</string>
-    <string name="goals_off">Désactivé</string>
-    <string name="goals_set_goal_label">Définir l\'objectif : %1$s</string>
-    <string name="goals_goal_unit_format">%1$d ch/semaine</string>
 
     <!-- Historique -->
     <string name="history_title">Historique</string>
@@ -951,11 +946,6 @@
         <item quantity="one">%1$d groupe trouvé</item>
         <item quantity="other">%1$d groupes trouvés</item>
         <item quantity="many">%1$d groupes trouvés</item>
-    </plurals>
-    <plurals name="goals_progress_format">
-        <item quantity="one">%1$d / %2$d chapitre</item>
-        <item quantity="other">%1$d / %2$d chapitres</item>
-        <item quantity="many">%1$d / %2$d chapitres</item>
     </plurals>
     <plurals name="mylist_add_n_to_category">
         <item quantity="one">Ajouter %1$d manga à une catégorie</item>

@@ -78,6 +78,7 @@ import compose.icons.TablerIcons
 import compose.icons.tablericons.Book
 import compose.icons.tablericons.Flame
 import compose.icons.tablericons.Search
+import compose.icons.tablericons.Settings
 import compose.icons.tablericons.Sun
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -99,6 +100,7 @@ fun ComicKHomeScreen(
     val mostRecentPopularWindow by viewModel.mostRecentPopularWindow.collectAsState()
     val openingManga by viewModel.openingManga.collectAsState()
     val openError by viewModel.openError.collectAsState()
+    var showPreferences by remember { mutableStateOf(false) }
 
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -253,6 +255,7 @@ fun ComicKHomeScreen(
                                 UpdatesFeedHeader(
                                     order = updatesOrder,
                                     onOrderChange = { viewModel.setUpdatesOrder(it) },
+                                    onOpenPreferences = { showPreferences = true },
                                 )
                             }
                             if (updatesError != null) {
@@ -305,6 +308,24 @@ fun ComicKHomeScreen(
                 }
             }
         }
+    }
+
+    if (showPreferences) {
+        val updatesCountries by viewModel.updatesCountries.collectAsState()
+        val updatesDemographics by viewModel.updatesDemographics.collectAsState()
+        val updatesMatureFlags by viewModel.updatesMatureFlags.collectAsState()
+        val showAdultContent by viewModel.showAdultContent.collectAsState()
+        ComicKUpdatesPreferencesSheet(
+            initialCountries = updatesCountries,
+            initialDemographics = updatesDemographics,
+            initialMatureFlags = updatesMatureFlags,
+            showAdultContent = showAdultContent,
+            onDismiss = { showPreferences = false },
+            onApply = { countries, demographics, matureFlags ->
+                viewModel.setUpdatesPreferences(countries, demographics, matureFlags)
+                showPreferences = false
+            },
+        )
     }
 }
 
@@ -429,7 +450,7 @@ private fun ReviewSection(reviews: List<ReviewItem>, onOpenManga: (SManga) -> Un
  * omezení, protože už nic dalšího není kam zobrazit.
  */
 @Composable
-private fun UpdatesFeedHeader(order: String, onOrderChange: (String) -> Unit) {
+private fun UpdatesFeedHeader(order: String, onOrderChange: (String) -> Unit, onOpenPreferences: () -> Unit) {
     Column {
         Text(
             stringResource(R.string.comick_home_tab_updates),
@@ -438,6 +459,7 @@ private fun UpdatesFeedHeader(order: String, onOrderChange: (String) -> Unit) {
         )
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 2.dp),
+            verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             UpdatesOrderChip(
@@ -454,6 +476,10 @@ private fun UpdatesFeedHeader(order: String, onOrderChange: (String) -> Unit) {
                 selected = order == "new",
                 onClick = { onOrderChange("new") },
             )
+            Spacer(modifier = Modifier.weight(1f))
+            IconButton(onClick = onOpenPreferences, modifier = Modifier.size(32.dp)) {
+                Icon(TablerIcons.Settings, contentDescription = stringResource(R.string.comick_prefs_button), tint = TextSecondary, modifier = Modifier.size(18.dp))
+            }
         }
     }
 }

@@ -49,6 +49,9 @@ object SettingsKeys {
     val PRELOAD_NEXT_CHAPTER_MANGA = booleanPreferencesKey("preload_next_chapter_manga")
     val PRELOAD_NEXT_CHAPTER_WIFI_ONLY = booleanPreferencesKey("preload_next_chapter_wifi_only")
     val FAVORITE_SOURCE_IDS    = stringSetPreferencesKey("favorite_source_ids")
+    val COMICK_UPD_COUNTRIES   = stringSetPreferencesKey("comick_upd_countries")
+    val COMICK_UPD_DEMOGRAPHICS = stringSetPreferencesKey("comick_upd_demographics")
+    val COMICK_UPD_MATURE      = stringSetPreferencesKey("comick_upd_mature")
     /**
      * Klasický režim (výběr ze všech zdrojů) vs. ComicK agregovaný režim (ComicK jako
      * jediný katalog). Cílový stav dle designu (viz
@@ -351,6 +354,41 @@ class SettingsRepository @Inject constructor(
         val current = prefs[SettingsKeys.FAVORITE_SOURCE_IDS] ?: emptySet()
         prefs[SettingsKeys.FAVORITE_SOURCE_IDS] = if (sourceId in current) current - sourceId else current + sourceId
     }
+
+    // ── ComicK Aktualizace - Preferences (uzivatelsky pozadavek, podle ComicK
+    // vlastniho "Preferences" panelu) ─────────────────────────────────────────
+    // Jen 3 sekce, ktere jsou skutecne filtrovatelne datu, ktere API vraci (Type,
+    // Demographic, Mature Content) - "Display comics in my list" a "countdown
+    // timers" jsou vazane na ComicK ucet/premium funkce, ktere appka nema.
+    // ComicKovo /chapter API tyhle parametry v query stringu tise ignoruje (overeno
+    // zive - jen content_rating tam skutecne filtruje), takze se filtruje az po
+    // strane appky nad jiz stazenou strankou, viz ComicKSource.getUpdates.
+
+    /** "jp"/"kr"/"cn"/"others" - vychozi vsechny (nic se needilo). */
+    val comickUpdatesCountries: Flow<Set<String>> =
+        dataStore.data.map { it[SettingsKeys.COMICK_UPD_COUNTRIES] ?: setOf("jp", "kr", "cn", "others") }
+
+    suspend fun setComickUpdatesCountries(values: Set<String>) =
+        dataStore.edit { it[SettingsKeys.COMICK_UPD_COUNTRIES] = values }
+
+    /** "0".."4" (0 = bez demografie) - vychozi vsechny. */
+    val comickUpdatesDemographics: Flow<Set<String>> =
+        dataStore.data.map { it[SettingsKeys.COMICK_UPD_DEMOGRAPHICS] ?: setOf("0", "1", "2", "3", "4") }
+
+    suspend fun setComickUpdatesDemographics(values: Set<String>) =
+        dataStore.edit { it[SettingsKeys.COMICK_UPD_DEMOGRAPHICS] = values }
+
+    /**
+     * Podmnozina {"suggestive","violence","adult"} - narozdil od Type/Demographic tohle
+     * NENI filtr, co skryva "safe" obsah (ten se ukazuje vzdy) - jsou to opt-in prepinace
+     * PRIDAVAJICI dospelejsi obsah navic, presne jak to ma ComicK. Vychozi prazdne (nic
+     * navic), aby appka nezacala nekomu bez varovani ukazovat 18+ obsah v Aktualizacich.
+     */
+    val comickUpdatesMatureFlags: Flow<Set<String>> =
+        dataStore.data.map { it[SettingsKeys.COMICK_UPD_MATURE] ?: emptySet() }
+
+    suspend fun setComickUpdatesMatureFlags(values: Set<String>) =
+        dataStore.edit { it[SettingsKeys.COMICK_UPD_MATURE] = values }
 
     val appMode: Flow<String> =
         dataStore.data.map { it[SettingsKeys.APP_MODE] ?: AppMode.SOURCES }

@@ -10,7 +10,6 @@ import androidx.navigation.navDeepLink
 import com.haise.jiyu.ui.account.AccountScreen
 import com.haise.jiyu.ui.browse.BrowseScreen
 import com.haise.jiyu.ui.browse.SourceBrowseScreen
-import com.haise.jiyu.ui.community.CommunityScreen
 import com.haise.jiyu.ui.comickhome.ComicKBrowseScreen
 import com.haise.jiyu.ui.comickhome.ComicKHomeScreen
 import com.haise.jiyu.ui.comickhome.ComicKSectionScreen
@@ -18,7 +17,6 @@ import com.haise.jiyu.ui.css.CustomCssScreen
 import com.haise.jiyu.ui.detail.MangaDetailInfoScreen
 import com.haise.jiyu.ui.detail.MangaDetailScreen
 import com.haise.jiyu.ui.downloads.DownloadManagerScreen
-import com.haise.jiyu.ui.goals.ReadingGoalsScreen
 import com.haise.jiyu.ui.group.GroupScreen
 import com.haise.jiyu.ui.history.HistoryScreen
 import com.haise.jiyu.ui.library.LibraryScreen
@@ -64,8 +62,6 @@ internal object Routes {
     const val GLOBAL_SEARCH = "global_search?q={q}"
     const val STATS         = "stats"
     const val LIBRARY_SECTION = "library_section/{section}"
-    const val GOALS         = "goals"
-    const val COMMUNITY     = "community"
     const val CUSTOM_CSS    = "custom_css"
     const val DUPLICATES    = "duplicates"
     const val TAP_ZONES     = "tap_zones"
@@ -309,8 +305,6 @@ fun JiyuNavGraph(
                 onOpenUpdateCheck = { navController.navigate(Routes.SETTINGS_UPDATE_CHECK) },
                 onOpenServices = { navController.navigate(Routes.SETTINGS_SERVICES) },
                 onOpenBackup = { navController.navigate(Routes.SETTINGS_BACKUP) },
-                onOpenGoals = { navController.navigate(Routes.GOALS) },
-                onOpenCommunity = { navController.navigate(Routes.COMMUNITY) },
                 onOpenDuplicates = { navController.navigate(Routes.DUPLICATES) },
                 onOpenAbout = { navController.navigate(Routes.SETTINGS_ABOUT) },
             )
@@ -402,14 +396,6 @@ fun JiyuNavGraph(
 
         composable(Routes.STATS) {
             ExtendedStatsScreen(onBack = { navController.popBackStack() })
-        }
-
-        composable(Routes.GOALS) {
-            ReadingGoalsScreen(onBack = { navController.popBackStack() })
-        }
-
-        composable(Routes.COMMUNITY) {
-            CommunityScreen(onBack = { navController.popBackStack() })
         }
 
         composable(Routes.CUSTOM_CSS) {

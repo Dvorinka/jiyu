@@ -85,8 +85,6 @@
     <string name="settings_main_services_subtitle">Cloud sync, MyAnimeList, Kitsu, MangaUpdates</string>
     <string name="settings_main_backup_title">Zálohovat a obnovit</string>
     <string name="settings_main_backup_subtitle">Záloha knihovny, Záloha nastavení, Import Mihon</string>
-    <string name="settings_main_goals_subtitle">Denní cíl, Série dnů</string>
-    <string name="settings_main_community_subtitle">Sdílené seznamy mang</string>
     <string name="settings_main_duplicates_subtitle">Vyhledání duplicit v knihovně</string>
     <string name="settings_main_about_title">O aplikaci</string>
     <string name="settings_main_about_subtitle">Verze, Aktualizace</string>
@@ -280,8 +278,6 @@
     <string name="settings_backup_settings_export_success">Nastavení exportováno</string>
 
     <!-- Settings: Čtení -->
-    <string name="settings_reading_goals_button">Cíle čtení &amp; Série dnů</string>
-    <string name="settings_reading_community_button">Community manga listy</string>
     <string name="settings_reading_duplicates_button">Duplikát detektor</string>
 
     <!-- Settings: O aplikaci -->
@@ -479,6 +475,15 @@
     <string name="comick_browse_year_from">Rok od</string>
     <string name="comick_browse_year_to">Rok do</string>
     <string name="comick_browse_tags">Tagy</string>
+    <string name="comick_prefs_title">Předvolby Aktualizací</string>
+    <string name="comick_prefs_type">Typ</string>
+    <string name="comick_prefs_demographic">Demografie</string>
+    <string name="comick_prefs_no_demographic">Bez demografie</string>
+    <string name="comick_prefs_mature">Obsah pro dospělé</string>
+    <string name="comick_prefs_mature_suggestive">Sugestivní obsah</string>
+    <string name="comick_prefs_mature_violence">Násilí a krvavé scény (18+)</string>
+    <string name="comick_prefs_mature_adult">Obsah pro dospělé (nahota, sex)</string>
+    <string name="comick_prefs_button">Předvolby</string>
 
     <string name="detail_chapter_downloaded">Staženo</string>
     <string name="detail_mark_read_up_to">Označit toto i vše starší přečtené</string>
@@ -793,9 +798,6 @@
     <string name="account_error_signup_generic">Chyba registrace</string>
 
     <!-- Komunita -->
-    <string name="community_title">Community Manga</string>
-    <string name="community_load_error">Nepodařilo se načíst community seznam</string>
-    <string name="community_empty">Žádné veřejné manga listy</string>
 
     <!-- Správce stažených -->
     <string name="downloads_manager_title">Stažené kapitoly</string>
@@ -829,13 +831,6 @@
     <string name="duplicates_remove_from_library">Odebrat z knihovny</string>
 
     <!-- Cíle čtení -->
-    <string name="goals_title">Cíle čtení</string>
-    <string name="goals_streak_day_singular">den v řadě</string>
-    <string name="goals_streak_day_plural">dní v řadě</string>
-    <string name="goals_weekly_title">Týdenní cíl</string>
-    <string name="goals_off">Vypnuto</string>
-    <string name="goals_set_goal_label">Nastav cíl: %1$s</string>
-    <string name="goals_goal_unit_format">%1$d kap/týden</string>
 
     <!-- Historie -->
     <string name="history_title">Historie</string>
@@ -941,11 +936,6 @@
         <item quantity="one">%1$d skupina nalezena</item>
         <item quantity="few">%1$d skupiny nalezeny</item>
         <item quantity="other">%1$d skupin nalezeno</item>
-    </plurals>
-    <plurals name="goals_progress_format">
-        <item quantity="one">%1$d / %2$d kapitola</item>
-        <item quantity="few">%1$d / %2$d kapitoly</item>
-        <item quantity="other">%1$d / %2$d kapitol</item>
     </plurals>
     <plurals name="mylist_add_n_to_category">
         <item quantity="one">Přidat %1$d mangu do kategorie</item>

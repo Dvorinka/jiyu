@@ -4,6 +4,27 @@
 > vidět v historii commitů a v popisech jednotlivých vydání na GitHubu; zpětně to sem
 > nedopisuju, abych si nevymýšlel.
 
+## v1.2.16
+
+### Nové: Předvolby (Preferences) pro Aktualizace na ComicK
+Ověřeno živě proti ComicK API: parametry Type/Demographic appka na feedu
+kapitol filtruje sama po straně appky (ComicK je v query parametrech na
+`/chapter` tiše ignoruje - funguje tam jen `content_rating`). Nové ozubené
+kolo vedle Hot/New na Aktualizacích otevře stejné 3 sekce, které má ComicK
+vlastní Preferences stránka:
+- **Typ** (Manga/Manhwa/Manhua/Ostatní)
+- **Demografie** (Shounen/Josei/Seinen/Shoujo/Bez demografie)
+- **Obsah pro dospělé** (jen s zapnutými 18+ zdroji) - sugestivní obsah,
+  násilí/krvavé scény, obsah pro dospělé - to jsou opt-in přepínače
+  navíc k běžnému obsahu, ne filtr co ho skrývá
+
+"Display comics in my list" a "countdown timers" appka nemá - vázané na
+ComicK účet/premium funkce, které appka nezná.
+
+### Odstraněny nepoužívané sekce Nastavení
+"Cíle čtení & Série" a "Community manga listy" - appka je nikde jinde
+nepoužívala.
+
 ## v1.2.15
 
 ### Sloupec s informacemi na detailu titulu sjednocen podle ComicK

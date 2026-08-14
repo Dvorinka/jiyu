@@ -342,13 +342,36 @@ class ComicKSource @Inject constructor(
      * položek (ověřeno živě) - konec seznamu pozná appka jen podle prázdné
      * odpovědi, ne podle magického čísla.
      */
+    /**
+     * "Preferences" filtr z uzivatelskeho pozadavku (Type/Demographic/Mature Content,
+     * presne jako ma ComicK vlastni Preferences stranka) - overeno zive, ze /chapter
+     * tyhle parametry v query stringu tise IGNORUJE (jedina vyjimka je content_rating,
+     * ale ten filtrujeme tady stejne kvuli jednotne logice pro vsechny 3 sekce), takze
+     * se filtruje az tady nad uz stazenou strankou dat, ktera md_comics uz obsahuji.
+     */
     suspend fun getUpdates(order: String, page: Int): List<ChapterUpdate> =
         withContext(Dispatchers.IO) {
             val langCode = LanguageMap.toMangaDexCode(settings.sourceLanguage.first())
+            val allowedCountries = settings.comickUpdatesCountries.first()
+            val allowedDemographics = settings.comickUpdatesDemographics.first()
+            val matureFlags = settings.comickUpdatesMatureFlags.first()
             val arr = getArray("$apiBase/chapter?lang=$langCode&order=$order&page=$page")
             (0 until arr.length()).mapNotNull { i ->
                 val json = arr.getJSONObject(i)
                 val comicJson = json.optJSONObject("md_comics") ?: return@mapNotNull null
+
+                val countryKey = comicJson.optString("country").let { if (it in setOf("jp", "kr", "cn")) it else "others" }
+                if (countryKey !in allowedCountries) return@mapNotNull null
+                val demographicKey = comicJson.optInt("demographic", 0).toString()
+                if (demographicKey !in allowedDemographics) return@mapNotNull null
+                val contentRating = comicJson.optString("content_rating", "safe")
+                val violenceRating = comicJson.optString("violence_rating", "none")
+                val isBlockedMature =
+                    (contentRating == "suggestive" && "suggestive" !in matureFlags) ||
+                        (contentRating == "erotica" && "adult" !in matureFlags) ||
+                        (violenceRating == "graphic" && "violence" !in matureFlags)
+                if (isBlockedMature) return@mapNotNull null
+
                 val comic = comicFromJson(comicJson) ?: return@mapNotNull null
                 val chapter = chapterFromJson(json, comic.url) ?: return@mapNotNull null
                 ChapterUpdate(

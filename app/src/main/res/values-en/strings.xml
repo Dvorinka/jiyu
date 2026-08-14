@@ -84,8 +84,6 @@
     <string name="settings_main_services_subtitle">Cloud sync, MyAnimeList, Kitsu, MangaUpdates</string>
     <string name="settings_main_backup_title">Backup &amp; restore</string>
     <string name="settings_main_backup_subtitle">Library backup, Settings backup, Mihon import</string>
-    <string name="settings_main_goals_subtitle">Daily goal, Streak</string>
-    <string name="settings_main_community_subtitle">Shared manga lists</string>
     <string name="settings_main_duplicates_subtitle">Find duplicates in your library</string>
     <string name="settings_main_about_title">About</string>
     <string name="settings_main_about_subtitle">Version, Updates</string>
@@ -267,8 +265,6 @@
     <string name="settings_backup_settings_export_success">Settings exported</string>
 
     <!-- Settings: Reading -->
-    <string name="settings_reading_goals_button">Reading goals &amp; Streak</string>
-    <string name="settings_reading_community_button">Community manga lists</string>
     <string name="settings_reading_duplicates_button">Duplicate detector</string>
 
     <!-- Settings: About -->
@@ -461,6 +457,15 @@
     <string name="comick_browse_year_from">Year from</string>
     <string name="comick_browse_year_to">Year to</string>
     <string name="comick_browse_tags">Tags</string>
+    <string name="comick_prefs_title">Updates Preferences</string>
+    <string name="comick_prefs_type">Type</string>
+    <string name="comick_prefs_demographic">Demographic</string>
+    <string name="comick_prefs_no_demographic">No demographic</string>
+    <string name="comick_prefs_mature">Mature Content</string>
+    <string name="comick_prefs_mature_suggestive">Suggestive Content</string>
+    <string name="comick_prefs_mature_violence">Frequent Violence or Gore (18+)</string>
+    <string name="comick_prefs_mature_adult">Adult Content (nudity, sex)</string>
+    <string name="comick_prefs_button">Preferences</string>
 
     <string name="detail_chapter_downloaded">Downloaded</string>
     <string name="detail_mark_read_up_to">Mark this and all older as read</string>
@@ -740,9 +745,6 @@
     <string name="account_error_signup_generic">Sign-up error</string>
 
     <!-- Community -->
-    <string name="community_title">Community manga</string>
-    <string name="community_load_error">Couldn\'t load the community list</string>
-    <string name="community_empty">No public manga lists</string>
 
     <!-- Download manager -->
     <string name="downloads_manager_title">Downloaded chapters</string>
@@ -776,13 +778,6 @@
     <string name="duplicates_remove_from_library">Remove from library</string>
 
     <!-- Reading goals -->
-    <string name="goals_title">Reading goals</string>
-    <string name="goals_streak_day_singular">day streak</string>
-    <string name="goals_streak_day_plural">day streak</string>
-    <string name="goals_weekly_title">Weekly goal</string>
-    <string name="goals_off">Off</string>
-    <string name="goals_set_goal_label">Set goal: %1$s</string>
-    <string name="goals_goal_unit_format">%1$d ch/week</string>
 
     <!-- History -->
     <string name="history_title">History</string>
@@ -944,10 +939,6 @@
     <plurals name="duplicates_groups_found">
         <item quantity="one">%1$d group found</item>
         <item quantity="other">%1$d groups found</item>
-    </plurals>
-    <plurals name="goals_progress_format">
-        <item quantity="one">%1$d / %2$d chapter</item>
-        <item quantity="other">%1$d / %2$d chapters</item>
     </plurals>
     <plurals name="mylist_add_n_to_category">
         <item quantity="one">Add %1$d manga to category</item>

@@ -73,8 +73,6 @@ fun MainScreen(
         currentRoute != Routes.ONBOARDING &&
         currentRoute != Routes.GLOBAL_SEARCH &&
         currentRoute != Routes.STATS &&
-        currentRoute != Routes.GOALS &&
-        currentRoute != Routes.COMMUNITY &&
         currentRoute != Routes.CUSTOM_CSS &&
         currentRoute != Routes.DOWNLOADS &&
         currentRoute != Routes.ACCOUNT &&
