@@ -78,6 +78,7 @@ fun ReaderContent(
     oledMode: Boolean = false,
     incognitoMode: Boolean = false,
     onToggleIncognito: () -> Unit = {},
+    onAdvancedSheetVisibilityChanged: (Boolean) -> Unit = {},
     sessionElapsed: Long = 0L,
     webtoonScrollSpeed: Float = 1.0f,
     pageScale: String = "fit_width",
@@ -251,6 +252,7 @@ fun ReaderContent(
                     onSleepTimerClick = onSleepTimerClick,
                     incognitoMode = incognitoMode,
                     onToggleIncognito = onToggleIncognito,
+                    onAdvancedSheetVisibilityChanged = onAdvancedSheetVisibilityChanged,
                 )
             }
         }

@@ -300,10 +300,12 @@ fun ReaderBottomPanel(
     onSleepTimerClick: () -> Unit,
     incognitoMode: Boolean,
     onToggleIncognito: () -> Unit,
+    onAdvancedSheetVisibilityChanged: (Boolean) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     var showBrightness by remember { mutableStateOf(false) }
     var showMore by remember { mutableStateOf(false) }
+    LaunchedEffect(showMore) { onAdvancedSheetVisibilityChanged(showMore) }
     val canJumpPage = pageCount > 1
     val dimTint = Color.White.copy(alpha = 0.25f)
     val liveTint = Color.White.copy(alpha = 0.9f)

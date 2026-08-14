@@ -294,6 +294,7 @@ fun ReaderScreen(
                 oledMode = oledMode,
                 incognitoMode = incognitoMode,
                 onToggleIncognito = { viewModel.toggleIncognito() },
+                onAdvancedSheetVisibilityChanged = { viewModel.onAdvancedSheetVisibilityChanged(it) },
                 sessionElapsed = sessionElapsed,
                 webtoonScrollSpeed = webtoonScrollSpeed,
                 pageScale = pageScale,

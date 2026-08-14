@@ -410,11 +410,28 @@ class ReaderViewModel @Inject constructor(
 
     private fun scheduleControlsAutoHide() {
         controlsHideJob?.cancel()
-        if (_controlsVisible.value) {
+        if (_controlsVisible.value && !advancedSheetOpen) {
             controlsHideJob = viewModelScope.launch {
-                delay(3_000L)
+                delay(5_000L)
                 _controlsVisible.value = false
             }
+        }
+    }
+
+    private var advancedSheetOpen = false
+
+    /**
+     * Pokud je otevreny "Dalsi moznosti" sheet ve spodni liste (preklad/jazyky/
+     * orientace...), auto-hide se úplně zastaví - dřív zmizel i s otevřeným sheetem
+     * po 3s bez ohledu na to, ze uzivatel s nim aktivne pracuje. Zavře se
+     * jen explicitním tapnutím mimo (sheet's own dismiss).
+     */
+    fun onAdvancedSheetVisibilityChanged(visible: Boolean) {
+        advancedSheetOpen = visible
+        if (visible) {
+            controlsHideJob?.cancel()
+        } else {
+            scheduleControlsAutoHide()
         }
     }
 
