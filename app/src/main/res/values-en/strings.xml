@@ -362,6 +362,7 @@
     <string name="detail_reading_status_plan">Plan to read</string>
     <string name="detail_status_placeholder">Status</string>
     <string name="detail_info_origination">Origin</string>
+    <string name="detail_info_source">Source</string>
     <string name="detail_info_genres">Genres</string>
     <string name="detail_info_rating">Rating</string>
     <string name="detail_info_rank">Ranked</string>
@@ -475,6 +476,7 @@
     <string name="detail_mark_read_up_to">Mark this and all older as read</string>
     <string name="detail_mark_all_older_read">Mark all older as read</string>
     <string name="detail_mark_all_newer_unread">Mark all newer as unread</string>
+    <string name="detail_bulk_confirm_body">This will change the read state of several chapters at once. Continue?</string>
     <string name="detail_mark_as_unread">Mark as unread</string>
     <string name="detail_mark_as_read">Mark as read</string>
     <string name="detail_error_no_internet">You\'re not connected to the internet</string>

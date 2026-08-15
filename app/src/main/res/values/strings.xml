@@ -380,6 +380,7 @@
     <string name="detail_reading_status_plan">Plánuji číst</string>
     <string name="detail_status_placeholder">Status</string>
     <string name="detail_info_origination">Typ</string>
+    <string name="detail_info_source">Zdroj</string>
     <string name="detail_info_genres">Žánry</string>
     <string name="detail_info_rating">Hodnocení</string>
     <string name="detail_info_rank">Žebříček</string>
@@ -493,6 +494,7 @@
     <string name="detail_mark_read_up_to">Označit toto i vše starší přečtené</string>
     <string name="detail_mark_all_older_read">Označit vše starší jako přečtené</string>
     <string name="detail_mark_all_newer_unread">Označit vše novější jako nepřečtené</string>
+    <string name="detail_bulk_confirm_body">Tohle najednou změní stav přečtení u více kapitol najednou. Pokračovat?</string>
     <string name="detail_mark_as_unread">Označit jako nepřečtené</string>
     <string name="detail_mark_as_read">Označit jako přečtené</string>
     <string name="detail_error_no_internet">Nejsi připojen k internetu</string>

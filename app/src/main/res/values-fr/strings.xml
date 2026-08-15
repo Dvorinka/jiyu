@@ -359,6 +359,7 @@
     <string name="detail_reading_status_plan">À lire</string>
     <string name="detail_status_placeholder">Statut</string>
     <string name="detail_info_origination">Origine</string>
+    <string name="detail_info_source">Source</string>
     <string name="detail_info_genres">Genres</string>
     <string name="detail_info_rating">Note</string>
     <string name="detail_info_rank">Classement</string>
@@ -472,6 +473,7 @@
     <string name="detail_mark_read_up_to">Marquer celui-ci et les plus anciens comme lus</string>
     <string name="detail_mark_all_older_read">Marquer tous les plus anciens comme lus</string>
     <string name="detail_mark_all_newer_unread">Marquer tous les plus récents comme non lus</string>
+    <string name="detail_bulk_confirm_body">Cela va changer l\'état de lecture de plusieurs chapitres à la fois. Continuer ?</string>
     <string name="detail_mark_as_unread">Marquer comme non lu</string>
     <string name="detail_mark_as_read">Marquer comme lu</string>
     <string name="detail_error_no_internet">Vous n\'êtes pas connecté à internet</string>

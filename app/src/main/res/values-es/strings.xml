@@ -359,6 +359,7 @@
     <string name="detail_reading_status_plan">Planeo leer</string>
     <string name="detail_status_placeholder">Estado</string>
     <string name="detail_info_origination">Origen</string>
+    <string name="detail_info_source">Fuente</string>
     <string name="detail_info_genres">Géneros</string>
     <string name="detail_info_rating">Valoración</string>
     <string name="detail_info_rank">Ranking</string>
@@ -472,6 +473,7 @@
     <string name="detail_mark_read_up_to">Marcar este y todos los anteriores como leídos</string>
     <string name="detail_mark_all_older_read">Marcar todos los anteriores como leídos</string>
     <string name="detail_mark_all_newer_unread">Marcar todos los posteriores como no leídos</string>
+    <string name="detail_bulk_confirm_body">Esto cambiará el estado de lectura de varios capítulos a la vez. ¿Continuar?</string>
     <string name="detail_mark_as_unread">Marcar como no leído</string>
     <string name="detail_mark_as_read">Marcar como leído</string>
     <string name="detail_error_no_internet">No estás conectado a internet</string>

@@ -43,6 +43,7 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -136,6 +137,7 @@ fun MangaDetailScreen(
     val statusFilter        by viewModel.statusFilter.collectAsState()
     val selectedScanlator   by viewModel.selectedScanlator.collectAsState()
     val availableScanlators by viewModel.availableScanlators.collectAsState()
+    val sourceName         by viewModel.sourceName.collectAsState()
     val context             = androidx.compose.ui.platform.LocalContext.current
     val navBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -158,6 +160,12 @@ fun MangaDetailScreen(
     var chapterGridView by remember { mutableStateOf(false) }
     var groupByVolume by remember { mutableStateOf(false) }
     var chapterPage by remember { mutableStateOf(0) }
+    // Hromadne akce nad prectenim (oznacit vse starsi/vse jako prectene) meni stav
+    // desitek kapitol najednou bez moznosti jednoho tlacitka na vraceni zpet - proto
+    // se nespousti primo z menu, ale az po potvrzeni v dialogu nize.
+    var pendingBulkReadConfirm by remember { mutableStateOf<Pair<String, () -> Unit>?>(null) }
+    val markReadUpToLabel = stringResource(R.string.detail_mark_read_up_to)
+    val markAllOlderReadLabel = stringResource(R.string.detail_mark_all_older_read)
     var descriptionExpanded by remember { mutableStateOf(false) }
     var showCoverFullscreen by remember { mutableStateOf(false) }
     var showCoverGallery by remember { mutableStateOf(false) }
@@ -439,6 +447,7 @@ fun MangaDetailScreen(
                             // stejneho seznamu jako vsechno ostatni, se stejnymi emoji.
                             Column(modifier = Modifier.padding(top = 6.dp)) {
                                 DetailInfoRow(stringResource(R.string.detail_info_origination), "${originationFlag(manga?.contentType)} ${originationLabel(manga?.contentType)}")
+                                sourceName?.let { DetailInfoRow(stringResource(R.string.detail_info_source), it) }
                                 (manga?.demographic ?: demographicGenre)?.let { DetailInfoRow(stringResource(R.string.detail_info_demographic), it) }
                                 if (genres.isNotEmpty()) {
                                     DetailInfoRow(stringResource(R.string.detail_info_genres), genres.take(4).joinToString(", "))
@@ -696,10 +705,14 @@ fun MangaDetailScreen(
                                 Icon(TablerIcons.DotsVertical, contentDescription = stringResource(R.string.detail_more_options), tint = TextSecondary, modifier = Modifier.size(18.dp))
                             }
                             DropdownMenu(expanded = showChapterOverflowMenu, onDismissRequest = { showChapterOverflowMenu = false }) {
+                                val markAllReadLabel = stringResource(R.string.detail_mark_all_read)
                                 DropdownMenuItem(
-                                    text = { Text(stringResource(R.string.detail_mark_all_read)) },
+                                    text = { Text(markAllReadLabel) },
                                     leadingIcon = { Icon(TablerIcons.Checks, contentDescription = null) },
-                                    onClick = { viewModel.markAllRead(); showChapterOverflowMenu = false },
+                                    onClick = {
+                                        pendingBulkReadConfirm = markAllReadLabel to { viewModel.markAllRead() }
+                                        showChapterOverflowMenu = false
+                                    },
                                 )
                                 if (firstUnread != null) {
                                     DropdownMenuItem(
@@ -945,8 +958,12 @@ fun MangaDetailScreen(
                                 chapter = chapter,
                                 onOpen = { openChapter(chapter) },
                                 onDownload = { viewModel.downloadChapter(chapter) },
-                                onMarkReadUpTo = { viewModel.markReadUpTo(chapter.id) },
-                                onMarkAllOlderRead = { viewModel.markAllOlderAsRead(chapter) },
+                                onMarkReadUpTo = {
+                                    pendingBulkReadConfirm = markReadUpToLabel to { viewModel.markReadUpTo(chapter.id) }
+                                },
+                                onMarkAllOlderRead = {
+                                    pendingBulkReadConfirm = markAllOlderReadLabel to { viewModel.markAllOlderAsRead(chapter) }
+                                },
                                 onMarkAllNewerUnread = { viewModel.markAllNewerAsUnread(chapter) },
                                 onToggleRead = { viewModel.markChapterRead(chapter.id, !chapter.read) },
                                 onGroupClick = { group -> group.slug?.let { onOpenGroup(it, group.name) } },
@@ -994,6 +1011,25 @@ fun MangaDetailScreen(
             pending = pending,
             onConfirm = { viewModel.confirmAddDespiteDuplicate() },
             onDismiss = { viewModel.cancelDuplicateAdd() },
+        )
+    }
+
+    pendingBulkReadConfirm?.let { (label, action) ->
+        AlertDialog(
+            onDismissRequest = { pendingBulkReadConfirm = null },
+            containerColor = Color(0xFF111B35),
+            title = { Text(label, color = Color.White, fontWeight = FontWeight.Bold) },
+            text = { Text(stringResource(R.string.detail_bulk_confirm_body), color = Color(0xFFB0BEC5)) },
+            confirmButton = {
+                androidx.compose.material3.TextButton(onClick = { action(); pendingBulkReadConfirm = null }) {
+                    Text(stringResource(R.string.common_confirm), color = GlowViolet)
+                }
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(onClick = { pendingBulkReadConfirm = null }) {
+                    Text(stringResource(R.string.common_cancel), color = Color(0xFFB0BEC5))
+                }
+            },
         )
     }
 }

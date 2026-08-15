@@ -41,6 +41,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -102,6 +103,14 @@ class MangaDetailViewModel @Inject constructor(
     }
 
     val manga: StateFlow<MangaEntity?> = repository.observeMangaById(mangaId)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+    /** Citelny nazev zdroje (napr. "ComicK") - viz detail_info_source, pomaha dohledat
+     * odkud konkretni titul je, kdyz je potreba ladit chybu specifickou pro jeden zdroj. */
+    val sourceName: StateFlow<String?> = manga
+        .map { it?.sourceId }
+        .distinctUntilChanged()
+        .map { id -> id?.let { sourceManager.getById(it)?.name ?: it } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
     // Galerie vsech historickych obalek - jen ComicK (viz ComicKSource.getCoverGallery

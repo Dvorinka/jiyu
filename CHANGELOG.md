@@ -4,6 +4,22 @@
 > vidět v historii commitů a v popisech jednotlivých vydání na GitHubu; zpětně to sem
 > nedopisuju, abych si nevymýšlel.
 
+## v1.2.19
+
+### Pojistka proti omylem hromadně přečtenému titulu
+Kapitoly umí hromadně "Označit vše starší jako přečtené", "Označit toto i vše
+starší přečtené" a "Označit vše přečtené" (celý titul). Doteď se to spustilo
+hned po klepnutí na položku v menu - stačilo nechtěně trefit prstem špatnou
+volbu (typicky při dlouhém podržení kapitoly ve scrollujícím seznamu) a celý
+titul se najednou tvářil jako 100% přečtený, i když jste přečetli jen jednu
+kapitolu. Teď se před provedením vždy zeptá na potvrzení.
+
+### Odkud titul je - nový řádek "Zdroj" na detailu
+Na detailu titulu (ve sloupci s Typ/Demografie/Žánry) přibyl řádek "Zdroj" s
+názvem zdroje, ze kterého je titul stažený. Usnadní to dohledat, kde přesně
+vzniká problém, když se u konkrétního titulu objeví divná data (např. rozbité
+číslo kapitoly).
+
 ## v1.2.18
 
 ### Úklid Knihovny: pryč s X, počty a fialovými boxy
