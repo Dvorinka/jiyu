@@ -34,6 +34,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -150,6 +151,7 @@ fun MangaDetailScreen(
     var chapterSearchActive by remember { mutableStateOf(false) }
     var chapterGridView by remember { mutableStateOf(false) }
     var groupByVolume by remember { mutableStateOf(false) }
+    var chapterPage by remember { mutableStateOf(0) }
     var descriptionExpanded by remember { mutableStateOf(false) }
     var showCoverFullscreen by remember { mutableStateOf(false) }
     var showCoverGallery by remember { mutableStateOf(false) }
@@ -931,7 +933,12 @@ fun MangaDetailScreen(
                         }
                     }
                 } else {
-                    items(chapters, key = { it.id }) { chapter ->
+                    // ComicK ma misto nekonecneho scrollu stránkovani po pár desítkách
+                    // kapitol - tady stejny princip, jen bez vlajky a poctu hlasu se sipkou.
+                    val totalPages = ((chapters.size + CHAPTERS_PER_PAGE - 1) / CHAPTERS_PER_PAGE).coerceAtLeast(1)
+                    val safePage = chapterPage.coerceIn(0, totalPages - 1)
+                    val pageChapters = chapters.drop(safePage * CHAPTERS_PER_PAGE).take(CHAPTERS_PER_PAGE)
+                    items(pageChapters, key = { it.id }) { chapter ->
                         GlassChapterRow(
                             chapter = chapter,
                             onOpen = { openChapter(chapter) },
@@ -942,6 +949,15 @@ fun MangaDetailScreen(
                             onToggleRead = { viewModel.markChapterRead(chapter.id, !chapter.read) },
                             onGroupClick = { group -> group.slug?.let { onOpenGroup(it, group.name) } },
                         )
+                    }
+                    if (totalPages > 1) {
+                        item(key = "chapter_pagination") {
+                            ChapterPaginationBar(
+                                currentPage = safePage,
+                                totalPages = totalPages,
+                                onPageSelected = { chapterPage = it },
+                            )
+                        }
                     }
                 }
 
@@ -1011,6 +1027,9 @@ private fun LibraryDuplicateDialog(
 
 // ── Chapter row ───────────────────────────────────────────────────────────────
 
+/** ComickK ma misto jednoho nekonecneho seznamu stránky po tomhle poctu kapitol. */
+private const val CHAPTERS_PER_PAGE = 30
+
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun GlassChapterRow(
@@ -1026,84 +1045,147 @@ internal fun GlassChapterRow(
     val isRead = chapter.read
     var showMenu by remember { mutableStateOf(false) }
 
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 3.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .background(glassGradient)
-            .border(1.dp, if (isRead) GlowCyan.copy(alpha = 0.1f) else GlowViolet.copy(alpha = 0.2f), RoundedCornerShape(12.dp))
-            .pointerInput(Unit) {
-                detectTapGestures(
-                    onTap = { onOpen() },
-                    onLongPress = { showMenu = true },
-                )
-            }
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(modifier = Modifier.size(6.dp).background(if (isRead) GlowCyan.copy(alpha = 0.4f) else GlowViolet, RoundedCornerShape(50)))
-            Column(modifier = Modifier.weight(1f).padding(start = 12.dp)) {
-                Text(text = chapter.name, color = if (isRead) TextSecondary else TextPrimary, fontWeight = if (isRead) FontWeight.Normal else FontWeight.Medium, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                val groups = remember(chapter.groupsJson) { deserializeChapterGroups(chapter.groupsJson).filter { it.name.isNotBlank() } }
-                if (groups.isNotEmpty()) {
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        groups.forEach { group ->
-                            Text(
-                                text = group.name,
-                                color = if (group.slug != null) Violet else TextSecondary.copy(alpha = 0.6f),
-                                fontSize = 10.sp,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = if (group.slug != null) {
-                                    Modifier.clickable { onGroupClick(group) }
-                                } else {
-                                    Modifier
-                                },
-                            )
-                        }
-                    }
-                } else if (!chapter.scanlationGroup.isNullOrBlank()) {
-                    Text(text = chapter.scanlationGroup, color = TextSecondary.copy(alpha = 0.6f), fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+    Column {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .pointerInput(Unit) {
+                    detectTapGestures(
+                        onTap = { onOpen() },
+                        onLongPress = { showMenu = true },
+                    )
                 }
+                .padding(horizontal = 16.dp, vertical = 9.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(modifier = Modifier.size(6.dp).background(if (isRead) GlowCyan.copy(alpha = 0.4f) else GlowViolet, RoundedCornerShape(50)))
+                Text(
+                    text = chapter.name,
+                    color = if (isRead) TextSecondary else TextPrimary,
+                    fontWeight = if (isRead) FontWeight.Normal else FontWeight.SemiBold,
+                    fontSize = 14.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f).padding(start = 10.dp, end = 8.dp),
+                )
                 if (chapter.dateUpload > 0L) {
                     val date = java.text.SimpleDateFormat("d. M. yyyy", java.util.Locale.getDefault())
                         .format(java.util.Date(chapter.dateUpload))
-                    Text(text = date, color = TextSecondary.copy(alpha = 0.45f), fontSize = 10.sp)
+                    Text(text = date, color = TextSecondary.copy(alpha = 0.5f), fontSize = 11.sp, maxLines = 1)
+                }
+                val groups = remember(chapter.groupsJson) { deserializeChapterGroups(chapter.groupsJson).filter { it.name.isNotBlank() } }
+                val groupName = groups.firstOrNull()?.name ?: chapter.scanlationGroup
+                if (!groupName.isNullOrBlank()) {
+                    Text(
+                        text = groupName,
+                        color = if (groups.firstOrNull()?.slug != null) Violet else TextSecondary.copy(alpha = 0.6f),
+                        fontSize = 11.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier
+                            .padding(start = 8.dp)
+                            .widthIn(max = 84.dp)
+                            .then(
+                                groups.firstOrNull()?.slug?.let { Modifier.clickable { onGroupClick(groups.first()) } } ?: Modifier,
+                            ),
+                    )
+                }
+                // ComicK je jen katalog/metadata (viz design doc) - stahovani dava smysl
+                // az po vyreseni skutecneho zdroje (Sub-projekt 3), do te doby se ikonka
+                // u ComicK kapitol vubec nevykresluje.
+                if (chapter.sourceId != "comick") {
+                    when (chapter.downloadStatus) {
+                        DownloadStatus.DOWNLOADED  -> Icon(TablerIcons.CircleCheck, contentDescription = stringResource(R.string.detail_chapter_downloaded), tint = Cyan, modifier = Modifier.padding(start = 8.dp).size(18.dp))
+                        DownloadStatus.DOWNLOADING -> Text("↓", color = Violet, fontSize = 16.sp, modifier = Modifier.padding(start = 8.dp))
+                        DownloadStatus.QUEUED      -> Text("⏳", fontSize = 14.sp, modifier = Modifier.padding(start = 8.dp))
+                        DownloadStatus.ERROR       -> IconButton(onClick = onDownload, modifier = Modifier.size(32.dp)) { Icon(TablerIcons.Download, contentDescription = stringResource(R.string.common_retry), tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(18.dp)) }
+                        else                       -> IconButton(onClick = onDownload, modifier = Modifier.size(32.dp)) { Icon(TablerIcons.Download, contentDescription = stringResource(R.string.common_download), tint = TextSecondary, modifier = Modifier.size(18.dp)) }
+                    }
                 }
             }
-            // ComicK je jen katalog/metadata (viz design doc) - stahovani dava smysl
-            // az po vyreseni skutecneho zdroje (Sub-projekt 3), do te doby se ikonka
-            // u ComicK kapitol vubec nevykresluje.
-            if (chapter.sourceId != "comick") {
-                when (chapter.downloadStatus) {
-                    DownloadStatus.DOWNLOADED  -> Icon(TablerIcons.CircleCheck, contentDescription = stringResource(R.string.detail_chapter_downloaded), tint = Cyan, modifier = Modifier.size(18.dp))
-                    DownloadStatus.DOWNLOADING -> Text("↓", color = Violet, fontSize = 16.sp)
-                    DownloadStatus.QUEUED      -> Text("⏳", fontSize = 14.sp)
-                    DownloadStatus.ERROR       -> IconButton(onClick = onDownload, modifier = Modifier.size(32.dp)) { Icon(TablerIcons.Download, contentDescription = stringResource(R.string.common_retry), tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(18.dp)) }
-                    else                       -> IconButton(onClick = onDownload, modifier = Modifier.size(32.dp)) { Icon(TablerIcons.Download, contentDescription = stringResource(R.string.common_download), tint = TextSecondary, modifier = Modifier.size(18.dp)) }
+            DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.detail_mark_read_up_to)) },
+                    onClick = { onMarkReadUpTo(); showMenu = false },
+                )
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.detail_mark_all_older_read)) },
+                    onClick = { onMarkAllOlderRead(); showMenu = false },
+                )
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.detail_mark_all_newer_unread)) },
+                    onClick = { onMarkAllNewerUnread(); showMenu = false },
+                )
+                DropdownMenuItem(
+                    text = { Text(if (isRead) stringResource(R.string.detail_mark_as_unread) else stringResource(R.string.detail_mark_as_read)) },
+                    onClick = { onToggleRead(); showMenu = false },
+                )
+            }
+        }
+        HorizontalDivider(color = TextSecondary.copy(alpha = 0.08f), thickness = 1.dp, modifier = Modifier.padding(horizontal = 16.dp))
+    }
+}
+
+/** ComicK-styl stránkování (First / čísla / Last) - viz komentář u [CHAPTERS_PER_PAGE]. */
+@Composable
+private fun ChapterPaginationBar(currentPage: Int, totalPages: Int, onPageSelected: (Int) -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        IconButton(onClick = { onPageSelected(currentPage - 1) }, enabled = currentPage > 0, modifier = Modifier.size(32.dp)) {
+            Icon(
+                TablerIcons.ChevronLeft,
+                contentDescription = stringResource(R.string.common_previous),
+                tint = if (currentPage > 0) TextSecondary else TextSecondary.copy(alpha = 0.25f),
+                modifier = Modifier.size(18.dp),
+            )
+        }
+        chapterPaginationPages(currentPage, totalPages).forEach { page ->
+            if (page == null) {
+                Text("…", color = TextSecondary.copy(alpha = 0.5f), fontSize = 13.sp, modifier = Modifier.padding(horizontal = 4.dp))
+            } else {
+                val selected = page == currentPage
+                Box(
+                    modifier = Modifier
+                        .padding(horizontal = 2.dp)
+                        .size(32.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(if (selected) GlowViolet else Color.Transparent)
+                        .clickable { onPageSelected(page) },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = "${page + 1}",
+                        color = if (selected) Color.White else TextSecondary,
+                        fontSize = 13.sp,
+                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                    )
                 }
             }
         }
-        DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.detail_mark_read_up_to)) },
-                onClick = { onMarkReadUpTo(); showMenu = false },
-            )
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.detail_mark_all_older_read)) },
-                onClick = { onMarkAllOlderRead(); showMenu = false },
-            )
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.detail_mark_all_newer_unread)) },
-                onClick = { onMarkAllNewerUnread(); showMenu = false },
-            )
-            DropdownMenuItem(
-                text = { Text(if (isRead) stringResource(R.string.detail_mark_as_unread) else stringResource(R.string.detail_mark_as_read)) },
-                onClick = { onToggleRead(); showMenu = false },
+        IconButton(onClick = { onPageSelected(currentPage + 1) }, enabled = currentPage < totalPages - 1, modifier = Modifier.size(32.dp)) {
+            Icon(
+                TablerIcons.ChevronRight,
+                contentDescription = stringResource(R.string.common_next),
+                tint = if (currentPage < totalPages - 1) TextSecondary else TextSecondary.copy(alpha = 0.25f),
+                modifier = Modifier.size(18.dp),
             )
         }
     }
+}
+
+/** Čísla stránek s "…" mezerami pro dlouhé seznamy - stejný vzor jako ComicK "First 1 2 … 20 Last". */
+private fun chapterPaginationPages(current: Int, total: Int): List<Int?> {
+    if (total <= 7) return (0 until total).toList()
+    val pages = linkedSetOf<Int?>()
+    pages.add(0)
+    if (current > 2) pages.add(null)
+    for (p in (current - 1).coerceAtLeast(1)..(current + 1).coerceAtMost(total - 2)) pages.add(p)
+    if (current < total - 3) pages.add(null)
+    pages.add(total - 1)
+    return pages.toList()
 }
 
 /** Známé demografické štítky, které bývají zamíchané mezi žánry - vytáhneme je do vlastního řádku (jako ComicK "Demographic"). */

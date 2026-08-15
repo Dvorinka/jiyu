@@ -53,6 +53,8 @@
     <string name="common_close">Close</string>
     <string name="common_done">Done</string>
     <string name="common_back">Back</string>
+    <string name="common_previous">Previous</string>
+    <string name="common_next">Next</string>
     <string name="common_clear">Clear</string>
     <string name="common_search">Search</string>
     <string name="common_search_placeholder">Search…</string>

@@ -50,6 +50,8 @@
     <string name="common_close">Cerrar</string>
     <string name="common_done">Hecho</string>
     <string name="common_back">Atrás</string>
+    <string name="common_previous">Anterior</string>
+    <string name="common_next">Siguiente</string>
     <string name="common_clear">Borrar</string>
     <string name="common_search">Buscar</string>
     <string name="common_search_placeholder">Buscar…</string>

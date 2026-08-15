@@ -20,6 +20,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -36,6 +39,9 @@ import com.haise.jiyu.ui.theme.Cyan
 import com.haise.jiyu.ui.theme.NightBlue
 import com.haise.jiyu.ui.theme.TextSecondary
 import com.haise.jiyu.ui.theme.Violet
+
+/** Kolik ms po opusteni zalozky jeste appka pri navratu obnovi rozkliknuty stav. */
+private const val GRACE_PERIOD_MS = 4_000L
 
 private data class NavTab(
     val route: String,
@@ -66,6 +72,13 @@ fun MainScreen(
     val navBackStack by navController.currentBackStackEntryAsState()
     val currentDest = navBackStack?.destination
     val currentRoute = currentDest?.route
+
+    // Ktera zalozka je "aktivni" - na rozdil od currentRoute prezije rozkliknuti
+    // dal (napr. na detail titulu z Prochazet), protoze graf je plochy a detail
+    // neni soucasti hierarchie zadne zalozky. Meni se jen klepnutim na zalozku.
+    var activeTabRoute by remember { mutableStateOf(startDestination) }
+    // Kdy jsme naposledy z ktere zalozky odesli - viz GRACE_PERIOD_MS nize.
+    val tabLeftAt = remember { mutableMapOf<String, Long>() }
 
     val showNavBar = currentRoute != null &&
         !currentRoute.startsWith(Routes.READER.substringBefore("{")) &&
@@ -102,13 +115,24 @@ fun MainScreen(
                         NavigationBarItem(
                             selected = selected,
                             onClick = {
-                                // Zaznamena zaklaneni zalozky vzdy resetuje na jeji koren -
-                                // zadne pamatovani rozkliknutych obrazovek/sekci (saveState/restoreState schvalne vypnute)
+                                // Nahodne prehozeni zalozky (napr. omylem klepnu na Nastaveni,
+                                // kdyz jsem rozkliknuty na detailu titulu z Prochazet) nema
+                                // rozkliknuty stav hned zahodit - ma par sekund na to se vratit.
+                                // Po uplynuti GRACE_PERIOD_MS uz se zalozka chova jako driv a
+                                // resetuje se zpatky na koren.
+                                if (activeTabRoute != tab.route) {
+                                    tabLeftAt[activeTabRoute] = System.currentTimeMillis()
+                                }
+                                val leftAt = tabLeftAt[tab.route]
+                                val withinGracePeriod = leftAt != null && System.currentTimeMillis() - leftAt < GRACE_PERIOD_MS
+                                activeTabRoute = tab.route
                                 navController.navigate(tab.route) {
                                     popUpTo(navController.graph.findStartDestination().id) {
                                         inclusive = false
+                                        saveState = true
                                     }
                                     launchSingleTop = true
+                                    restoreState = withinGracePeriod
                                 }
                             },
                             icon = {

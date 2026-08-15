@@ -15,6 +15,20 @@
   pozadí, teď je to jen fialové číslo s černým stínem/podtónem - čitelné
   na jakékoli obálce, i světlé.
 
+### Seznam kapitol na detailu titulu: tenčí řádky + stránkování jako ComicK
+Místo jednoho nekonečně dlouhého scrollu (a tlustých karet s kapitolou,
+skupinou a datem na 3 řádcích) teď kapitoly vypadají jako ComicK tabulka -
+tenký jednořádkový záznam (kapitola / datum / skupina) a dole stránkování
+(šipky + čísla stránek s "…", 30 kapitol na stránku). Bez vlaječky a bez
+počtu hlasů se šipkou nahoru - to appka nemá jak spočítat.
+
+### Krátká lhůta při omylem přehozené záložce dole
+Když jste rozkliknutí (např. na detailu titulu otevřeném z Procházet) a
+omylem klepnete na jinou záložku dole (např. Nastavení), appka už rozkliknutý
+stav hned nezahazuje - 4 sekundy po odchodu ze záložky ho ještě drží, takže
+návrat zpátky vás vrátí přesně tam, kde jste byli. Po uplynutí 4 sekund se
+záložka chová jako dřív a resetuje se na svůj kořen.
+
 ## v1.2.17
 
 ### Ošklivá "ComicK API chyba 404" hláška při otevření titulu

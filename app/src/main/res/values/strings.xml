@@ -54,6 +54,8 @@
     <string name="common_close">Zavřít</string>
     <string name="common_done">Hotovo</string>
     <string name="common_back">Zpět</string>
+    <string name="common_previous">Předchozí</string>
+    <string name="common_next">Další</string>
     <string name="common_clear">Vymazat</string>
     <string name="common_search">Hledat</string>
     <string name="common_search_placeholder">Hledat…</string>
