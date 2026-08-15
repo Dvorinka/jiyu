@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -51,6 +52,8 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -86,6 +89,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -121,6 +125,7 @@ fun MangaDetailScreen(
     onOpenDetails: () -> Unit = {},
     onResolveChapter: (chapterId: String, incognito: Boolean) -> Unit = { _, _ -> },
     onOpenGroup: (slug: String, title: String) -> Unit = { _, _ -> },
+    onOpenManga: (String) -> Unit = {},
     viewModel: MangaDetailViewModel = hiltViewModel(),
 ) {
     val manga            by viewModel.manga.collectAsState()
@@ -129,6 +134,8 @@ fun MangaDetailScreen(
     val commentsTotal    by viewModel.commentsTotal.collectAsState()
     val commentsLoading  by viewModel.commentsLoading.collectAsState()
     val commentsError    by viewModel.commentsError.collectAsState()
+    val recommendations  by viewModel.recommendations.collectAsState()
+    val openingRecommendation by viewModel.openingRecommendation.collectAsState()
     val chapters         by viewModel.chapters.collectAsState()
     val continueChapter  by viewModel.continueChapter.collectAsState()
     val firstUnread      by viewModel.firstUnreadChapter.collectAsState()
@@ -175,6 +182,7 @@ fun MangaDetailScreen(
     var descriptionExpanded by remember { mutableStateOf(false) }
     var showCoverFullscreen by remember { mutableStateOf(false) }
     var showCoverGallery by remember { mutableStateOf(false) }
+    var showRecommendations by remember { mutableStateOf(false) }
     // Kdyz je null, fullscreen dialog ukazuje puvodni manga.coverUrl - nastavi se jen kdyz
     // uzivatel v galerii klepne na jinou obalku.
     var selectedCoverUrl by remember { mutableStateOf<String?>(null) }
@@ -312,29 +320,53 @@ fun MangaDetailScreen(
                 // ── Obálka + metadata ───────────────────────────────────────────
                 item {
                     Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)) {
-                        Box(
-                            modifier = Modifier
-                                .width(150.dp)
-                                .aspectRatio(0.74f)
-                                .clip(RoundedCornerShape(12.dp))
-                                .clickable {
-                                    // ComicK: galerie vsech historickych obalek (uzivatelsky
-                                    // pozadavek - viz ComicKSource.getCoverGallery). Jine zdroje:
-                                    // puvodni chovani, jen zvetsit tu jednu obalku, co maji.
-                                    if (manga?.sourceId == "comick") {
-                                        viewModel.loadCoverGallery()
-                                        showCoverGallery = true
-                                    } else {
-                                        showCoverFullscreen = true
-                                    }
-                                },
-                        ) {
-                            AsyncImage(
-                                model = manga?.coverUrl,
-                                contentDescription = manga?.title,
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier.fillMaxSize(),
-                            )
+                        Column(modifier = Modifier.width(150.dp)) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .aspectRatio(0.74f)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .clickable {
+                                        // ComicK: galerie vsech historickych obalek (uzivatelsky
+                                        // pozadavek - viz ComicKSource.getCoverGallery). Jine zdroje:
+                                        // puvodni chovani, jen zvetsit tu jednu obalku, co maji.
+                                        if (manga?.sourceId == "comick") {
+                                            viewModel.loadCoverGallery()
+                                            showCoverGallery = true
+                                        } else {
+                                            showCoverFullscreen = true
+                                        }
+                                    },
+                            ) {
+                                AsyncImage(
+                                    model = manga?.coverUrl,
+                                    contentDescription = manga?.title,
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.fillMaxSize(),
+                                )
+                            }
+                            // "Doporučené" (ComicK Recommendations) - jen ComicK, uzivatelsky
+                            // pozadavek "decentni tlacitko pod cover fotkou". Nacte se az na
+                            // klepnuti (viz loadRecommendations - stejny lazy vzor jako galerie
+                            // obalek), aby se pro kazdy titul netahal navic request automaticky.
+                            if (manga?.sourceId == "comick") {
+                                Text(
+                                    text = stringResource(R.string.detail_recommendations_button),
+                                    color = Violet,
+                                    fontSize = 11.sp,
+                                    textAlign = TextAlign.Center,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(top = 6.dp)
+                                        .clip(RoundedCornerShape(50.dp))
+                                        .border(1.dp, Violet.copy(alpha = 0.35f), RoundedCornerShape(50.dp))
+                                        .clickable {
+                                            viewModel.loadRecommendations()
+                                            showRecommendations = true
+                                        }
+                                        .padding(vertical = 6.dp),
+                                )
+                            }
                         }
                         if (showCoverFullscreen) {
                             Dialog(
@@ -1121,6 +1153,95 @@ fun MangaDetailScreen(
                 }
             },
         )
+    }
+
+    if (showRecommendations) {
+        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        ModalBottomSheet(
+            onDismissRequest = { showRecommendations = false },
+            sheetState = sheetState,
+            containerColor = Color(0xFF111B35),
+        ) {
+            Box(modifier = Modifier.fillMaxWidth().fillMaxHeight(0.85f)) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                Text(
+                    text = stringResource(R.string.detail_recommendations_title),
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp,
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
+                )
+                when {
+                    recommendations == null -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        JiyuLoadingIndicator()
+                    }
+                    recommendations.isNullOrEmpty() -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text(stringResource(R.string.detail_recommendations_empty), color = TextSecondary, fontSize = 14.sp)
+                    }
+                    else -> LazyVerticalGrid(
+                        columns = GridCells.Fixed(3),
+                        contentPadding = PaddingValues(12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier.fillMaxSize(),
+                    ) {
+                        items(recommendations.orEmpty(), key = { it.manga.sourceId + it.manga.url }) { rec ->
+                            Column(
+                                modifier = Modifier.clickable {
+                                    viewModel.openRecommendation(rec.manga) { id ->
+                                        showRecommendations = false
+                                        onOpenManga(id)
+                                    }
+                                },
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .aspectRatio(0.74f)
+                                        .clip(RoundedCornerShape(8.dp)),
+                                ) {
+                                    AsyncImage(
+                                        model = rec.manga.coverUrl,
+                                        contentDescription = rec.manga.title,
+                                        contentScale = ContentScale.Crop,
+                                        modifier = Modifier.fillMaxSize(),
+                                    )
+                                    if (rec.upCount > 0) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            modifier = Modifier
+                                                .align(Alignment.BottomStart)
+                                                .padding(4.dp)
+                                                .clip(RoundedCornerShape(50.dp))
+                                                .background(Color.Black.copy(alpha = 0.6f))
+                                                .padding(horizontal = 6.dp, vertical = 2.dp),
+                                        ) {
+                                            Icon(TablerIcons.ThumbUp, contentDescription = null, tint = Color.White, modifier = Modifier.size(10.dp))
+                                            Text("${rec.upCount}", color = Color.White, fontSize = 10.sp, modifier = Modifier.padding(start = 3.dp))
+                                        }
+                                    }
+                                }
+                                Text(
+                                    text = rec.manga.title,
+                                    color = TextPrimary,
+                                    fontSize = 11.sp,
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis,
+                                    lineHeight = 13.sp,
+                                    modifier = Modifier.padding(top = 4.dp),
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+            if (openingRecommendation) {
+                Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.4f)), contentAlignment = Alignment.Center) {
+                    JiyuLoadingIndicator()
+                }
+            }
+            }
+        }
     }
 }
 

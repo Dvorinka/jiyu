@@ -30,6 +30,7 @@ import com.haise.jiyu.source.SManga
 import com.haise.jiyu.source.SourceManager
 import com.haise.jiyu.source.comick.ComicKSource
 import com.haise.jiyu.source.comick.ComicKComment
+import com.haise.jiyu.source.comick.ComicKRecommendation
 import com.haise.jiyu.source.comick.SCover
 import com.haise.jiyu.util.ChapterStorage
 import com.haise.jiyu.util.NetworkMonitor
@@ -168,6 +169,48 @@ class MangaDetailViewModel @Inject constructor(
                 _commentsError.value = e.toFriendlyMessage()
             } finally {
                 _commentsLoading.value = false
+            }
+        }
+    }
+
+    // "Doporučené" (ComicK Recommendations) - jen ComicK, viz ComicKSource.getRecommendations.
+    // null = jeste nenacteno (lazy, az na klepnuti - stejny vzor jako coverGallery vyse),
+    // prazdny seznam = nacteno a titul zadna doporuceni nema.
+    private val _recommendations = MutableStateFlow<List<ComicKRecommendation>?>(null)
+    val recommendations: StateFlow<List<ComicKRecommendation>?> = _recommendations.asStateFlow()
+    private var recommendationsLoading = false
+
+    fun loadRecommendations() {
+        val current = manga.value ?: return
+        if (current.sourceId != "comick" || recommendationsLoading || _recommendations.value != null) return
+        recommendationsLoading = true
+        viewModelScope.launch {
+            try {
+                _recommendations.value = comicKSource.getRecommendations(current.url)
+            } catch (e: Exception) {
+                e.report("detail:loadRecommendations")
+                _recommendations.value = emptyList()
+            } finally {
+                recommendationsLoading = false
+            }
+        }
+    }
+
+    private val _openingRecommendation = MutableStateFlow(false)
+    val openingRecommendation: StateFlow<Boolean> = _openingRecommendation.asStateFlow()
+
+    fun openRecommendation(target: SManga, onOpened: (String) -> Unit) {
+        if (_openingRecommendation.value) return
+        _openingRecommendation.value = true
+        viewModelScope.launch {
+            try {
+                val id = repository.openPreview(target)
+                onOpened(id)
+            } catch (e: Exception) {
+                e.report("detail:openRecommendation")
+                _errorMessage.value = e.toFriendlyMessage()
+            } finally {
+                _openingRecommendation.value = false
             }
         }
     }

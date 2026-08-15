@@ -498,6 +498,9 @@
     <string name="detail_comments_empty">Zatím žádné komentáře.</string>
     <string name="detail_comments_load_more">Načíst další</string>
     <string name="detail_comments_open_on_comick">Otevřít na ComicK</string>
+    <string name="detail_recommendations_button">Doporučené</string>
+    <string name="detail_recommendations_title">Doporučené tituly</string>
+    <string name="detail_recommendations_empty">K tomuhle titulu nejsou žádná doporučení.</string>
     <string name="detail_mark_all_older_read">Označit vše starší jako přečtené</string>
     <string name="detail_mark_all_newer_unread">Označit vše novější jako nepřečtené</string>
     <string name="detail_bulk_confirm_body">Tohle najednou změní stav přečtení u více kapitol najednou. Pokračovat?</string>

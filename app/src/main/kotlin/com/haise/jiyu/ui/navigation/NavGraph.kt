@@ -206,6 +206,7 @@ fun JiyuNavGraph(
                 onOpenDetails = { mangaId?.let { navController.navigate(Routes.detailInfo(it)) } },
                 onResolveChapter = { chapterId, incognito -> navController.navigate(Routes.sourceResolver(chapterId, incognito)) },
                 onOpenGroup = { slug, title -> navController.navigate(Routes.group(slug, title)) },
+                onOpenManga = { id -> navController.navigate(Routes.detail(id)) },
             )
         }
 

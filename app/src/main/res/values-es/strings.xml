@@ -477,6 +477,9 @@
     <string name="detail_comments_empty">Todavía no hay comentarios.</string>
     <string name="detail_comments_load_more">Cargar más</string>
     <string name="detail_comments_open_on_comick">Abrir en ComicK</string>
+    <string name="detail_recommendations_button">Recomendados</string>
+    <string name="detail_recommendations_title">Recomendaciones</string>
+    <string name="detail_recommendations_empty">Todavía no hay recomendaciones para este título.</string>
     <string name="detail_mark_all_older_read">Marcar todos los anteriores como leídos</string>
     <string name="detail_mark_all_newer_unread">Marcar todos los posteriores como no leídos</string>
     <string name="detail_bulk_confirm_body">Esto cambiará el estado de lectura de varios capítulos a la vez. ¿Continuar?</string>

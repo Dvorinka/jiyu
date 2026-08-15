@@ -352,6 +352,30 @@ class ComicKSource @Inject constructor(
         )
     }
 
+    /**
+     * "Reader-picked" doporučení podobných titulů (uživatelský požadavek "stáhnout k sobě
+     * ComicK Recommendations"). Ověřeno živě: `GET /comic/{hid}/recommendations` vrací ploché
+     * pole `[{up, down, total, relates: {...}}]`, kde `relates` má stejný tvar jako položka
+     * z `/v1.0/search` - proto jde znovupoužít [comicFromJson]. Řazeno podle `up` sestupně,
+     * stejně jako to ukazuje ComicK web (počet palců nahoru u každé karty).
+     */
+    suspend fun getRecommendations(mangaUrl: String): List<ComicKRecommendation> =
+        withContext(Dispatchers.IO) {
+            val slug = mangaUrl.substringAfterLast("/")
+            val detailJson = getObject(
+                "$apiBase/comic/$slug",
+                notFoundMessage = "ComicK tenhle titul přes veřejné API neposkytuje (časté u 18+ obsahu)",
+            )
+            val hid = detailJson.getJSONObject("comic").getString("hid")
+            val arr = getArray("$apiBase/comic/$hid/recommendations")
+            (0 until arr.length()).mapNotNull { i ->
+                val item = arr.getJSONObject(i)
+                val relates = item.optJSONObject("relates") ?: return@mapNotNull null
+                val manga = comicFromJson(relates) ?: return@mapNotNull null
+                ComicKRecommendation(manga = manga, upCount = item.optInt("up", 0))
+            }.sortedByDescending { it.upCount }
+        }
+
     private var cachedTop: TopFeed? = null
 
     /**
@@ -728,6 +752,12 @@ data class ComicKCommentsPage(
     val comments: List<ComicKComment>,
     val total: Int,
     val hasMore: Boolean,
+)
+
+/** Jedno doporučení z [ComicKSource.getRecommendations] - `upCount` je počet palců nahoru, co má na ComicK webu. */
+data class ComicKRecommendation(
+    val manga: SManga,
+    val upCount: Int,
 )
 
 /** Jeden komentář pod titulem - `replies` jsou jen jednu úroveň vnořené, stejně jako na ComicK webu. */
