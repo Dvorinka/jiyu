@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -58,7 +59,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -66,6 +66,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -611,12 +612,11 @@ private fun ContinueReadingCard(item: ContinueReadingItem, progressPercent: Int,
                     .align(Alignment.BottomCenter)
                     .background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xEA070B14)))),
             )
-            Text(
+            OutlinedText(
                 text = formatChapterNumber(item.lastChapterNumber),
                 color = GlowViolet,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Bold,
-                style = TextStyle(shadow = Shadow(color = Color.Black, blurRadius = 8f)),
                 modifier = Modifier.align(Alignment.TopStart).padding(8.dp),
             )
             // Malé tlačítko navrch obálky - klepnutí na zbytek karty otevře detail (viz
@@ -671,6 +671,19 @@ private fun ContinueReadingCard(item: ContinueReadingItem, progressPercent: Int,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
+    }
+}
+
+/** Text s plným černým obrysem (8 podložených kopií posunutých o 1dp), ne jen měkký
+ * blur stín - na světlé/pestré obálce byl fialový text s pouhým stínem málo čitelný,
+ * uzivatelsky pozadavek. Obrys funguje spolehlivě na jakémkoli pozadí. */
+@Composable
+private fun OutlinedText(text: String, color: Color, fontSize: TextUnit, fontWeight: FontWeight, modifier: Modifier = Modifier) {
+    Box(modifier = modifier) {
+        listOf(-1 to -1, 0 to -1, 1 to -1, -1 to 0, 1 to 0, -1 to 1, 0 to 1, 1 to 1).forEach { (dx, dy) ->
+            Text(text, color = Color.Black, fontSize = fontSize, fontWeight = fontWeight, modifier = Modifier.offset(dx.dp, dy.dp))
+        }
+        Text(text, color = color, fontSize = fontSize, fontWeight = fontWeight)
     }
 }
 
