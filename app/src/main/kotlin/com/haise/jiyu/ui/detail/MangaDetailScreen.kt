@@ -1221,7 +1221,11 @@ internal fun GlassChapterRow(
                     Text(text = date, color = TextSecondary.copy(alpha = 0.5f), fontSize = 11.sp, maxLines = 1)
                 }
                 val groups = remember(chapter.groupsJson) { deserializeChapterGroups(chapter.groupsJson).filter { it.name.isNotBlank() } }
-                val groupName = groups.firstOrNull()?.name ?: chapter.scanlationGroup
+                // Vsichni prekladatele te kapitoly (ComicK je u kazde kapitoly vsechny
+                // uvadi), ne jen prvni - uzivatelsky pozadavek. Klepnuti porad otevre
+                // stranku prvni skupiny se slugem, samostatny tap na kazde jmeno by
+                // vyzadoval FlowRow a rozbil tenky jednoradkovy zaznam.
+                val groupName = groups.takeIf { it.isNotEmpty() }?.joinToString(" • ") { it.name } ?: chapter.scanlationGroup
                 if (!groupName.isNullOrBlank()) {
                     Text(
                         text = groupName,
@@ -1231,7 +1235,7 @@ internal fun GlassChapterRow(
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier
                             .padding(start = 8.dp)
-                            .widthIn(max = 84.dp)
+                            .widthIn(max = 120.dp)
                             .then(
                                 groups.firstOrNull()?.slug?.let { Modifier.clickable { onGroupClick(groups.first()) } } ?: Modifier,
                             ),

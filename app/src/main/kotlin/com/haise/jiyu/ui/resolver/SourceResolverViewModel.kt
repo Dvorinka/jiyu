@@ -90,10 +90,17 @@ class SourceResolverViewModel @Inject constructor(
                     comicKContentType = manga.contentType,
                     requestedChapterNumber = chapter.chapterNumber,
                 )
-                    .onCompletion { _searchingMore.value = false }
-                    .collect { candidate ->
-                        _candidates.value = (_candidates.value + candidate)
+                    .onCompletion {
+                        _searchingMore.value = false
+                        // Trideni (oblibene prvni, pak podle poctu kapitol) az na konci hledani,
+                        // ne po kazdem prubeznem vysledku - uzivatelsky pozadavek: seznam by se
+                        // jinak mohl prehazet pod prstem, kdyz uz si nekdo vybira, zatimco jeste
+                        // hleda dal na pozadi.
+                        _candidates.value = _candidates.value
                             .sortedWith(compareByDescending<ResolvedCandidate> { it.isFavorite }.thenByDescending { it.matchedChapterCount })
+                    }
+                    .collect { candidate ->
+                        _candidates.value = _candidates.value + candidate
                         // Prvni vysledek uz staci na to prestat ukazovat celoobrazovkovy
                         // spinner - dal se hleda na pozadi, viz _searchingMore.
                         _loading.value = false
