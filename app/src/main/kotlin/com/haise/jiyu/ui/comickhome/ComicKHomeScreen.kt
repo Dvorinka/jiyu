@@ -28,6 +28,13 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items as gridItems
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
@@ -50,12 +57,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -75,11 +86,13 @@ import com.haise.jiyu.ui.theme.TextSecondary
 import com.haise.jiyu.ui.theme.Violet
 import com.haise.jiyu.ui.theme.screenGradient
 import compose.icons.TablerIcons
+import compose.icons.tablericons.ArrowLeft
 import compose.icons.tablericons.Book
 import compose.icons.tablericons.Flame
 import compose.icons.tablericons.Search
 import compose.icons.tablericons.Settings
 import compose.icons.tablericons.Sun
+import compose.icons.tablericons.X
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -87,10 +100,15 @@ import java.util.Locale
 @Composable
 fun ComicKHomeScreen(
     onOpenManga: (String) -> Unit,
-    onOpenSearch: () -> Unit,
     onOpenBrowse: () -> Unit,
     onOpenSection: (section: String, window: String?, title: String) -> Unit,
     viewModel: ComicKHomeViewModel = hiltViewModel(),
+    // Hledani primo na Domu (uzivatelsky pozadavek - lupa driv otevirala Prochazet
+    // se vsemi filtry, coz uz dela samostatne tlacitko "Procházet" vedle "Domů";
+    // lupa ma zustat na miste a jen pustit rychle hledani nazvu). Znovupouziva
+    // ComicKBrowseViewModelu presne stejnou query/results/openManga logiku, jen
+    // se vykresluje tady inline misto na vlastni obrazovce.
+    searchViewModel: ComicKBrowseViewModel = hiltViewModel(),
 ) {
     val topFeed by viewModel.topFeed.collectAsState()
     val loading by viewModel.loading.collectAsState()
@@ -101,6 +119,14 @@ fun ComicKHomeScreen(
     val openingManga by viewModel.openingManga.collectAsState()
     val openError by viewModel.openError.collectAsState()
     var showPreferences by remember { mutableStateOf(false) }
+    var searchActive by remember { mutableStateOf(false) }
+    val searchFocusRequester = remember { FocusRequester() }
+
+    val searchQuery by searchViewModel.query.collectAsState()
+    val searchResults by searchViewModel.results.collectAsState()
+    val searchLoading by searchViewModel.loading.collectAsState()
+    val searchError by searchViewModel.error.collectAsState()
+    val searchOpeningManga by searchViewModel.openingManga.collectAsState()
 
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -109,6 +135,18 @@ fun ComicKHomeScreen(
             snackbarHostState.showSnackbar(it)
             viewModel.clearOpenError()
         }
+    }
+
+    val searchOpenError by searchViewModel.openError.collectAsState()
+    LaunchedEffect(searchOpenError) {
+        searchOpenError?.let {
+            snackbarHostState.showSnackbar(it)
+            searchViewModel.clearOpenError()
+        }
+    }
+
+    LaunchedEffect(searchActive) {
+        if (searchActive) searchFocusRequester.requestFocus()
     }
 
     fun openManga(manga: SManga) {
@@ -121,43 +159,100 @@ fun ComicKHomeScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             Column(modifier = Modifier.statusBarsPadding()) {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text("ComicK", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 20.sp, modifier = Modifier.weight(1f))
-                    IconButton(onClick = onOpenSearch) {
-                        Icon(TablerIcons.Search, contentDescription = stringResource(R.string.common_search), tint = TextSecondary)
+                if (searchActive) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        IconButton(onClick = {
+                            searchActive = false
+                            searchViewModel.setQuery("")
+                            searchViewModel.search()
+                        }) {
+                            Icon(TablerIcons.ArrowLeft, contentDescription = stringResource(R.string.common_back), tint = TextPrimary)
+                        }
+                        Row(
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(42.dp)
+                                .clip(RoundedCornerShape(50.dp))
+                                .background(Color.White.copy(alpha = 0.06f))
+                                .border(1.dp, if (searchQuery.isNotEmpty()) Violet.copy(alpha = 0.5f) else Color.White.copy(alpha = 0.08f), RoundedCornerShape(50.dp))
+                                .padding(horizontal = 14.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Icon(TablerIcons.Search, contentDescription = null, tint = TextSecondary.copy(alpha = 0.6f), modifier = Modifier.size(16.dp))
+                            BasicTextField(
+                                value = searchQuery,
+                                onValueChange = { searchViewModel.setQuery(it) },
+                                singleLine = true,
+                                textStyle = TextStyle(color = TextPrimary, fontSize = 14.sp),
+                                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                                keyboardActions = KeyboardActions(onSearch = { searchViewModel.search() }),
+                                decorationBox = { inner ->
+                                    Box(modifier = Modifier.weight(1f).padding(horizontal = 10.dp)) {
+                                        if (searchQuery.isEmpty()) {
+                                            Text(stringResource(R.string.comick_browse_search_placeholder), color = TextSecondary.copy(alpha = 0.5f), fontSize = 14.sp)
+                                        }
+                                        inner()
+                                    }
+                                },
+                                modifier = Modifier.weight(1f).focusRequester(searchFocusRequester),
+                            )
+                            if (searchQuery.isNotEmpty()) {
+                                IconButton(onClick = { searchViewModel.setQuery(""); searchViewModel.search() }, modifier = Modifier.size(28.dp)) {
+                                    Icon(TablerIcons.X, contentDescription = stringResource(R.string.common_clear), tint = TextSecondary, modifier = Modifier.size(15.dp))
+                                }
+                            }
+                        }
                     }
-                }
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    // "Domu" uz neni prepinatelna zalozka (Aktualizace je od teď rovnou
-                    // soucasti Domu, viz uzivatelsky pozadavek) - zustava jako vizualni
-                    // "jsi tady" indikator. Misto Aktualizace je tlacitko na Prochazet
-                    // (search+filtry obrazovka, viz ComicKBrowseScreen).
-                    Button(
-                        onClick = {},
-                        modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Violet.copy(alpha = 0.2f),
-                            contentColor = Violet,
-                        ),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Violet.copy(alpha = 0.5f)),
-                        elevation = null,
-                    ) { Text(stringResource(R.string.comick_home_tab_home), fontSize = 13.sp) }
-                    Button(
-                        onClick = onOpenBrowse,
-                        modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color.Transparent,
-                            contentColor = TextSecondary,
-                        ),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, TextSecondary.copy(alpha = 0.15f)),
-                        elevation = null,
-                    ) { Text(stringResource(R.string.main_screen_tab_browse), fontSize = 13.sp) }
+                } else {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            "ComicK",
+                            color = TextPrimary,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 20.sp,
+                            modifier = Modifier
+                                .weight(1f)
+                                .pointerInput(Unit) { detectTapGestures(onLongPress = { showPreferences = true }) },
+                        )
+                        IconButton(onClick = { searchActive = true }) {
+                            Icon(TablerIcons.Search, contentDescription = stringResource(R.string.common_search), tint = TextSecondary)
+                        }
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        // "Domu" uz neni prepinatelna zalozka (Aktualizace je od teď rovnou
+                        // soucasti Domu, viz uzivatelsky pozadavek) - zustava jako vizualni
+                        // "jsi tady" indikator. Misto Aktualizace je tlacitko na Prochazet
+                        // (search+filtry obrazovka, viz ComicKBrowseScreen).
+                        Button(
+                            onClick = {},
+                            modifier = Modifier.weight(1f),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Violet.copy(alpha = 0.2f),
+                                contentColor = Violet,
+                            ),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, Violet.copy(alpha = 0.5f)),
+                            elevation = null,
+                        ) { Text(stringResource(R.string.comick_home_tab_home), fontSize = 13.sp) }
+                        Button(
+                            onClick = onOpenBrowse,
+                            modifier = Modifier.weight(1f),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color.Transparent,
+                                contentColor = TextSecondary,
+                            ),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, TextSecondary.copy(alpha = 0.15f)),
+                            elevation = null,
+                        ) { Text(stringResource(R.string.main_screen_tab_browse), fontSize = 13.sp) }
+                    }
                 }
             }
         },
@@ -165,6 +260,36 @@ fun ComicKHomeScreen(
         Box(
             modifier = Modifier.fillMaxSize().background(screenGradient).padding(innerPadding),
         ) {
+            if (searchActive) {
+                val navBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+                val gridState = rememberLazyGridState()
+                when {
+                    searchLoading && searchResults.isEmpty() -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { JiyuLoadingIndicator() }
+                    searchError != null && searchResults.isEmpty() -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(32.dp)) {
+                            Text(stringResource(R.string.comick_home_load_failed), color = TextSecondary, fontSize = 14.sp)
+                            Text(searchError ?: "", color = TextSecondary.copy(alpha = 0.6f), fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp, bottom = 16.dp))
+                            OutlinedButton(onClick = { searchViewModel.search() }) { Text(stringResource(R.string.common_retry), color = Violet) }
+                        }
+                    }
+                    searchQuery.isBlank() -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text(stringResource(R.string.comick_home_search_hint), color = TextSecondary, fontSize = 14.sp)
+                    }
+                    searchResults.isEmpty() -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text(stringResource(R.string.comick_home_empty), color = TextSecondary, fontSize = 14.sp)
+                    }
+                    else -> LazyVerticalGrid(
+                        state = gridState,
+                        columns = GridCells.Adaptive(minSize = 110.dp),
+                        contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 10.dp, bottom = 16.dp + navBottom),
+                        modifier = Modifier.fillMaxSize(),
+                    ) {
+                        gridItems(searchResults, key = { it.sourceId + it.url }) { manga ->
+                            ComicKMangaCard(manga = manga, onClick = { searchViewModel.openManga(manga, onOpenManga) })
+                        }
+                    }
+                }
+            } else {
             when {
                 loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -302,7 +427,8 @@ fun ComicKHomeScreen(
                     }
                 }
             }
-            if (openingManga != null) {
+            }
+            if (openingManga != null || searchOpeningManga != null) {
                 Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.4f)), contentAlignment = Alignment.Center) {
                     JiyuLoadingIndicator()
                 }
