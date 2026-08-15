@@ -16,6 +16,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONArray
 import org.json.JSONObject
+import org.jsoup.Jsoup
 import java.net.URLEncoder
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -305,6 +306,50 @@ class ComicKSource @Inject constructor(
         } catch (_: Exception) {
             emptyList()
         }
+    }
+
+    /**
+     * Komentáře pod titulem (uživatelský požadavek "stáhnout k sobě ComicK komentáře") -
+     * jen ke čtení, appka nemá napojený ComicK účet potřebný pro psaní nových. Ověřeno
+     * živě: `GET /comment/comic/{hid}?page=N` vrací `{comments, total, remaining}`, kde
+     * `remaining > 0` = jsou další stránky. Odpovědi (`content`/`parsed`) obsahují syrové
+     * HTML (`<br>`, `<p>`, entity jako `&#x26;`) - Jsoup ho převádí na čistý text, appka
+     * nikde jinde HTML nevykresluje. Odpovědi jsou navíc jen jednu úroveň vnořené
+     * (`other_comments` na kořenovém komentáři) - stejně jako to ukazuje ComicK web.
+     */
+    suspend fun getComments(mangaUrl: String, page: Int): ComicKCommentsPage =
+        withContext(Dispatchers.IO) {
+            val slug = mangaUrl.substringAfterLast("/")
+            val detailJson = getObject(
+                "$apiBase/comic/$slug",
+                notFoundMessage = "ComicK tenhle titul přes veřejné API neposkytuje (časté u 18+ obsahu)",
+            )
+            val hid = detailJson.getJSONObject("comic").getString("hid")
+            val json = getObject("$apiBase/comment/comic/$hid?page=$page")
+            val arr = json.optJSONArray("comments") ?: JSONArray()
+            ComicKCommentsPage(
+                comments = (0 until arr.length()).mapNotNull { i -> commentFromJson(arr.getJSONObject(i)) },
+                total = json.optInt("total", 0),
+                hasMore = json.optInt("remaining", 0) > 0,
+            )
+        }
+
+    private fun commentFromJson(json: JSONObject): ComicKComment? {
+        val id = json.optLong("id", -1L).takeIf { it >= 0 } ?: return null
+        val rawText = (json.optString("parsed").ifBlank { json.optString("content") })
+        val identities = json.optJSONObject("identities")
+        val traits = identities?.optJSONObject("traits")
+        val repliesArr = json.optJSONArray("other_comments") ?: JSONArray()
+        return ComicKComment(
+            id = id,
+            content = Jsoup.parse(rawText).text(),
+            username = traits?.optString("username")?.trim()?.ifBlank { null } ?: "?",
+            avatarUrl = traits?.optString("gravatar")?.ifBlank { null },
+            upCount = json.optInt("up_count", 0),
+            downCount = json.optInt("down_count", 0),
+            createdAt = parseIso(json.optString("created_at")),
+            replies = (0 until repliesArr.length()).mapNotNull { i -> commentFromJson(repliesArr.getJSONObject(i)) },
+        )
     }
 
     private var cachedTop: TopFeed? = null
@@ -671,4 +716,23 @@ data class ChapterUpdate(
     val comic: SManga,
     val upCount: Int,
     val commentCount: Int,
+)
+
+/** Jedna stránka výsledku [ComicKSource.getComments] - `hasMore` řídí "Načíst další". */
+data class ComicKCommentsPage(
+    val comments: List<ComicKComment>,
+    val total: Int,
+    val hasMore: Boolean,
+)
+
+/** Jeden komentář pod titulem - `replies` jsou jen jednu úroveň vnořené, stejně jako na ComicK webu. */
+data class ComicKComment(
+    val id: Long,
+    val content: String,
+    val username: String,
+    val avatarUrl: String?,
+    val upCount: Int,
+    val downCount: Int,
+    val createdAt: Long,
+    val replies: List<ComicKComment>,
 )

@@ -97,6 +97,7 @@ import com.haise.jiyu.data.db.entity.DownloadStatus
 import com.haise.jiyu.data.repository.deserializeAltTitles
 import com.haise.jiyu.data.repository.deserializeChapterGroups
 import com.haise.jiyu.source.SGroup
+import com.haise.jiyu.source.comick.ComicKComment
 import com.haise.jiyu.ui.theme.Cyan
 import com.haise.jiyu.ui.theme.GlowCyan
 import com.haise.jiyu.ui.theme.GlowViolet
@@ -123,6 +124,10 @@ fun MangaDetailScreen(
 ) {
     val manga            by viewModel.manga.collectAsState()
     val coverGallery     by viewModel.coverGallery.collectAsState()
+    val comments         by viewModel.comments.collectAsState()
+    val commentsTotal    by viewModel.commentsTotal.collectAsState()
+    val commentsLoading  by viewModel.commentsLoading.collectAsState()
+    val commentsError    by viewModel.commentsError.collectAsState()
     val chapters         by viewModel.chapters.collectAsState()
     val continueChapter  by viewModel.continueChapter.collectAsState()
     val firstUnread      by viewModel.firstUnreadChapter.collectAsState()
@@ -184,6 +189,10 @@ fun MangaDetailScreen(
             snackbarHostState.showSnackbar(it)
             viewModel.clearError()
         }
+    }
+
+    LaunchedEffect(manga?.id, manga?.sourceId) {
+        if (manga?.sourceId == "comick" && comments.isEmpty()) viewModel.loadMoreComments()
     }
 
     Scaffold(
@@ -1002,6 +1011,62 @@ fun MangaDetailScreen(
                     }
                 }
 
+                // ── Komentáře (jen ComicK, viz ComicKSource.getComments) ────────
+                if (manga?.sourceId == "comick") {
+                    item(key = "comments_header") {
+                        Text(
+                            text = stringResource(R.string.detail_comments_title, commentsTotal),
+                            color = TextPrimary,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 16.sp,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                        )
+                    }
+                    when {
+                        comments.isEmpty() && commentsLoading -> item(key = "comments_loading") {
+                            Box(modifier = Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
+                                JiyuLoadingIndicator(size = 28.dp, strokeWidth = 2.dp)
+                            }
+                        }
+                        comments.isEmpty() && commentsError != null -> item(key = "comments_error") {
+                            Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)) {
+                                Text(commentsError ?: "", color = TextSecondary, fontSize = 12.sp)
+                                androidx.compose.material3.OutlinedButton(
+                                    onClick = { viewModel.loadMoreComments() },
+                                    modifier = Modifier.padding(top = 8.dp),
+                                ) { Text(stringResource(R.string.common_retry)) }
+                            }
+                        }
+                        comments.isEmpty() -> item(key = "comments_empty") {
+                            Text(
+                                stringResource(R.string.detail_comments_empty),
+                                color = TextSecondary,
+                                fontSize = 13.sp,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                            )
+                        }
+                        else -> {
+                            items(comments, key = { "comment_${it.id}" }) { comment ->
+                                CommentCard(comment)
+                            }
+                            if (comments.size < commentsTotal) {
+                                item(key = "comments_load_more") {
+                                    if (commentsLoading) {
+                                        Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                                            JiyuLoadingIndicator(size = 20.dp, strokeWidth = 2.dp)
+                                        }
+                                    } else {
+                                        androidx.compose.material3.TextButton(
+                                            onClick = { viewModel.loadMoreComments() },
+                                            modifier = Modifier.fillMaxWidth(),
+                                        ) { Text(stringResource(R.string.detail_comments_load_more), color = Violet) }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
                 item { Spacer(Modifier.height(32.dp)) }
             }
 
@@ -1267,6 +1332,61 @@ private fun originationFlag(contentType: String?): String = when (contentType) {
     "COMIC"  -> "🇺🇸"
     "NOVEL"  -> "📖"
     else     -> "🇯🇵"
+}
+
+/** Jeden komentář z [detail_comments_title] sekce - `replies` (max. 1 úroveň, viz
+ * ComicKComment) se vykreslí odsazené pod rodičovským komentářem. */
+@Composable
+private fun CommentCard(comment: ComicKComment, indent: androidx.compose.ui.unit.Dp = 0.dp) {
+    Column(modifier = Modifier.fillMaxWidth().padding(start = 16.dp + indent, end = 16.dp, top = 8.dp, bottom = 8.dp)) {
+        Row(verticalAlignment = Alignment.Top) {
+            AsyncImage(
+                model = comment.avatarUrl,
+                contentDescription = comment.username,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.size(28.dp).clip(RoundedCornerShape(50)).background(NightBlue),
+            )
+            Column(modifier = Modifier.padding(start = 10.dp).weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(comment.username, color = TextPrimary, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                    Text(
+                        text = commentRelativeTime(comment.createdAt),
+                        color = TextSecondary.copy(alpha = 0.6f),
+                        fontSize = 11.sp,
+                        modifier = Modifier.padding(start = 8.dp),
+                    )
+                }
+                Text(comment.content, color = TextSecondary, fontSize = 13.sp, modifier = Modifier.padding(top = 2.dp))
+                if (comment.upCount > 0 || comment.downCount > 0) {
+                    Row(modifier = Modifier.padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                        if (comment.upCount > 0) {
+                            Icon(TablerIcons.ThumbUp, contentDescription = null, tint = TextSecondary.copy(alpha = 0.5f), modifier = Modifier.size(12.dp))
+                            Text(" ${comment.upCount}", color = TextSecondary.copy(alpha = 0.6f), fontSize = 11.sp, modifier = Modifier.padding(end = 10.dp))
+                        }
+                        if (comment.downCount > 0) {
+                            Icon(TablerIcons.ThumbDown, contentDescription = null, tint = TextSecondary.copy(alpha = 0.5f), modifier = Modifier.size(12.dp))
+                            Text(" ${comment.downCount}", color = TextSecondary.copy(alpha = 0.6f), fontSize = 11.sp)
+                        }
+                    }
+                }
+            }
+        }
+        comment.replies.forEach { reply -> CommentCard(reply, indent = 38.dp) }
+    }
+}
+
+/** "před 2 h", "před 3 dny" apod. - stejny vzor jako ComicKHomeScreen.relativeTimeLabel
+ * (karty/pomocne funkce se v kodu nesdileji mezi soubory, zavedena konvence appky). */
+private fun commentRelativeTime(createdAtMs: Long): String {
+    if (createdAtMs <= 0L) return ""
+    val diffMin = (System.currentTimeMillis() - createdAtMs) / 60_000L
+    return when {
+        diffMin < 1     -> "teď"
+        diffMin < 60    -> "před ${diffMin} min"
+        diffMin < 1440  -> "před ${diffMin / 60} h"
+        diffMin < 43200 -> "před ${diffMin / 1440} dny"
+        else            -> java.text.SimpleDateFormat("d. M. yyyy", Locale.getDefault()).format(java.util.Date(createdAtMs))
+    }
 }
 
 @Composable

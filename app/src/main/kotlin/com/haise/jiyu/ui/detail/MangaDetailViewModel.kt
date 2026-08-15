@@ -29,6 +29,7 @@ import com.haise.jiyu.download.DownloadQueue
 import com.haise.jiyu.source.SManga
 import com.haise.jiyu.source.SourceManager
 import com.haise.jiyu.source.comick.ComicKSource
+import com.haise.jiyu.source.comick.ComicKComment
 import com.haise.jiyu.source.comick.SCover
 import com.haise.jiyu.util.ChapterStorage
 import com.haise.jiyu.util.NetworkMonitor
@@ -131,6 +132,42 @@ class MangaDetailViewModel @Inject constructor(
                 _coverGallery.value = emptyList()
             } finally {
                 coverGalleryLoading = false
+            }
+        }
+    }
+
+    // Komentare pod titulem (jen ComicK, viz ComicKSource.getComments) - jen ke cteni,
+    // appka nema napojeny ComicK ucet potrebny pro psani novych. Stranky se hromadi do
+    // jednoho seznamu (stejny vzor jako ComicKBrowseViewModel.loadMore), commentsHasMore
+    // rika UI, jestli jeste ma smysl zobrazit "Nacist dalsi".
+    private val _comments = MutableStateFlow<List<ComicKComment>>(emptyList())
+    val comments: StateFlow<List<ComicKComment>> = _comments.asStateFlow()
+    private val _commentsTotal = MutableStateFlow(0)
+    val commentsTotal: StateFlow<Int> = _commentsTotal.asStateFlow()
+    private val _commentsLoading = MutableStateFlow(false)
+    val commentsLoading: StateFlow<Boolean> = _commentsLoading.asStateFlow()
+    private val _commentsError = MutableStateFlow<String?>(null)
+    val commentsError: StateFlow<String?> = _commentsError.asStateFlow()
+    private var commentsHasMore = true
+    private var commentsPage = 1
+
+    fun loadMoreComments() {
+        val current = manga.value ?: return
+        if (current.sourceId != "comick" || _commentsLoading.value || !commentsHasMore) return
+        _commentsLoading.value = true
+        viewModelScope.launch {
+            try {
+                val result = comicKSource.getComments(current.url, commentsPage)
+                _comments.value = _comments.value + result.comments
+                _commentsTotal.value = result.total
+                commentsHasMore = result.hasMore
+                commentsPage++
+                _commentsError.value = null
+            } catch (e: Exception) {
+                e.report("detail:loadComments")
+                _commentsError.value = e.toFriendlyMessage()
+            } finally {
+                _commentsLoading.value = false
             }
         }
     }
