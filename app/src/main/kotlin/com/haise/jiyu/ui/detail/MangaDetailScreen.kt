@@ -304,8 +304,8 @@ fun MangaDetailScreen(
                     Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)) {
                         Box(
                             modifier = Modifier
-                                .width(130.dp)
-                                .height(176.dp)
+                                .width(150.dp)
+                                .aspectRatio(0.74f)
                                 .clip(RoundedCornerShape(12.dp))
                                 .clickable {
                                     // ComicK: galerie vsech historickych obalek (uzivatelsky
@@ -454,11 +454,14 @@ fun MangaDetailScreen(
                                 }
                                 manga?.year?.takeIf { it > 0 }?.let { DetailInfoRow(stringResource(R.string.detail_info_published), it.toString()) }
                                 manga?.status?.let { status ->
+                                    // Bez emoji pred textem (jak to ma ComicK) - barevny emoji
+                                    // glyph mel jiny/vetsi radkovy box nez okolni text a rozhazel
+                                    // tim mezery mezi radky, i kdyz mely stejne vertical padding.
                                     val label = when (status.lowercase()) {
-                                        "ongoing"   -> "📖 " + stringResource(R.string.detail_status_ongoing)
-                                        "completed" -> "📗 " + stringResource(R.string.detail_status_completed)
-                                        "hiatus"    -> "⏸ " + stringResource(R.string.detail_status_hiatus)
-                                        "cancelled" -> "🚫 " + stringResource(R.string.detail_status_cancelled)
+                                        "ongoing"   -> stringResource(R.string.detail_status_ongoing)
+                                        "completed" -> stringResource(R.string.detail_status_completed)
+                                        "hiatus"    -> stringResource(R.string.detail_status_hiatus)
+                                        "cancelled" -> stringResource(R.string.detail_status_cancelled)
                                         else        -> status
                                     }
                                     DetailInfoRow(stringResource(R.string.detail_status_placeholder), label)
@@ -466,7 +469,7 @@ fun MangaDetailScreen(
                                 manga?.translationCompleted?.let {
                                     DetailInfoRow(
                                         stringResource(R.string.detail_info_translation),
-                                        if (it) "📗 " + stringResource(R.string.detail_info_translation_completed) else "📖 " + stringResource(R.string.detail_info_translation_ongoing),
+                                        if (it) stringResource(R.string.detail_info_translation_completed) else stringResource(R.string.detail_info_translation_ongoing),
                                     )
                                 }
                                 manga?.hasAnime?.let {
@@ -1268,9 +1271,13 @@ private fun originationFlag(contentType: String?): String = when (contentType) {
 
 @Composable
 private fun DetailInfoRow(label: String, value: String) {
+    // lineHeight napevno, ne jen fontSize: bez toho radek s emoji glyfem (vlajka u
+    // Origination, hvezdicka u Rating) vychazi vyssi nez okolni cistě textove radky,
+    // i pri stejnem vertical paddingu - vysledkem byly nerovnomerne mezery (ComicK
+    // referencni sloupec tohle nema, protoze tam zadny radek nema jiny radkovy box).
     Row(modifier = Modifier.padding(vertical = 1.dp)) {
-        Text(text = "$label: ", color = TextSecondary, fontSize = 11.sp)
-        Text(text = value, color = TextPrimary, fontSize = 11.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(text = "$label: ", color = TextSecondary, fontSize = 11.sp, lineHeight = 14.sp)
+        Text(text = value, color = TextPrimary, fontSize = 11.sp, fontWeight = FontWeight.Medium, lineHeight = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 
