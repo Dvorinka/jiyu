@@ -58,6 +58,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -269,7 +270,6 @@ fun LibraryScreen(
                 if (continueReading.isNotEmpty()) {
                     CarouselSection(
                         title = stringResource(R.string.library_continue_reading),
-                        count = continueReading.size,
                         onShowAll = { onOpenSection(LibrarySection.CONTINUE_READING) },
                     ) {
                         LazyRow(contentPadding = PaddingValues(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -291,7 +291,6 @@ fun LibraryScreen(
                 if (recentlyAdded.isNotEmpty()) {
                     CarouselSection(
                         title = stringResource(R.string.library_recently_added),
-                        count = recentlyAdded.size,
                         onShowAll = { onOpenSection(LibrarySection.RECENTLY_ADDED) },
                     ) {
                         LazyRow(contentPadding = PaddingValues(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -308,7 +307,6 @@ fun LibraryScreen(
                 if (completed.isNotEmpty()) {
                     CarouselSection(
                         title = stringResource(R.string.library_completed),
-                        count = completed.size,
                         onShowAll = { onOpenSection(LibrarySection.COMPLETED) },
                     ) {
                         LazyRow(contentPadding = PaddingValues(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -560,7 +558,7 @@ private fun StatBox(
 }
 
 @Composable
-private fun CarouselSection(title: String, count: Int, onShowAll: () -> Unit, content: @Composable () -> Unit) {
+private fun CarouselSection(title: String, onShowAll: () -> Unit, content: @Composable () -> Unit) {
     Column(modifier = Modifier.fillMaxWidth().padding(top = 18.dp)) {
         Row(
             // Klepnutí bere celý řádek nadpisu, ne jen text "Zobrazit vše" - ten je malý
@@ -576,14 +574,6 @@ private fun CarouselSection(title: String, count: Int, onShowAll: () -> Unit, co
                 style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 2.sp),
                 color = Violet,
             )
-            Spacer(Modifier.width(6.dp))
-            Box(
-                modifier = Modifier
-                    .background(GlowViolet, RoundedCornerShape(50))
-                    .padding(horizontal = 7.dp, vertical = 1.dp),
-            ) {
-                Text("$count", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-            }
             Spacer(Modifier.weight(1f))
             Text(stringResource(R.string.library_show_all), color = TextSecondary, fontSize = 12.sp)
             Icon(TablerIcons.ChevronRight, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(16.dp))
@@ -621,15 +611,14 @@ private fun ContinueReadingCard(item: ContinueReadingItem, progressPercent: Int,
                     .align(Alignment.BottomCenter)
                     .background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xEA070B14)))),
             )
-            Box(
-                modifier = Modifier
-                    .align(Alignment.TopStart)
-                    .padding(6.dp)
-                    .background(GlowViolet, RoundedCornerShape(6.dp))
-                    .padding(horizontal = 7.dp, vertical = 3.dp),
-            ) {
-                Text(formatChapterNumber(item.lastChapterNumber), color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-            }
+            Text(
+                text = formatChapterNumber(item.lastChapterNumber),
+                color = GlowViolet,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold,
+                style = TextStyle(shadow = Shadow(color = Color.Black, blurRadius = 8f)),
+                modifier = Modifier.align(Alignment.TopStart).padding(8.dp),
+            )
             // Malé tlačítko navrch obálky - klepnutí na zbytek karty otevře detail (viz
             // onOpenDetail výš), tohle jde rovnou do poslední rozečtené kapitoly. Vnořený
             // clickable dostane klepnutí přednostně před rodičovským pointerInputem karty.

@@ -4,6 +4,17 @@
 > vidět v historii commitů a v popisech jednotlivých vydání na GitHubu; zpětně to sem
 > nedopisuju, abych si nevymýšlel.
 
+## v1.2.18
+
+### Úklid Knihovny: pryč s X, počty a fialovými boxy
+- "Zobrazit vše" u Pokračovat ve čtení / Nedávno přidané: odstraněno tlačítko
+  X na smazání u každého řádku (bylo zbytečné, mazání jde jinudy).
+- Nadpisy sekcí na Knihovně (POKRAČOVAT VE ČTENÍ, NEDÁVNO PŘIDANÉ, DOKONČENÉ):
+  odstraněn fialový kolečkový odznak s počtem titulů vedle nadpisu.
+- Číslo kapitoly na kartičkách "Pokračovat ve čtení": pryč fialový box na
+  pozadí, teď je to jen fialové číslo s černým stínem/podtónem - čitelné
+  na jakékoli obálce, i světlé.
+
 ## v1.2.17
 
 ### Ošklivá "ComicK API chyba 404" hláška při otevření titulu

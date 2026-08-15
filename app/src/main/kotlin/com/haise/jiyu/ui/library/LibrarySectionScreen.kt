@@ -26,9 +26,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -51,7 +48,6 @@ import com.haise.jiyu.ui.theme.screenGradient
 import com.haise.jiyu.ui.theme.titleGradient
 import compose.icons.TablerIcons
 import compose.icons.tablericons.ArrowBack
-import compose.icons.tablericons.X
 import java.util.Locale
 
 /**
@@ -71,8 +67,7 @@ enum class LibrarySection(val titleRes: Int) {
  * `clickable`. Vypadalo to jako odkaz, chovalo se to jako výplň.
  *
  * Dřív mřížka po třech (jako zbytek Knihovny) - uživatelský požadavek: styl řádků jako má
- * ComicK na "Read History" (malá obálka vlevo, název, kapitola, relativní čas, X na smazání
- * vpravo místo dlouhého podržení).
+ * ComicK na "Read History" (malá obálka vlevo, název, kapitola, relativní čas).
  */
 @Composable
 fun LibrarySectionScreen(
@@ -85,8 +80,6 @@ fun LibrarySectionScreen(
     val continueReading by viewModel.continueReading.collectAsState()
     val recentlyAdded   by viewModel.recentlyAdded.collectAsState()
     val completed       by viewModel.completed.collectAsState()
-
-    var pendingRemoval by remember { mutableStateOf<Pair<String, String>?>(null) }
 
     // Kapitola/cas se lisi podle sekce - continueReading nese navic posledni kapitolu,
     // ostatni sekce jen holy MangaEntity.
@@ -164,30 +157,20 @@ fun LibrarySectionScreen(
                         subtitle = subtitle,
                         timeLabel = timeMs.takeIf { it > 0 }?.let { relativeTimeLabel(it) },
                         onClick = { openItem(manga) },
-                        onRemove = { pendingRemoval = manga.id to manga.title },
                     )
                 }
             }
         }
     }
-
-    pendingRemoval?.let { (mangaId, mangaTitle) ->
-        RemoveFromLibraryDialog(
-            mangaTitle = mangaTitle,
-            onConfirm = { viewModel.removeFromLibrary(mangaId) },
-            onDismiss = { pendingRemoval = null },
-        )
-    }
 }
 
-/** ComicK styl řádku (Read History) - malá obálka, název, kapitola/čas, X na smazání vpravo. */
+/** ComicK styl řádku (Read History) - malá obálka, název, kapitola/čas. */
 @Composable
 private fun LibrarySectionRow(
     manga: MangaEntity,
     subtitle: String?,
     timeLabel: String?,
     onClick: () -> Unit,
-    onRemove: () -> Unit,
 ) {
     Row(
         modifier = Modifier
@@ -232,9 +215,6 @@ private fun LibrarySectionRow(
                     modifier = Modifier.padding(top = 4.dp),
                 )
             }
-        }
-        IconButton(onClick = onRemove) {
-            Icon(TablerIcons.X, contentDescription = stringResource(R.string.common_delete), tint = TextSecondary)
         }
     }
 }
