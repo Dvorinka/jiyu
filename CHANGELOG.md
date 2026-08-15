@@ -4,6 +4,15 @@
 > vidět v historii commitů a v popisech jednotlivých vydání na GitHubu; zpětně to sem
 > nedopisuju, abych si nevymýšlel.
 
+## v1.2.21
+
+### Oprava: stahování aktualizace občas odmítalo začít
+Cílový soubor stahování měl vždy stejné jméno - Android DownloadManager
+odmítne stahovat, pokud tam z předchozího pokusu (i úspěšného, co appka po
+instalaci nikdy neuklidila) už soubor leží. Uživatel viděl jen "nepovedlo
+se" bez důvodu. Starý soubor se teď smaže před každým novým pokusem; u
+nedostatku místa na zařízení appka navíc řekne konkrétně, co je špatně.
+
 ## v1.2.20
 
 ### ComicK agregátor: hledání zdrojů se plní průběžně, ne až na konci
