@@ -2,6 +2,11 @@
     <string name="app_name">Jiyū</string>
     <string name="widget_description">Shows recently updated manga from your library</string>
     <string name="widget_title">Jiyu – Library</string>
+    <string name="widget_cover_title">Jiyu – Title Cover</string>
+    <string name="widget_cover_description">Cover and last chapter of a chosen title</string>
+    <string name="widget_cover_config_title">Pick a title for the widget</string>
+    <string name="widget_cover_config_empty">Your library is empty.</string>
+    <string name="widget_cover_unconfigured">Tap to set a title</string>
 
     <!-- Onboarding -->
     <string name="onb_welcome_title">Welcome to Jiyu</string>

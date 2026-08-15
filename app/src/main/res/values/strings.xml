@@ -2,6 +2,11 @@
     <string name="app_name">Jiyū</string>
     <string name="widget_description">Zobrazuje nedávno aktualizované manga z knihovny</string>
     <string name="widget_title">Jiyu – Knihovna</string>
+    <string name="widget_cover_title">Jiyu – Obálka titulu</string>
+    <string name="widget_cover_description">Obálka a poslední kapitola vybraného titulu</string>
+    <string name="widget_cover_config_title">Vyber titul pro widget</string>
+    <string name="widget_cover_config_empty">V knihovně zatím nic není.</string>
+    <string name="widget_cover_unconfigured">Klepnutím nastav titul</string>
 
     <!-- Onboarding -->
     <string name="onb_welcome_title">Vítej v Jiyu</string>

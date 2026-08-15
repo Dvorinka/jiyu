@@ -2,6 +2,11 @@
     <string name="app_name">Jiyū</string>
     <string name="widget_description">Affiche les mangas récemment mis à jour de votre bibliothèque</string>
     <string name="widget_title">Jiyu – Bibliothèque</string>
+    <string name="widget_cover_title">Jiyu – Couverture du titre</string>
+    <string name="widget_cover_description">Couverture et dernier chapitre d\'un titre choisi</string>
+    <string name="widget_cover_config_title">Choisir un titre pour le widget</string>
+    <string name="widget_cover_config_empty">Votre bibliothèque est vide.</string>
+    <string name="widget_cover_unconfigured">Touchez pour choisir un titre</string>
 
     <string name="onb_welcome_title">Bienvenue sur Jiyu</string>
     <string name="onb_welcome_subtitle">Votre lecteur de manga.\nChoisissez la langue de l\'application.</string>

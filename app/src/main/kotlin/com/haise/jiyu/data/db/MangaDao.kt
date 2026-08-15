@@ -54,6 +54,16 @@ interface MangaDao {
     """)
     fun observeContinueReading(): Flow<List<ContinueReadingItem>>
 
+    /** Jednorázový dotaz na jeden titul se stejným tvarem jako [observeContinueReading] -
+     * pro widget s obálkou (CoverWidget), kde je titul předem vybraný v konfiguraci. */
+    @Query("""
+        SELECT m.*, c.name as lastChapterName, c.chapterNumber as lastChapterNumber
+        FROM manga m
+        LEFT JOIN chapter c ON c.id = m.lastReadChapterId
+        WHERE m.id = :mangaId
+    """)
+    suspend fun getContinueReadingForManga(mangaId: String): ContinueReadingItem?
+
     @Query("SELECT * FROM manga WHERE inLibrary = 1 ORDER BY addedAt DESC LIMIT 20")
     fun observeRecentlyAdded(): Flow<List<MangaEntity>>
 
