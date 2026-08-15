@@ -24,10 +24,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -61,11 +59,16 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import coil.compose.AsyncImage
 import com.haise.jiyu.R
+import com.haise.jiyu.source.SManga
 import com.haise.jiyu.source.comick.ComicKGenreOption
 import com.haise.jiyu.source.comick.ComicKSearchFilters
 import com.haise.jiyu.ui.components.JiyuLoadingIndicator
@@ -114,11 +117,11 @@ fun ComicKBrowseScreen(
         }
     }
 
-    val gridState = rememberLazyGridState()
+    val listState = rememberLazyListState()
     val shouldLoadMore by remember {
         derivedStateOf {
-            val lastVisible = gridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
-            val totalItems = gridState.layoutInfo.totalItemsCount
+            val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+            val totalItems = listState.layoutInfo.totalItemsCount
             lastVisible >= totalItems - 6 && totalItems > 0
         }
     }
@@ -207,14 +210,16 @@ fun ComicKBrowseScreen(
                 results.isEmpty() -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text(stringResource(R.string.comick_home_empty), color = TextSecondary, fontSize = 14.sp)
                 }
-                else -> LazyVerticalGrid(
-                    state = gridState,
-                    columns = GridCells.Adaptive(minSize = 110.dp),
+                // Seznam misto mrizky obalek (uzivatelsky pozadavek "jak to ma ComicK
+                // Search" - foto/nazev/pocet kapitol na radek, bez cisla poradi a bez
+                // popisku, co ma jejich verze navic) - viz ComicKSearchResultRow nize.
+                else -> LazyColumn(
+                    state = listState,
                     contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 10.dp, bottom = 16.dp + navBottom),
                     modifier = Modifier.fillMaxSize(),
                 ) {
                     items(results, key = { it.sourceId + it.url }) { manga ->
-                        ComicKMangaCard(manga = manga, onClick = { viewModel.openManga(manga, onOpenManga) })
+                        ComicKSearchResultRow(manga = manga, onClick = { viewModel.openManga(manga, onOpenManga) })
                     }
                 }
             }
@@ -241,6 +246,45 @@ fun ComicKBrowseScreen(
                 showFilterSheet = false
             },
         )
+    }
+}
+
+/** Jeden řádek výsledku hledání - foto/název/počet kapitol, jak to má ComicK Search,
+ * jen bez pořadového čísla a bez úryvku popisu (uživatelský požadavek). */
+@Composable
+private fun ComicKSearchResultRow(manga: SManga, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 6.dp)
+            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClick),
+        verticalAlignment = Alignment.Top,
+    ) {
+        AsyncImage(
+            model = manga.coverUrl,
+            contentDescription = manga.title,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.width(64.dp).height(90.dp).clip(RoundedCornerShape(8.dp)),
+        )
+        Column(modifier = Modifier.padding(start = 12.dp).weight(1f)) {
+            Text(
+                text = manga.title,
+                color = TextPrimary,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 15.sp,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+            manga.lastChapter?.let { last ->
+                val count = if (last == last.toInt().toFloat()) last.toInt() else kotlin.math.ceil(last).toInt()
+                Text(
+                    text = pluralStringResource(R.plurals.detail_chapter_count, count, count),
+                    color = TextSecondary,
+                    fontSize = 12.sp,
+                    modifier = Modifier.padding(top = 4.dp),
+                )
+            }
+        }
     }
 }
 

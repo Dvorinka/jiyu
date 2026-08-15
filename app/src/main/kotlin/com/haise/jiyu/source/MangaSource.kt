@@ -23,6 +23,10 @@ data class SManga(
     val followCount: Int? = null,
     val rank: Int? = null,
     val alternateTitles: List<String> = emptyList(),
+    /** Nejvyšší číslo kapitoly, co zdroj u téhle položky přímo hlásí v seznamovém API (bez
+     * dalšího requestu na kompletní seznam kapitol) - odhad "kolik kapitol to má", ne přesný
+     * počet (může mít mezery). Zatím jen ComicK (`last_chapter`, viz ComicKSource.comicFromJson). */
+    val lastChapter: Float? = null,
 )
 
 data class MangaFilter(

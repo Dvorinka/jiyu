@@ -561,12 +561,17 @@ class ComicKSource @Inject constructor(
             }
             ?.let { b2key -> "$coverBase/$b2key" }
 
+        // isNull() guard: stejny zavedeny bug jako u demographic/final_chapter jinde v tomhle
+        // souboru - org.json.optString() na poli s JSON hodnotou null vraci doslovny "null".
+        val lastChapter = if (comic.isNull("last_chapter")) null else comic.optDouble("last_chapter").takeIf { !it.isNaN() }?.toFloat()
+
         return SManga(
             sourceId    = id,
             url         = "$apiBase/comic/$slug",
             title       = title,
             coverUrl    = coverUrl,
             contentType = contentTypeFromCountry(comic.optString("country")),
+            lastChapter = lastChapter,
         )
     }
 
