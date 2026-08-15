@@ -4,6 +4,50 @@
 > vidět v historii commitů a v popisech jednotlivých vydání na GitHubu; zpětně to sem
 > nedopisuju, abych si nevymýšlel.
 
+## v1.2.20
+
+### ComicK agregátor: hledání zdrojů se plní průběžně, ne až na konci
+Když appka hledá skutečný zdroj pro ComicK titul (Vyber zdroj), dřív čekala,
+až projde úplně všechny zdroje, než cokoliv ukázala. Teď přidá každý
+nalezený zdroj hned, jak ho dohledá - ostatní hledá dál na pozadí ("Hledám
+další zdroje…" pod už nalezenými kartami). Pořadí (oblíbené první, pak podle
+počtu kapitol) se přeskládá až jednou na konci hledání, ne po každém
+výsledku - už se nemůže stát, že seznam přehodí pořadí zrovna pod prstem.
+
+### ComicK Domů: dlouhý stisk na název otevře Předvolby, lupa hledá na místě
+Dlouhý stisk na "ComicK" v hlavičce otevře stejné Předvolby, co dřív šly jen
+přes ozubené kolo u Aktualizací. Lupa už neotevírá celou obrazovku Procházet
+- zůstane na Domů a jen přehodí hlavičku na vyhledávací pole, výsledky se
+ukážou hned pod ní.
+
+### Procházet: seznam místo mřížky, jako ComicK Search
+Mřížka obálek nahrazena řádky - foto, název, počet kapitol, bez pořadového
+čísla a bez úryvku popisu.
+
+### Detail titulu: info sloupec jako ComicK, komentáře, doporučené tituly
+- Sloupec Typ/Demografie/Vydáno/Status/... měl kvůli emoji nerovnoměrné
+  mezery mezi řádky - teď je bez nich a vypadá jako u ComicK. Obálka o
+  trochu větší (150dp), info sloupec se posunul doprava.
+- Nová sekce Komentáře pod seznamem kapitol (jen ComicK) - jen ke čtení,
+  appka nemá napojený ComicK účet na psaní. Vedle nadpisu je tlačítko
+  "Otevřít na ComicK" pro ty, co chtějí komentovat.
+- Nové tlačítko "Doporučené" pod obálkou (jen ComicK) - otevře mřížku
+  podobných titulů podle ComicK doporučení, klepnutí otevře jejich detail.
+- Řádek kapitoly ukazoval jen prvního překladatele - teď všechny.
+
+### Knihovna
+- Číslo kapitoly na kartičkách "Pokračovat ve čtení" mělo jen měkký stín,
+  na světlých obálkách bylo špatně čitelné - teď má skutečný černý obrys
+  (funguje na jakémkoli pozadí).
+- Filtr typu obsahu (ikonka se třemi čárkami vedle vyhledávání) na
+  domovské Knihovně byl zbytečný - pryč. Filtr v Seznamu zůstal.
+
+### Nový widget s obálkou titulu
+Vedle stávajícího widgetu (textový seznam naposledy čtených) přibyl nový,
+co ukazuje obálku + název + poslední kapitolu JEDNOHO vybraného titulu. Při
+přidání na plochu appka nejdřív nabídne výběr z knihovny - klepnutím na
+widget se otevře rovnou detail toho titulu.
+
 ## v1.2.19
 
 ### Pojistka proti omylem hromadně přečtenému titulu
