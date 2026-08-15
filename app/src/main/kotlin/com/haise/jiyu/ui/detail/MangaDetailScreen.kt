@@ -70,6 +70,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 
 import android.content.Intent
+import android.net.Uri
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -1014,13 +1015,34 @@ fun MangaDetailScreen(
                 // ── Komentáře (jen ComicK, viz ComicKSource.getComments) ────────
                 if (manga?.sourceId == "comick") {
                     item(key = "comments_header") {
-                        Text(
-                            text = stringResource(R.string.detail_comments_title, commentsTotal),
-                            color = TextPrimary,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 16.sp,
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                text = stringResource(R.string.detail_comments_title, commentsTotal),
+                                color = TextPrimary,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp,
+                                modifier = Modifier.weight(1f),
+                            )
+                            // Appka nema napojeny ComicK ucet (viz ComicKSource.getComments -
+                            // jen ke cteni) - kdo chce psat/lajkovat, musi na skutecny web.
+                            val openOnComickLabel = stringResource(R.string.detail_comments_open_on_comick)
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(50.dp))
+                                    .clickable {
+                                        val slug = manga?.url?.substringAfterLast("/") ?: return@clickable
+                                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://comick.io/comic/$slug")))
+                                    }
+                                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                            ) {
+                                Icon(TablerIcons.ExternalLink, contentDescription = null, tint = Violet, modifier = Modifier.size(13.dp))
+                                Text(openOnComickLabel, color = Violet, fontSize = 12.sp, modifier = Modifier.padding(start = 4.dp))
+                            }
+                        }
                     }
                     when {
                         comments.isEmpty() && commentsLoading -> item(key = "comments_loading") {
