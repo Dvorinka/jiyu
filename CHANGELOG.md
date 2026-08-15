@@ -4,6 +4,29 @@
 > vidět v historii commitů a v popisech jednotlivých vydání na GitHubu; zpětně to sem
 > nedopisuju, abych si nevymýšlel.
 
+## v1.2.22
+
+### Spolehlivost překladu novel
+`translateNovelChapter` (překlad light novel) neměl žádný záložní provider -
+při vyčerpané Groq kvótě rovnou spadl celý překlad kapitoly. Teď má stejný
+fallback na OpenRouter, jaký už dřív fungoval u překladu manga bublin.
+
+### Urgentní oprava: Groq vyřazuje model, co appka používala
+Groq k 16. 8. 2026 vyřazuje `llama-3.3-70b-versatile`. Po živém ověření, že
+`openai/gpt-oss-120b` je jediná zbylá vhodná produkční volba, appka na něj
+přešla - nasazeno přímo na server (translate-proxy).
+
+### Příprava na budoucí doladění překladového pipeline (bez změny chování)
+Přibylo 5 nových logů (BubbleShapeRatio, NativeFontCap, ShapeCoverage,
+VerbatimCopy, OcrConfidence z ML Kitu) pro sbírání reálných dat k prahům,
+co byly dřív jen odhadnuté - nic se jimi teď v appce nemění, jen se
+připravuje podklad pro budoucí přesnější doladění detekce bublin a kvality
+překladu.
+
+### Pro vývojáře
+Instrumentovaná sada regresních testů (reprodukce nahlášených chyb
+překladu) se teď spouští automaticky v CI při každém push/PR, ne jen ručně.
+
 ## v1.2.21
 
 ### Oprava: stahování aktualizace občas odmítalo začít
