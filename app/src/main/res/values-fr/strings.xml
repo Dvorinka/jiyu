@@ -883,6 +883,7 @@
 
     <string name="settings_about_downloading">Téléchargement de la mise à jour…</string>
     <string name="settings_about_download_failed">Le téléchargement a échoué</string>
+    <string name="settings_about_download_failed_space">Le téléchargement a échoué - espace de stockage insuffisant</string>
     <string name="settings_about_ready_to_install">Téléchargé — confirme l\'installation dans la boîte de dialogue système</string>
 
     <string name="detail_add_favorite">Ajouter aux favoris</string>

@@ -129,9 +129,17 @@ fun AboutSettingsScreen(
                                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                                     )
                                 }
-                                UpdateDownloadState.Failed -> {
+                                is UpdateDownloadState.Failed -> {
+                                    // DownloadManager.ERROR_INSUFFICIENT_SPACE = 1009 - jediny
+                                    // castý duvod, u ktereho ma smysl rict uzivateli KONKRETNE
+                                    // co s tim (misto obecneho "nepovedlo se").
+                                    val message = if (state.reason == 1009) {
+                                        stringResource(R.string.settings_about_download_failed_space)
+                                    } else {
+                                        stringResource(R.string.settings_about_download_failed)
+                                    }
                                     Text(
-                                        stringResource(R.string.settings_about_download_failed),
+                                        message,
                                         color = MaterialTheme.colorScheme.error,
                                         fontSize = 12.sp,
                                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),

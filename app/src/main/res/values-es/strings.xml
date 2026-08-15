@@ -883,6 +883,7 @@
 
     <string name="settings_about_downloading">Descargando la actualización…</string>
     <string name="settings_about_download_failed">La descarga ha fallado</string>
+    <string name="settings_about_download_failed_space">La descarga ha fallado - no hay suficiente espacio</string>
     <string name="settings_about_ready_to_install">Descargado: confirma la instalación en el diálogo del sistema</string>
 
     <string name="detail_add_favorite">Añadir a favoritos</string>

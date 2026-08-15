@@ -886,6 +886,7 @@
 
     <string name="settings_about_downloading">Downloading update…</string>
     <string name="settings_about_download_failed">Download failed</string>
+    <string name="settings_about_download_failed_space">Download failed - not enough storage space</string>
     <string name="settings_about_ready_to_install">Downloaded — confirm the install in the system dialog</string>
 
     <string name="detail_add_favorite">Add to favorites</string>

@@ -26,7 +26,9 @@ sealed interface UpdateDownloadState {
     /** [progress] 0-100, nebo -1 dokud DownloadManager nezná celkovou velikost souboru. */
     data class Downloading(val progress: Int) : UpdateDownloadState
     data object ReadyToInstall : UpdateDownloadState
-    data object Failed : UpdateDownloadState
+    /** [reason] je [DownloadManager.COLUMN_REASON] - viz [AboutSettingsScreen] pro mapování
+     * na čitelnou hlášku (nedostatek místa/síť), jinak obecné "nepovedlo se". */
+    data class Failed(val reason: Int?) : UpdateDownloadState
 }
 
 /**
@@ -92,8 +94,21 @@ class ApkUpdateInstaller @Inject constructor() {
         context.startActivity(intent)
     }
 
-    /** Zařadí stažení APK do systémového DownloadManageru a vrátí jeho ID pro sledování postupu. */
+    /**
+     * Zařadí stažení APK do systémového DownloadManageru a vrátí jeho ID pro sledování postupu.
+     *
+     * Cílový soubor má vždy stejné jméno ("jiyu-update.apk") - DownloadManager na Androidu
+     * ale stahování rovnou odmítne (ERROR_FILE_ALREADY_EXISTS), pokud tam z předchozího
+     * pokusu (i úspěšného, co appka po instalaci nikdy neuklidila) už soubor leží. Uživatel
+     * pak vidí jen obecné "nepovedlo se" bez zjevného důvodu - proto se starý soubor před
+     * každým novým pokusem smaže.
+     */
     fun enqueueDownload(context: Context, apkUrl: String, version: String): Long {
+        context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)
+            ?.resolve("jiyu-update.apk")
+            ?.takeIf { it.exists() }
+            ?.delete()
+
         val manager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
         val request = DownloadManager.Request(Uri.parse(apkUrl))
             .setTitle("Jiyu $version")
@@ -116,7 +131,7 @@ class ApkUpdateInstaller @Inject constructor() {
             val cursor = manager.query(DownloadManager.Query().setFilterById(downloadId))
             cursor.use {
                 if (!it.moveToFirst()) {
-                    emit(UpdateDownloadState.Failed)
+                    emit(UpdateDownloadState.Failed(reason = null))
                     return@flow
                 }
                 when (it.getInt(it.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS))) {
@@ -125,7 +140,8 @@ class ApkUpdateInstaller @Inject constructor() {
                         return@flow
                     }
                     DownloadManager.STATUS_FAILED -> {
-                        emit(UpdateDownloadState.Failed)
+                        val reason = it.getInt(it.getColumnIndexOrThrow(DownloadManager.COLUMN_REASON))
+                        emit(UpdateDownloadState.Failed(reason = reason))
                         return@flow
                     }
                     else -> {
