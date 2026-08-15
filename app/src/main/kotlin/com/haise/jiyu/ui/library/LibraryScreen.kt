@@ -109,7 +109,6 @@ fun LibraryScreen(
     val libraryCount            by viewModel.libraryCount.collectAsState()
     val favoriteCount             by viewModel.favoriteCount.collectAsState()
     val todayReadingMinutes        by viewModel.todayReadingMinutes.collectAsState()
-    val contentTypeFilter            by viewModel.contentTypeFilter.collectAsState()
 
     // Dlouhý stisk na kartu nabídne odebrání z knihovny - viz RemoveFromLibraryDialog níž.
     var pendingRemoval by remember { mutableStateOf<Pair<String, String>?>(null) }
@@ -177,11 +176,6 @@ fun LibraryScreen(
                         }
                     }
                 }
-                Spacer(Modifier.width(8.dp))
-                ContentTypeFilterButton(
-                    selected = contentTypeFilter,
-                    onSelect = { viewModel.setContentTypeFilter(it) },
-                )
             }
         }
         }
@@ -349,35 +343,6 @@ private fun contentTypeLabel(type: String): String = when (type) {
     "NOVEL"  -> stringResource(R.string.mylist_content_novel)
     "COMIC"  -> stringResource(R.string.mylist_content_comic)
     else     -> stringResource(R.string.browse_filter_manga)
-}
-
-@Composable
-private fun ContentTypeFilterButton(selected: String, onSelect: (String) -> Unit) {
-    var expanded by remember { mutableStateOf(false) }
-    val isActive = selected != "ALL"
-    Box {
-        IconButton(
-            onClick = { expanded = true },
-            modifier = Modifier
-                .size(42.dp)
-                .clip(RoundedCornerShape(14.dp))
-                .background(Color.White.copy(alpha = 0.06f))
-                .border(1.dp, if (isActive) GlowViolet.copy(alpha = 0.5f) else Color.White.copy(alpha = 0.08f), RoundedCornerShape(14.dp)),
-        ) {
-            Icon(TablerIcons.AdjustmentsHorizontal, contentDescription = stringResource(R.string.library_filter), tint = if (isActive) GlowViolet else TextSecondary, modifier = Modifier.size(19.dp))
-        }
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            listOf("ALL" to stringResource(R.string.common_all), "MANGA" to stringResource(R.string.browse_filter_manga),
-                "MANHWA" to stringResource(R.string.mylist_content_manhwa), "MANHUA" to stringResource(R.string.mylist_content_manhua),
-                "NOVEL" to stringResource(R.string.mylist_content_novel), "COMIC" to stringResource(R.string.mylist_content_comic),
-            ).forEach { (key, label) ->
-                DropdownMenuItem(
-                    text = { Text(label, color = if (selected == key) GlowViolet else TextPrimary) },
-                    onClick = { onSelect(key); expanded = false },
-                )
-            }
-        }
-    }
 }
 
 @Composable
