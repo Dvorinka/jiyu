@@ -29,6 +29,12 @@ stav hned nezahazuje - 4 sekundy po odchodu ze záložky ho ještě drží, tak�
 návrat zpátky vás vrátí přesně tam, kde jste byli. Po uplynutí 4 sekund se
 záložka chová jako dřív a resetuje se na svůj kořen.
 
+### Hlavička detailu titulu: tlačítko na zkopírování názvu, těsnější mezery
+Název a alternativní názvy pod ním byly odsazené jako dva samostatné bloky
+s velkou mezerou mezi nimi. Teď jsou k sobě blíž jako na ComicKu. Vedle
+názvu navíc přibylo malé tlačítko s ikonou kopírování - klepnutím se název
+titulu zkopíruje do schránky (potvrzeno hláškou dole na obrazovce).
+
 ## v1.2.17
 
 ### Ošklivá "ComicK API chyba 404" hláška při otevření titulu

@@ -52,6 +52,8 @@
     <string name="common_back">Atrás</string>
     <string name="common_previous">Anterior</string>
     <string name="common_next">Siguiente</string>
+    <string name="detail_copy_title">Copiar título</string>
+    <string name="detail_title_copied">Título copiado</string>
     <string name="common_clear">Borrar</string>
     <string name="common_search">Buscar</string>
     <string name="common_search_placeholder">Buscar…</string>

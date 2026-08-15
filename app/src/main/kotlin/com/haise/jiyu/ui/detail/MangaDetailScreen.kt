@@ -65,12 +65,14 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 
 import android.content.Intent
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -79,6 +81,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -87,6 +90,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.haise.jiyu.R
+import kotlinx.coroutines.launch
 import com.haise.jiyu.data.db.entity.ChapterEntity
 import com.haise.jiyu.data.db.entity.DownloadStatus
 import com.haise.jiyu.data.repository.deserializeAltTitles
@@ -135,6 +139,8 @@ fun MangaDetailScreen(
     val context             = androidx.compose.ui.platform.LocalContext.current
     val navBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val snackbarHostState = remember { SnackbarHostState() }
+    val clipboardManager = LocalClipboardManager.current
+    val coroutineScope = rememberCoroutineScope()
     fun openChapter(chapter: ChapterEntity, incognito: Boolean = false) {
         if (chapter.sourceId == "comick") {
             onResolveChapter(chapter.id, incognito)
@@ -245,15 +251,30 @@ fun MangaDetailScreen(
                     }
                 }
 
-                // ── Název (přes celou šířku, ComicK styl) ────────────────────────
+                // ── Název + kopírovat (ComicK styl) ──────────────────────────────
                 item {
-                    Text(
-                        text = manga?.title ?: "",
-                        style = TextStyle(brush = titleGradient, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, lineHeight = 26.sp),
-                        maxLines = 3,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 4.dp),
+                    ) {
+                        Text(
+                            text = manga?.title ?: "",
+                            style = TextStyle(brush = titleGradient, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, lineHeight = 26.sp),
+                            maxLines = 3,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f),
+                        )
+                        val copyLabel = stringResource(R.string.detail_copy_title)
+                        val copiedMessage = stringResource(R.string.detail_title_copied)
+                        IconButton(onClick = {
+                            manga?.title?.let {
+                                clipboardManager.setText(AnnotatedString(it))
+                                coroutineScope.launch { snackbarHostState.showSnackbar(copiedMessage) }
+                            }
+                        }) {
+                            Icon(TablerIcons.Copy, contentDescription = copyLabel, tint = TextSecondary, modifier = Modifier.size(20.dp))
+                        }
+                    }
                 }
 
                 // ── Alternativní názvy (ComicK) ──────────────────────────────────
@@ -265,7 +286,7 @@ fun MangaDetailScreen(
                             fontSize = 12.sp,
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 2.dp),
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 4.dp),
                         )
                     }
                 }

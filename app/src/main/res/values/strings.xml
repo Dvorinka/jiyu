@@ -56,6 +56,8 @@
     <string name="common_back">Zpět</string>
     <string name="common_previous">Předchozí</string>
     <string name="common_next">Další</string>
+    <string name="detail_copy_title">Kopírovat název</string>
+    <string name="detail_title_copied">Název zkopírován</string>
     <string name="common_clear">Vymazat</string>
     <string name="common_search">Hledat</string>
     <string name="common_search_placeholder">Hledat…</string>
