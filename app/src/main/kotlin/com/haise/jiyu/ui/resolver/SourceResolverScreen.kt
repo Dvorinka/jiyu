@@ -61,6 +61,7 @@ fun SourceResolverScreen(
     viewModel: SourceResolverViewModel = hiltViewModel(),
 ) {
     val loading by viewModel.loading.collectAsState()
+    val searchingMore by viewModel.searchingMore.collectAsState()
     val comicKTitle by viewModel.comicKTitle.collectAsState()
     val candidates by viewModel.candidates.collectAsState()
     val totalComicKChapters by viewModel.totalComicKChapters.collectAsState()
@@ -154,6 +155,23 @@ fun SourceResolverScreen(
                             enabled = !resolving,
                             onClick = { viewModel.selectCandidate(candidate) },
                         )
+                    }
+                    if (searchingMore) {
+                        item {
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                JiyuLoadingIndicator(size = 16.dp)
+                                Text(
+                                    stringResource(R.string.resolver_loading_more),
+                                    color = TextSecondary,
+                                    fontSize = 12.sp,
+                                    modifier = Modifier.padding(start = 8.dp),
+                                )
+                            }
+                        }
                     }
                 }
             }

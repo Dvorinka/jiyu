@@ -9,11 +9,24 @@ import com.haise.jiyu.source.SManga
 import com.haise.jiyu.source.SourceManager
 import io.mockk.coEvery
 import io.mockk.mockk
+import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+
+/** Testy asertuji na hotovem seznamu - produkcni kod uz kandidaty streamuje jeden po
+ * druhem (viz ComicKChapterResolver.findCandidatesFlow), tenhle helper je jen sesbira. */
+private suspend fun ComicKChapterResolver.findCandidates(
+    comicKMangaId: String,
+    comicKMangaUrl: String,
+    comicKTitle: String,
+    comicKContentType: String,
+    requestedChapterNumber: Float?,
+): List<ResolvedCandidate> = findCandidatesFlow(
+    comicKMangaId, comicKMangaUrl, comicKTitle, comicKContentType, requestedChapterNumber,
+).toList()
 
 private class FakeSource(
     override val id: String,
@@ -166,7 +179,11 @@ class ComicKChapterResolverTest {
     }
 
     @Test
-    fun `favorite sources are marked and sorted first`() = runTest {
+    fun `favorite sources are marked as favorite`() = runTest {
+        // Razeni "oblibene prvni" je od zavedeni streamovani (viz findCandidatesFlow)
+        // starost SourceResolverViewModelu, ne resolveru - ten uz kandidaty vraci v
+        // poradi, v jakem prisly, ne serazene. Tenhle test proto overuje jen samotne
+        // oznaceni isFavorite, ne pozici ve vysledku.
         settings.toggleFavoriteSource("src-b")
         val matchA = SManga(sourceId = "src-a", url = "u1", title = "Solo Leveling", coverUrl = null)
         val matchB = SManga(sourceId = "src-b", url = "u2", title = "Solo Leveling", coverUrl = null)
@@ -176,9 +193,8 @@ class ComicKChapterResolverTest {
 
         val result = resolver.findCandidates("comick-id-8", "u1", "Solo Leveling", "MANHWA", requestedChapterNumber = null)
 
-        assertEquals("src-b", result[0].source.id)
-        assertTrue(result[0].isFavorite)
-        assertTrue(!result[1].isFavorite)
+        assertTrue(result.first { it.source.id == "src-b" }.isFavorite)
+        assertTrue(!result.first { it.source.id == "src-a" }.isFavorite)
     }
 
     @Test

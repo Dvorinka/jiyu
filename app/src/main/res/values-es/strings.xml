@@ -403,6 +403,7 @@
     <string name="reader_comick_find_source">Buscar fuente</string>
     <string name="resolver_title">Elegir fuente</string>
     <string name="resolver_loading">Buscando fuentes…</string>
+    <string name="resolver_loading_more">Buscando más fuentes…</string>
     <string name="resolver_no_candidates">Ninguna fuente tiene este título.</string>
     <string name="resolver_search_manually">Buscar manualmente</string>
     <string name="resolver_chapters_ratio">%1$d/%2$d capítulos</string>
@@ -433,6 +434,7 @@
     <string name="comick_home_loading">Cargando…</string>
     <string name="comick_home_load_failed">No se pudo cargar ComicK.</string>
     <string name="comick_home_empty">No hay nada aquí.</string>
+    <string name="comick_home_search_hint">Escribe lo que buscas.</string>
     <string name="comick_home_review_by">por %1$s</string>
 
     <string name="comick_browse_search_placeholder">Buscar en ComicK…</string>

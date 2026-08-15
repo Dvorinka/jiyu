@@ -16,6 +16,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.onCompletion
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import kotlin.math.abs
@@ -42,6 +43,14 @@ class SourceResolverViewModel @Inject constructor(
 
     private val _candidates = MutableStateFlow<List<ResolvedCandidate>>(emptyList())
     val candidates: StateFlow<List<ResolvedCandidate>> = _candidates.asStateFlow()
+
+    // Zdroje se prohledavaji soubezne a kazdy nalezeny kandidat se do seznamu prida hned,
+    // ne az uplne vsechny dohledaji - viz ComicKChapterResolver.findCandidatesFlow. Tenhle
+    // flag rika, jestli se jeste na pozadi hleda dal (drobny "Hledam dalsi zdroje..." radek
+    // pod uz nalezenymi kandidaty), nezavisle na _loading (ten je jen pro uplne prvni spinner,
+    // nez prijde vubec prvni vysledek).
+    private val _searchingMore = MutableStateFlow(false)
+    val searchingMore: StateFlow<Boolean> = _searchingMore.asStateFlow()
 
     private val _totalComicKChapters = MutableStateFlow(0)
     val totalComicKChapters: StateFlow<Int> = _totalComicKChapters.asStateFlow()
@@ -73,17 +82,27 @@ class SourceResolverViewModel @Inject constructor(
                 // 100 %, viz komentář tam).
                 _totalComicKChapters.value = repository.getAllChapters(chapter.mangaId)
                     .map { floor(it.chapterNumber).toInt() }.distinct().size
-                _candidates.value = resolver.findCandidates(
+                _searchingMore.value = true
+                resolver.findCandidatesFlow(
                     comicKMangaId = manga.id,
                     comicKMangaUrl = manga.url,
                     comicKTitle = manga.title,
                     comicKContentType = manga.contentType,
                     requestedChapterNumber = chapter.chapterNumber,
                 )
+                    .onCompletion { _searchingMore.value = false }
+                    .collect { candidate ->
+                        _candidates.value = (_candidates.value + candidate)
+                            .sortedWith(compareByDescending<ResolvedCandidate> { it.isFavorite }.thenByDescending { it.matchedChapterCount })
+                        // Prvni vysledek uz staci na to prestat ukazovat celoobrazovkovy
+                        // spinner - dal se hleda na pozadi, viz _searchingMore.
+                        _loading.value = false
+                    }
             } catch (e: Exception) {
                 e.report("resolver:findCandidates")
             } finally {
                 _loading.value = false
+                _searchingMore.value = false
             }
         }
     }

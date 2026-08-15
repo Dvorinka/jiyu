@@ -424,6 +424,7 @@
     <string name="reader_comick_find_source">Najít zdroj</string>
     <string name="resolver_title">Vyber zdroj</string>
     <string name="resolver_loading">Hledám zdroje…</string>
+    <string name="resolver_loading_more">Hledám další zdroje…</string>
     <string name="resolver_no_candidates">Žádný zdroj tenhle titul nemá.</string>
     <string name="resolver_search_manually">Hledat ručně</string>
     <string name="resolver_chapters_ratio">%1$d/%2$d kapitol</string>
@@ -454,6 +455,7 @@
     <string name="comick_home_loading">Načítám…</string>
     <string name="comick_home_load_failed">Nepodařilo se načíst ComicK.</string>
     <string name="comick_home_empty">Nic tu není.</string>
+    <string name="comick_home_search_hint">Napiš, co hledáš.</string>
     <string name="comick_home_review_by">od %1$s</string>
 
     <string name="comick_browse_search_placeholder">Hledat na ComicK…</string>

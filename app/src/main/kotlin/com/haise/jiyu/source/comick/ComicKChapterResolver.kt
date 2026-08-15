@@ -8,10 +8,11 @@ import com.haise.jiyu.source.SManga
 import com.haise.jiyu.source.SourceManager
 import com.haise.jiyu.util.normalizeMangaTitle
 import com.haise.jiyu.util.report
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withTimeoutOrNull
@@ -47,41 +48,53 @@ class ComicKChapterResolver @Inject constructor(
     private val cache = java.util.Collections.synchronizedMap(mutableMapOf<String, List<CachedCandidate>>())
 
     /**
+     * Stejné jako dřívější `findCandidates`, jen misto cekani na uplne vsechny zdroje najednou
+     * (awaitAll) emituje kazdeho kandidata hned, jak ho najde - viz [searchAndFetchStreaming].
+     * Cachovany vysledek (druhe a dalsi otevreni stejneho titulu) se posle vsechen naraz, tam
+     * uz neni na co cekat.
+     *
      * @param comicKMangaId klíč pro cache (Room id ComicK manga entity)
      * @param comicKMangaUrl url ComicK manga entity - použije se pro dotažení alternativních
      *   názvů a content_rating (viz [ComicKSource.getTitleInfo]), protože `comicKTitle` sám
-     *   o sobě často nesedí s tím, jak titul jmenují ostatní zdroje (viz [searchAndFetch]).
+     *   o sobě často nesedí s tím, jak titul jmenují ostatní zdroje (viz [searchAndFetchStreaming]).
      * @param requestedChapterNumber null = zajímá nás jen "existuje vůbec zdroj", jinak
      *   se navíc spočítá [ResolvedCandidate.hasRequestedChapter] pro tohle konkrétní číslo.
      */
-    suspend fun findCandidates(
+    fun findCandidatesFlow(
         comicKMangaId: String,
         comicKMangaUrl: String,
         comicKTitle: String,
         comicKContentType: String,
         requestedChapterNumber: Float?,
-    ): List<ResolvedCandidate> {
-        val cached = cache[comicKMangaId]
-        val found = cached ?: searchAndFetch(comicKMangaUrl, comicKTitle, comicKContentType).also { result ->
-            if (result.isNotEmpty()) cache[comicKMangaId] = result
-        }
+    ): Flow<ResolvedCandidate> = channelFlow {
         val favorites = settings.favoriteSourceIds.first()
-        return found.map { c ->
-            // floor(), ne primy distinct(chapterNumber): nektere zdroje (napr. MangaPark) delci
-            // jeden "logicky" preklad na vic zapisu s cisly X, X.1, X.2 - bez floor() by to
-            // v pomeru vypadalo jako "242/209 kapitol" (vic nez 100 %), overeno zive na
-            // MangaPark API pro Solo Leveling. floor() je stejna transformace jako u
-            // SourceResolverViewModel.totalComicKChapters, takze pomer zustava srovnatelny.
-            ResolvedCandidate(
-                source = c.source,
-                manga = c.manga,
-                matchedChapterCount = c.chapters.map { floor(it.chapterNumber).toInt() }.distinct().size,
-                hasRequestedChapter = requestedChapterNumber == null ||
-                    c.chapters.any { abs(it.chapterNumber - requestedChapterNumber) < 0.01f },
-                isFavorite = c.source.id in favorites,
-            )
-        }.sortedWith(compareByDescending<ResolvedCandidate> { it.isFavorite }.thenByDescending { it.matchedChapterCount })
+        val cached = cache[comicKMangaId]
+        if (cached != null) {
+            cached.forEach { send(toResolvedCandidate(it, favorites, requestedChapterNumber)) }
+            return@channelFlow
+        }
+        val found = java.util.Collections.synchronizedList(mutableListOf<CachedCandidate>())
+        searchAndFetchStreaming(comicKMangaUrl, comicKTitle, comicKContentType) { candidate ->
+            found.add(candidate)
+            send(toResolvedCandidate(candidate, favorites, requestedChapterNumber))
+        }
+        if (found.isNotEmpty()) cache[comicKMangaId] = found.toList()
     }
+
+    private fun toResolvedCandidate(c: CachedCandidate, favorites: Set<String>, requestedChapterNumber: Float?): ResolvedCandidate =
+        // floor(), ne primy distinct(chapterNumber): nektere zdroje (napr. MangaPark) delci
+        // jeden "logicky" preklad na vic zapisu s cisly X, X.1, X.2 - bez floor() by to
+        // v pomeru vypadalo jako "242/209 kapitol" (vic nez 100 %), overeno zive na
+        // MangaPark API pro Solo Leveling. floor() je stejna transformace jako u
+        // SourceResolverViewModel.totalComicKChapters, takze pomer zustava srovnatelny.
+        ResolvedCandidate(
+            source = c.source,
+            manga = c.manga,
+            matchedChapterCount = c.chapters.map { floor(it.chapterNumber).toInt() }.distinct().size,
+            hasRequestedChapter = requestedChapterNumber == null ||
+                c.chapters.any { abs(it.chapterNumber - requestedChapterNumber) < 0.01f },
+            isFavorite = c.source.id in favorites,
+        )
 
     /**
      * `comicKTitle` je jen JEDEN z ComicK titulu md_titles - u řady titulů to není ten, pod
@@ -91,44 +104,50 @@ class ComicKChapterResolver @Inject constructor(
      * reálný zdroj existuje. Dotažení alt. názvů (+ content_rating, viz níže) je jen jeden
      * extra request navíc (ne za zdroj), a pokud selže, spadneme zpátky na `comicKTitle`
      * samotný a titul se bere jako ne-adult (viz [isAdultRating]).
+     *
+     * `onFound` se voláva souběžně z více zdrojů najednou (semafor pouští až 5 zaráz) - volající
+     * ([findCandidatesFlow] přes `channelFlow.send`) musí umět bezpečně přijímat souběžná volání.
      */
-    private suspend fun searchAndFetch(comicKMangaUrl: String, comicKTitle: String, comicKContentType: String): List<CachedCandidate> =
-        coroutineScope {
-            val semaphore = Semaphore(5)
-            val titleInfo = try {
-                comicKSource.getTitleInfo(comicKMangaUrl)
-            } catch (e: Exception) {
-                e.report("comick:resolver:titleInfo")
-                ComicKTitleInfo(alternateTitles = emptyList(), contentRating = null)
-            }
-            val alternateTitles = titleInfo.alternateTitles
-            val isAdultTitle = isAdultRating(titleInfo.contentRating)
-            val searchTitle = alternateTitles.firstOrNull() ?: comicKTitle
-            val normalizedTargets = (alternateTitles + comicKTitle).map { normalizeMangaTitle(it) }.toSet()
-            sourceManager.getAllForCrossSourceSearch()
-                .filter { it.id != "comick" && isSameContentGroup(it.contentType, comicKContentType) }
-                // Ne-adult ComicK titul nikdy neprohledává isAdult zdroje (i kdyz je uzivatel
-                // globalne povolil v Nastaveni) - a adult titul je naopak vzdy zahrne, i kdyz
-                // je uzivatel globalne skryl z Prochazet/hledani. Zamerne nezavisle na
-                // SourceManager.getAll()/showAdultSources - viz getAllForCrossSourceSearch.
-                .filter { isAdultTitle || !it.isAdult }
-                .map { source ->
-                    async {
-                        semaphore.withPermit {
-                            try {
-                                withTimeoutOrNull(8_000) {
-                                    val results = source.search(searchTitle, 1, MangaFilter())
-                                    val match = results.firstOrNull { normalizeMangaTitle(it.title) in normalizedTargets }
-                                    match?.let { m -> CachedCandidate(source, m, source.getChapterList(m)) }
-                                }
-                            } catch (e: Exception) {
-                                e.report("comick:resolver:${source.id}")
-                                null
+    private suspend fun searchAndFetchStreaming(
+        comicKMangaUrl: String,
+        comicKTitle: String,
+        comicKContentType: String,
+        onFound: suspend (CachedCandidate) -> Unit,
+    ) = coroutineScope {
+        val semaphore = Semaphore(5)
+        val titleInfo = try {
+            comicKSource.getTitleInfo(comicKMangaUrl)
+        } catch (e: Exception) {
+            e.report("comick:resolver:titleInfo")
+            ComicKTitleInfo(alternateTitles = emptyList(), contentRating = null)
+        }
+        val alternateTitles = titleInfo.alternateTitles
+        val isAdultTitle = isAdultRating(titleInfo.contentRating)
+        val searchTitle = alternateTitles.firstOrNull() ?: comicKTitle
+        val normalizedTargets = (alternateTitles + comicKTitle).map { normalizeMangaTitle(it) }.toSet()
+        sourceManager.getAllForCrossSourceSearch()
+            .filter { it.id != "comick" && isSameContentGroup(it.contentType, comicKContentType) }
+            // Ne-adult ComicK titul nikdy neprohledává isAdult zdroje (i kdyz je uzivatel
+            // globalne povolil v Nastaveni) - a adult titul je naopak vzdy zahrne, i kdyz
+            // je uzivatel globalne skryl z Prochazet/hledani. Zamerne nezavisle na
+            // SourceManager.getAll()/showAdultSources - viz getAllForCrossSourceSearch.
+            .filter { isAdultTitle || !it.isAdult }
+            .map { source ->
+                launch {
+                    semaphore.withPermit {
+                        try {
+                            withTimeoutOrNull(8_000) {
+                                val results = source.search(searchTitle, 1, MangaFilter())
+                                val match = results.firstOrNull { normalizeMangaTitle(it.title) in normalizedTargets }
+                                match?.let { m -> onFound(CachedCandidate(source, m, source.getChapterList(m))) }
                             }
+                        } catch (e: Exception) {
+                            e.report("comick:resolver:${source.id}")
                         }
                     }
-                }.awaitAll().filterNotNull()
-        }
+                }
+            }.forEach { it.join() }
+    }
 
     /** "erotica"/"pornographic" = 18+ na ComicK škále (stejná škála jako MangaDex/MangaFire content_rating filtr), "safe"/"suggestive"/null = ne. */
     private fun isAdultRating(contentRating: String?): Boolean = contentRating in ADULT_CONTENT_RATINGS
