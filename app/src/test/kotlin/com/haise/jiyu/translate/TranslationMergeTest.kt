@@ -104,6 +104,23 @@ class TranslationMergeTest {
         assertFalse(isUsableTranslation(mismatched, "Not like that."))
     }
 
+    @Test
+    fun `a verbatim english copy is not usable`() {
+        // Presny uzivatelsky pripad: "HOW WE MAKE A LIVING."/"ABOUT WHAT?" zustaly anglicky,
+        // appka je ale vykreslila jako hotovy cesky preklad, protoze isSuspiciousVerbatimCopy
+        // se driv jen logovalo, nemenilo pouzitelnost.
+        val verbatim = bubble(0, "How we make a living.", original = "How we make a living.")
+        assertFalse(isUsableTranslation(verbatim, "How we make a living."))
+    }
+
+    @Test
+    fun `a short verbatim match like a name is still usable`() {
+        // Jmena/citoslovce se legitimne shoduji bez ohledu na jazyk (viz MIN_VERBATIM_LENGTH
+        // u isSuspiciousVerbatimCopy) - tahle kontrola je nesmi zahodit jako nepouzitelne.
+        val name = bubble(0, "OK", original = "OK")
+        assertTrue(isUsableTranslation(name, "OK"))
+    }
+
     // ── missingTranslationIndices ──
 
     @Test
