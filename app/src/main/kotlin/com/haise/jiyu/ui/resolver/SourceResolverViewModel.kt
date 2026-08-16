@@ -102,12 +102,22 @@ class SourceResolverViewModel @Inject constructor(
                         // Uzivatelsky pozadavek: kdyz POZADOVANOU kapitolu nema ani jeden nalezeny
                         // zdroj (typicky nejnovejsi/predbezne cislo, co ComicK uz eviduje, ale
                         // zadny scan tym jeste nepreloz-il), nenutit uzivatele rucne prochazet
-                        // seznam samych "Tuhle kapitolu nema" - rovnou otevrit zdroj s nejvic
-                        // kapitolami (oblibene prvni, stejne razeni jako v seznamu), a v nem
-                        // nejblizsi dostupne cislo (viz selectCandidate - uz to tak delal i pri
-                        // rucnim vyberu, jen se predtim k vyberu vubec nedostalo bez dotyku).
+                        // seznam samych "Tuhle kapitolu nema" - rovnou otevrit nejvhodnejsi zdroj
+                        // a v nem nejblizsi dostupne cislo (viz selectCandidate).
+                        //
+                        // "Nejvhodnejsi" NENI proste zdroj s nejvic kapitolami celkem (sorted.first())
+                        // - to by mohlo sahnout po zdroji, co uz davno skoncil daleko pred cilem
+                        // (preklad ukoncen), nebo naopak zacal az nekde pozdeji (chybi prvnich
+                        // N kapitol) - "nejvic kapitol" nerika nic o tom, KDE presne jsou. Misto
+                        // toho se vybira zdroj s nejmensi vzdalenosti nejblizsi kapitoly od cile
+                        // (nearestChapterDistance), oblibene porad jako prvni tiebreaker.
                         if (sorted.isNotEmpty() && sorted.none { it.hasRequestedChapter }) {
-                            selectCandidate(sorted.first())
+                            val bestCandidate = sorted.sortedWith(
+                                compareByDescending<ResolvedCandidate> { it.isFavorite }
+                                    .thenBy { it.nearestChapterDistance ?: Float.MAX_VALUE }
+                                    .thenByDescending { it.matchedChapterCount }
+                            ).first()
+                            selectCandidate(bestCandidate)
                         }
                     }
                     .collect { candidate ->

@@ -28,6 +28,13 @@ data class ResolvedCandidate(
     val matchedChapterCount: Int,
     val hasRequestedChapter: Boolean,
     val isFavorite: Boolean,
+    // Vzdalenost nejblizsiho dostupneho cisla kapitoly od pozadovaneho - null, kdyz
+    // se pozadovane cislo vubec neresi (requestedChapterNumber == null). Bez tohohle
+    // by automaticky vyber (viz SourceResolverViewModel) mohl sahnout po zdroji s
+    // nejvic kapitolami celkem, i kdyz uz preklad davno skoncil daleko pred cilem
+    // (nebo teprve zacal az od nejake pozdejsi kapitoly) - "nejvic kapitol" totiz
+    // nerika nic o tom, KDE presne ty kapitoly jsou.
+    val nearestChapterDistance: Float? = null,
 )
 
 /**
@@ -94,6 +101,9 @@ class ComicKChapterResolver @Inject constructor(
             hasRequestedChapter = requestedChapterNumber == null ||
                 c.chapters.any { abs(it.chapterNumber - requestedChapterNumber) < 0.01f },
             isFavorite = c.source.id in favorites,
+            nearestChapterDistance = requestedChapterNumber?.let { target ->
+                c.chapters.minOfOrNull { abs(it.chapterNumber - target) }
+            },
         )
 
     /**
