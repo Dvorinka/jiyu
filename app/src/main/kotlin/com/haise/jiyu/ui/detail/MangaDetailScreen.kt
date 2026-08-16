@@ -1481,44 +1481,60 @@ private fun originationFlag(contentType: String?): String = when (contentType) {
     else     -> "🇯🇵"
 }
 
-/** Jeden komentář z [detail_comments_title] sekce - `replies` (max. 1 úroveň, viz
- * ComicKComment) se vykreslí odsazené pod rodičovským komentářem. */
+/** Odpovědi na odpovědi zplošťuje do jedné roviny pod rodičovským komentářem -
+ * dřív se každá vnořená úroveň renderovala jako další [CommentCard] uvnitř už
+ * odsazeného Column, takže se odsazení sčítalo (16+38dp na úroveň) a u delších
+ * vláken vytlačilo text komentáře prakticky mimo obrazovku (uživatelský report
+ * se screenshotem). ComicK nezachovává hlubší strom vláken ve svém vlastním UI
+ * ani on - i tam se hlubší odpovědi zobrazí na stejné úrovni jako první odpověď. */
+private fun flattenReplies(replies: List<ComicKComment>): List<ComicKComment> =
+    replies.flatMap { reply -> listOf(reply) + flattenReplies(reply.replies) }
+
+/** Jeden komentář z [detail_comments_title] sekce - všechny odpovědi (i vnořené,
+ * viz [flattenReplies]) se vykreslí na jedné pevné odsazené úrovni pod ním. */
 @Composable
-private fun CommentCard(comment: ComicKComment, indent: androidx.compose.ui.unit.Dp = 0.dp) {
-    Column(modifier = Modifier.fillMaxWidth().padding(start = 16.dp + indent, end = 16.dp, top = 8.dp, bottom = 8.dp)) {
-        Row(verticalAlignment = Alignment.Top) {
-            AsyncImage(
-                model = comment.avatarUrl,
-                contentDescription = comment.username,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.size(28.dp).clip(RoundedCornerShape(50)).background(NightBlue),
-            )
-            Column(modifier = Modifier.padding(start = 10.dp).weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(comment.username, color = TextPrimary, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
-                    Text(
-                        text = commentRelativeTime(comment.createdAt),
-                        color = TextSecondary.copy(alpha = 0.6f),
-                        fontSize = 11.sp,
-                        modifier = Modifier.padding(start = 8.dp),
-                    )
-                }
-                Text(comment.content, color = TextSecondary, fontSize = 13.sp, modifier = Modifier.padding(top = 2.dp))
-                if (comment.upCount > 0 || comment.downCount > 0) {
-                    Row(modifier = Modifier.padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                        if (comment.upCount > 0) {
-                            Icon(TablerIcons.ThumbUp, contentDescription = null, tint = TextSecondary.copy(alpha = 0.5f), modifier = Modifier.size(12.dp))
-                            Text(" ${comment.upCount}", color = TextSecondary.copy(alpha = 0.6f), fontSize = 11.sp, modifier = Modifier.padding(end = 10.dp))
-                        }
-                        if (comment.downCount > 0) {
-                            Icon(TablerIcons.ThumbDown, contentDescription = null, tint = TextSecondary.copy(alpha = 0.5f), modifier = Modifier.size(12.dp))
-                            Text(" ${comment.downCount}", color = TextSecondary.copy(alpha = 0.6f), fontSize = 11.sp)
-                        }
+private fun CommentCard(comment: ComicKComment) {
+    Column(modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp)) {
+        CommentRow(comment)
+        flattenReplies(comment.replies).forEach { reply ->
+            CommentRow(reply, modifier = Modifier.padding(start = 38.dp, top = 8.dp))
+        }
+    }
+}
+
+@Composable
+private fun CommentRow(comment: ComicKComment, modifier: Modifier = Modifier) {
+    Row(modifier = modifier, verticalAlignment = Alignment.Top) {
+        AsyncImage(
+            model = comment.avatarUrl,
+            contentDescription = comment.username,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.size(28.dp).clip(RoundedCornerShape(50)).background(NightBlue),
+        )
+        Column(modifier = Modifier.padding(start = 10.dp).weight(1f)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(comment.username, color = TextPrimary, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                Text(
+                    text = commentRelativeTime(comment.createdAt),
+                    color = TextSecondary.copy(alpha = 0.6f),
+                    fontSize = 11.sp,
+                    modifier = Modifier.padding(start = 8.dp),
+                )
+            }
+            Text(comment.content, color = TextSecondary, fontSize = 13.sp, modifier = Modifier.padding(top = 2.dp))
+            if (comment.upCount > 0 || comment.downCount > 0) {
+                Row(modifier = Modifier.padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    if (comment.upCount > 0) {
+                        Icon(TablerIcons.ThumbUp, contentDescription = null, tint = TextSecondary.copy(alpha = 0.5f), modifier = Modifier.size(12.dp))
+                        Text(" ${comment.upCount}", color = TextSecondary.copy(alpha = 0.6f), fontSize = 11.sp, modifier = Modifier.padding(end = 10.dp))
+                    }
+                    if (comment.downCount > 0) {
+                        Icon(TablerIcons.ThumbDown, contentDescription = null, tint = TextSecondary.copy(alpha = 0.5f), modifier = Modifier.size(12.dp))
+                        Text(" ${comment.downCount}", color = TextSecondary.copy(alpha = 0.6f), fontSize = 11.sp)
                     }
                 }
             }
         }
-        comment.replies.forEach { reply -> CommentCard(reply, indent = 38.dp) }
     }
 }
 
