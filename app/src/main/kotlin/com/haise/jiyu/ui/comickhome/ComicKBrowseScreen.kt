@@ -33,6 +33,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ModalBottomSheet
@@ -54,7 +55,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -65,6 +70,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.Velocity
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.haise.jiyu.R
@@ -331,7 +337,15 @@ private fun ComicKFilterSheet(
                     Text(stringResource(R.string.comick_browse_clear_filters), color = TextSecondary, fontSize = 13.sp)
                 }
             }
-            LazyColumn(modifier = Modifier.weight(1f).padding(horizontal = 20.dp)) {
+            LazyColumn(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(horizontal = 20.dp)
+                    // Zabrani tomu, aby zbytkovy scroll/fling z okraje seznamu (dojel jsem
+                    // uplne dolu/nahoru a hned smyknu opacne) propadl az na ModalBottomSheet
+                    // a zavrel ho - znamy problem Compose Material3, uzivatelsky report.
+                    .nestedScroll(sheetContentNestedScrollConnection),
+            ) {
                 item { SheetSectionLabel(stringResource(R.string.comick_browse_sort)) }
                 item {
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -357,11 +371,11 @@ private fun ComicKFilterSheet(
                     if (sortCaption != null) {
                         Text(sortCaption, color = TextSecondary, fontSize = 11.sp, modifier = Modifier.padding(top = 6.dp))
                     }
-                    Spacer(modifier = Modifier.height(12.dp))
                 }
+                item { SheetDivider() }
                 item { SheetSectionLabel(stringResource(R.string.comick_browse_type)) }
                 item {
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(bottom = 12.dp)) {
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         listOf(
                             "jp" to stringResource(R.string.browse_source_type_manga),
                             "kr" to stringResource(R.string.browse_source_type_manhwa),
@@ -374,9 +388,10 @@ private fun ComicKFilterSheet(
                         }
                     }
                 }
+                item { SheetDivider() }
                 item { SheetSectionLabel(stringResource(R.string.comick_browse_demographic)) }
                 item {
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(bottom = 12.dp)) {
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         listOf(1 to "Shounen", 2 to "Josei", 3 to "Seinen", 4 to "Shoujo").forEach { (value, label) ->
                             SheetChip(label, value in demographics) {
                                 demographics = if (value in demographics) demographics - value else demographics + value
@@ -384,9 +399,10 @@ private fun ComicKFilterSheet(
                         }
                     }
                 }
+                item { SheetDivider() }
                 item { SheetSectionLabel(stringResource(R.string.comick_browse_status)) }
                 item {
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(bottom = 12.dp)) {
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         listOf(
                             1 to stringResource(R.string.detail_status_ongoing),
                             2 to stringResource(R.string.detail_status_completed),
@@ -398,9 +414,10 @@ private fun ComicKFilterSheet(
                     }
                 }
                 if (showAdultContent) {
+                    item { SheetDivider() }
                     item { SheetSectionLabel(stringResource(R.string.comick_browse_content_rating)) }
                     item {
-                        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(bottom = 12.dp)) {
+                        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             listOf(
                                 "safe" to stringResource(R.string.comick_browse_content_rating_safe),
                                 "suggestive" to stringResource(R.string.comick_browse_content_rating_suggestive),
@@ -411,17 +428,19 @@ private fun ComicKFilterSheet(
                         }
                     }
                 }
+                item { SheetDivider() }
                 item { SheetSectionLabel(stringResource(R.string.comick_browse_min_chapters)) }
                 item {
                     SheetNumberField(
                         value = minChapters,
                         onValueChange = { minChapters = it.filter(Char::isDigit) },
-                        modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
+                        modifier = Modifier.fillMaxWidth(),
                     )
                 }
+                item { SheetDivider() }
                 item { SheetSectionLabel("${stringResource(R.string.comick_browse_year_from)} / ${stringResource(R.string.comick_browse_year_to)}") }
                 item {
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(bottom = 12.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         SheetNumberField(
                             value = yearFrom,
                             onValueChange = { yearFrom = it.filter(Char::isDigit).take(4) },
@@ -434,9 +453,14 @@ private fun ComicKFilterSheet(
                         )
                     }
                 }
-                item { SheetSectionLabel(stringResource(R.string.detail_info_genres)) }
+                item { SheetDivider() }
                 item {
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(bottom = 12.dp)) {
+                    SheetSectionLabel(
+                        "${stringResource(R.string.detail_info_genres)}" + if (genres.isNotEmpty()) " (${genres.size})" else "",
+                    )
+                }
+                item {
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         genreOptions.filter { it.group == "Genre" }.forEach { g ->
                             SheetChip(g.name, g.slug in genres) {
                                 genres = if (g.slug in genres) genres - g.slug else genres + g.slug
@@ -444,7 +468,12 @@ private fun ComicKFilterSheet(
                         }
                     }
                 }
-                item { SheetSectionLabel(stringResource(R.string.comick_browse_tags)) }
+                item { SheetDivider() }
+                item {
+                    SheetSectionLabel(
+                        "${stringResource(R.string.comick_browse_tags)}" + if (tags.isNotEmpty()) " (${tags.size})" else "",
+                    )
+                }
                 item {
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(bottom = 12.dp)) {
                         genreOptions.filter { it.group != "Genre" }.forEach { g ->
@@ -481,15 +510,33 @@ private fun ComicKFilterSheet(
     }
 }
 
+/** Zabrani tomu, aby zbytkovy scroll/fling z okraje seznamu propadl az na
+ * ModalBottomSheet a zavrel ho misto aby jen dosel na konec obsahu - viz
+ * pouziti u [LazyColumn] v [ComicKFilterSheet]. Bezstavovy singleton, staci
+ * jeden pro celý soubor. */
+private val sheetContentNestedScrollConnection = object : NestedScrollConnection {
+    override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset = available
+    override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity = available
+}
+
 @Composable
 private fun SheetSectionLabel(text: String) {
     Text(
         text = text,
-        color = TextSecondary,
-        fontSize = 12.sp,
-        fontWeight = FontWeight.SemiBold,
-        modifier = Modifier.padding(top = 8.dp, bottom = 8.dp),
+        color = Color.White,
+        fontSize = 15.sp,
+        fontWeight = FontWeight.Bold,
+        modifier = Modifier.padding(bottom = 10.dp),
     )
+}
+
+/** Tenka oddelovaci cara mezi sekcemi filtru - dřív jednotlivé sekce (Typ,
+ * Demografie, Žánry, Tagy...) plynule přecházely jedna do druhé jen mezerou,
+ * takže dlouhá zeď stejně vypadajících pilulek (viz Žánry/Tagy) byla těžko
+ * čitelná (uživatelský report se screenshotem "graficky to vypadá blbě"). */
+@Composable
+private fun SheetDivider() {
+    HorizontalDivider(color = CardBorder.copy(alpha = 0.4f), modifier = Modifier.padding(vertical = 16.dp))
 }
 
 @Composable
@@ -497,12 +544,17 @@ private fun SheetChip(label: String, selected: Boolean, onClick: () -> Unit) {
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(50.dp))
-            .background(if (selected) Violet.copy(alpha = 0.25f) else Color.Transparent)
+            .background(if (selected) Violet else Color.White.copy(alpha = 0.05f))
             .border(1.dp, if (selected) Violet else CardBorder, RoundedCornerShape(50.dp))
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClick)
-            .padding(horizontal = 13.dp, vertical = 7.dp),
+            .padding(horizontal = 14.dp, vertical = 8.dp),
     ) {
-        Text(text = label, color = if (selected) Violet else TextSecondary, fontSize = 12.sp)
+        Text(
+            text = label,
+            color = if (selected) Color.White else TextSecondary,
+            fontSize = 13.sp,
+            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+        )
     }
 }
 
