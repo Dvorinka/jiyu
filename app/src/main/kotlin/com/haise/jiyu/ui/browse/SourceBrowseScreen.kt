@@ -133,145 +133,95 @@ fun SourceBrowseScreen(
         }
     }
 
+    // Header (zpet/nazev/filtr, hledani, Popularni/Nejnovejsi) uz neni ve fixnim
+    // topBar slotu Scaffoldu - je to prvni polozka mrizky/sloupce, takze odjede
+    // pryc se scrollem stejne jako obsah pod nim (viz ComicK Domu, stejna zmena).
+    val headerContent: @Composable () -> Unit = {
+        SourceBrowseHeader(
+            sourceName = source?.name ?: "",
+            onBack = onBack,
+            activeFilter = activeFilter,
+            onOpenFilterSheet = { showFilterSheet = true },
+            query = query,
+            onQueryChange = { query = it; viewModel.search(it) },
+            onSearchSubmit = { viewModel.search(query) },
+            showLatest = showLatest,
+            onSetShowLatest = { viewModel.setShowLatest(it) },
+        )
+    }
+
     Scaffold(
         containerColor = Color.Transparent,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         snackbarHost = { SnackbarHost(snackbarHostState) },
-        topBar = {
-            // Cely header (zpet/nazev/filtr, hledani, Popularni/Nejnovejsi) je ve
-            // vlastnim topBar slotu Scaffoldu - garantovane se nikdy neposouva se
-            // scrollem vysledku, na rozdil od bezneho siblinga v Column.
-            Column(modifier = Modifier.statusBarsPadding().background(screenGradient)) {
-                // ── Top bar ─────────────────────────────────────────────────────────
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 8.dp, vertical = 8.dp),
-                ) {
-                    IconButton(onClick = onBack) {
-                        Icon(TablerIcons.ArrowBack, contentDescription = stringResource(R.string.common_back), tint = TextSecondary)
-                    }
-                    Text(
-                        text = source?.name ?: "",
-                        style = TextStyle(brush = titleGradient, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.padding(start = 4.dp).weight(1f),
-                    )
-                    IconButton(onClick = { showFilterSheet = true }) {
-                        Icon(
-                            imageVector = TablerIcons.Filter,
-                            contentDescription = stringResource(R.string.source_browse_filters),
-                            tint = if (activeFilter != MangaFilter()) Violet else TextSecondary,
-                        )
-                    }
-                }
-
-                // ── Hledání v rámci zdroje ────────────────────────────────────────────
-                TextField(
-                    value = query,
-                    onValueChange = { query = it; viewModel.search(it) },
-                    placeholder = { Text(stringResource(R.string.source_browse_search_placeholder, source?.name.orEmpty()), color = TextSecondary) },
-                    singleLine = true,
-                    leadingIcon = { Icon(TablerIcons.Search, contentDescription = null, tint = TextSecondary) },
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                    keyboardActions = KeyboardActions(onSearch = { viewModel.search(query) }),
-                    colors = TextFieldDefaults.colors(
-                        focusedContainerColor = Color.Transparent,
-                        unfocusedContainerColor = Color.Transparent,
-                        focusedIndicatorColor = Violet,
-                        unfocusedIndicatorColor = TextSecondary.copy(alpha = 0.3f),
-                        focusedTextColor = TextPrimary,
-                        unfocusedTextColor = TextPrimary,
-                        cursorColor = Violet,
-                    ),
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
-                )
-
-                // ── Popular / Latest toggle ───────────────────────────────────────────
-                if (query.isBlank()) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 4.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        listOf(false to stringResource(R.string.source_browse_popular), true to stringResource(R.string.source_browse_latest)).forEach { (isLatest, label) ->
-                            val selected = showLatest == isLatest
-                            Button(
-                                onClick = { if (!selected) viewModel.setShowLatest(isLatest) },
-                                modifier = Modifier.weight(1f),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = if (selected) Violet.copy(alpha = 0.2f) else Color.Transparent,
-                                    contentColor = if (selected) Violet else TextSecondary,
-                                ),
-                                border = androidx.compose.foundation.BorderStroke(1.dp, if (selected) Violet.copy(alpha = 0.5f) else TextSecondary.copy(alpha = 0.15f)),
-                                elevation = null,
-                            ) { Text(label, fontSize = 13.sp) }
-                        }
-                    }
-                }
-            }
-        },
     ) { innerPadding ->
-    Column(modifier = Modifier.fillMaxSize().background(screenGradient).padding(innerPadding)) {
+    Box(modifier = Modifier.fillMaxSize().background(screenGradient).padding(innerPadding)) {
         // ── Results area ─────────────────────────────────────────────────────
         val navBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
 
         when {
             loading && results.isEmpty() -> {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    JiyuLoadingIndicator()
+                Column(modifier = Modifier.fillMaxSize()) {
+                    headerContent()
+                    Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                        JiyuLoadingIndicator()
+                    }
                 }
             }
             error != null -> {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier.padding(32.dp),
-                    ) {
-                        Text("( ⚠ )", fontSize = 40.sp, color = GlowViolet.copy(alpha = 0.5f))
-                        Text(
-                            text = stringResource(R.string.source_browse_load_failed),
-                            style = MaterialTheme.typography.titleMedium,
-                            color = TextSecondary,
-                            modifier = Modifier.padding(top = 12.dp),
-                        )
-                        Text(
-                            text = error ?: "",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = TextSecondary.copy(alpha = 0.6f),
-                            modifier = Modifier.padding(top = 4.dp, bottom = 16.dp),
-                        )
-                        OutlinedButton(onClick = { viewModel.retry() }) {
-                            Text(stringResource(R.string.common_retry), color = Violet)
+                Column(modifier = Modifier.fillMaxSize()) {
+                    headerContent()
+                    Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.padding(32.dp),
+                        ) {
+                            Text("( ⚠ )", fontSize = 40.sp, color = GlowViolet.copy(alpha = 0.5f))
+                            Text(
+                                text = stringResource(R.string.source_browse_load_failed),
+                                style = MaterialTheme.typography.titleMedium,
+                                color = TextSecondary,
+                                modifier = Modifier.padding(top = 12.dp),
+                            )
+                            Text(
+                                text = error ?: "",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = TextSecondary.copy(alpha = 0.6f),
+                                modifier = Modifier.padding(top = 4.dp, bottom = 16.dp),
+                            )
+                            OutlinedButton(onClick = { viewModel.retry() }) {
+                                Text(stringResource(R.string.common_retry), color = Violet)
+                            }
                         }
                     }
                 }
             }
             results.isEmpty() -> {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("( ˘•ω•˘ )", fontSize = 36.sp, color = GlowViolet.copy(alpha = 0.5f))
-                        Text(
-                            text = stringResource(R.string.source_browse_no_results),
-                            style = MaterialTheme.typography.titleMedium,
-                            color = TextSecondary,
-                            modifier = Modifier.padding(top = 12.dp),
-                        )
+                Column(modifier = Modifier.fillMaxSize()) {
+                    headerContent()
+                    Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text("( ˘•ω•˘ )", fontSize = 36.sp, color = GlowViolet.copy(alpha = 0.5f))
+                            Text(
+                                text = stringResource(R.string.source_browse_no_results),
+                                style = MaterialTheme.typography.titleMedium,
+                                color = TextSecondary,
+                                modifier = Modifier.padding(top = 12.dp),
+                            )
+                        }
                     }
                 }
             }
             else -> {
                 LazyVerticalGrid(
                     columns = GridCells.Adaptive(minSize = 110.dp),
-                    contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 10.dp, bottom = 16.dp + navBottom),
+                    contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 16.dp + navBottom),
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                     modifier = Modifier.fillMaxSize(),
                     state = listState,
                 ) {
+                    item(span = { GridItemSpan(maxLineSpan) }) { headerContent() }
                     items(results, key = { it.sourceId + it.url }) { manga ->
                         val isOpening = openingManga?.let { it.sourceId == manga.sourceId && it.url == manga.url } == true
                         BrowseMangaCard(manga = manga, isLoading = isOpening, onClick = {
@@ -303,6 +253,92 @@ fun SourceBrowseScreen(
                 showFilterSheet = false
             },
         )
+    }
+}
+
+@Composable
+private fun SourceBrowseHeader(
+    sourceName: String,
+    onBack: () -> Unit,
+    activeFilter: MangaFilter,
+    onOpenFilterSheet: () -> Unit,
+    query: String,
+    onQueryChange: (String) -> Unit,
+    onSearchSubmit: () -> Unit,
+    showLatest: Boolean,
+    onSetShowLatest: (Boolean) -> Unit,
+) {
+    Column(modifier = Modifier.statusBarsPadding().background(screenGradient)) {
+        // ── Top bar ─────────────────────────────────────────────────────────
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp, vertical = 8.dp),
+        ) {
+            IconButton(onClick = onBack) {
+                Icon(TablerIcons.ArrowBack, contentDescription = stringResource(R.string.common_back), tint = TextSecondary)
+            }
+            Text(
+                text = sourceName,
+                style = TextStyle(brush = titleGradient, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(start = 4.dp).weight(1f),
+            )
+            IconButton(onClick = onOpenFilterSheet) {
+                Icon(
+                    imageVector = TablerIcons.Filter,
+                    contentDescription = stringResource(R.string.source_browse_filters),
+                    tint = if (activeFilter != MangaFilter()) Violet else TextSecondary,
+                )
+            }
+        }
+
+        // ── Hledání v rámci zdroje ────────────────────────────────────────────
+        TextField(
+            value = query,
+            onValueChange = onQueryChange,
+            placeholder = { Text(stringResource(R.string.source_browse_search_placeholder, sourceName), color = TextSecondary) },
+            singleLine = true,
+            leadingIcon = { Icon(TablerIcons.Search, contentDescription = null, tint = TextSecondary) },
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+            keyboardActions = KeyboardActions(onSearch = { onSearchSubmit() }),
+            colors = TextFieldDefaults.colors(
+                focusedContainerColor = Color.Transparent,
+                unfocusedContainerColor = Color.Transparent,
+                focusedIndicatorColor = Violet,
+                unfocusedIndicatorColor = TextSecondary.copy(alpha = 0.3f),
+                focusedTextColor = TextPrimary,
+                unfocusedTextColor = TextPrimary,
+                cursorColor = Violet,
+            ),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+        )
+
+        // ── Popular / Latest toggle ───────────────────────────────────────────
+        if (query.isBlank()) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                listOf(false to stringResource(R.string.source_browse_popular), true to stringResource(R.string.source_browse_latest)).forEach { (isLatest, label) ->
+                    val selected = showLatest == isLatest
+                    Button(
+                        onClick = { if (!selected) onSetShowLatest(isLatest) },
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (selected) Violet.copy(alpha = 0.2f) else Color.Transparent,
+                            contentColor = if (selected) Violet else TextSecondary,
+                        ),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, if (selected) Violet.copy(alpha = 0.5f) else TextSecondary.copy(alpha = 0.15f)),
+                        elevation = null,
+                    ) { Text(label, fontSize = 13.sp) }
+                }
+            }
+        }
     }
 }
 
