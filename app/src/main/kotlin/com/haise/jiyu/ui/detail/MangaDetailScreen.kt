@@ -26,10 +26,10 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.asPaddingValues
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -78,6 +78,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -1162,8 +1163,15 @@ fun MangaDetailScreen(
             sheetState = sheetState,
             containerColor = Color(0xFF111B35),
         ) {
-            Box(modifier = Modifier.fillMaxWidth().fillMaxHeight(0.85f)) {
-            Column(modifier = Modifier.fillMaxSize()) {
+            // Vyska se drive vzdy natahla na 85% obrazovky bez ohledu na pocet
+            // doporuceni - u dila s jen jednou/dvema polozkami zbyla pod mrizkou
+            // velka prazdna tmava plocha (uzivatelsky report se screenshotem).
+            // Ted se sheet prizpusobi obsahu az do stropu, mrizka samotna ma svuj
+            // vlastni strop a odtud dal jen scrolluje, kdyby doporuceni bylo hodne.
+            val maxSheetHeight = (LocalConfiguration.current.screenHeightDp * 0.85f).dp
+            val maxGridHeight = (LocalConfiguration.current.screenHeightDp * 0.6f).dp
+            Box(modifier = Modifier.fillMaxWidth().heightIn(max = maxSheetHeight)) {
+            Column(modifier = Modifier.fillMaxWidth()) {
                 Text(
                     text = stringResource(R.string.detail_recommendations_title),
                     color = Color.White,
@@ -1172,10 +1180,10 @@ fun MangaDetailScreen(
                     modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
                 )
                 when {
-                    recommendations == null -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    recommendations == null -> Box(Modifier.fillMaxWidth().height(160.dp), contentAlignment = Alignment.Center) {
                         JiyuLoadingIndicator()
                     }
-                    recommendations.isNullOrEmpty() -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    recommendations.isNullOrEmpty() -> Box(Modifier.fillMaxWidth().height(160.dp), contentAlignment = Alignment.Center) {
                         Text(stringResource(R.string.detail_recommendations_empty), color = TextSecondary, fontSize = 14.sp)
                     }
                     else -> LazyVerticalGrid(
@@ -1183,7 +1191,7 @@ fun MangaDetailScreen(
                         contentPadding = PaddingValues(12.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp),
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier.fillMaxWidth().heightIn(max = maxGridHeight),
                     ) {
                         items(recommendations.orEmpty(), key = { it.manga.sourceId + it.manga.url }) { rec ->
                             Column(
@@ -1236,7 +1244,7 @@ fun MangaDetailScreen(
                 }
             }
             if (openingRecommendation) {
-                Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.4f)), contentAlignment = Alignment.Center) {
+                Box(modifier = Modifier.matchParentSize().background(Color.Black.copy(alpha = 0.4f)), contentAlignment = Alignment.Center) {
                     JiyuLoadingIndicator()
                 }
             }
