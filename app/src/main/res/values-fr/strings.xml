@@ -468,12 +468,24 @@
     <string name="comick_browse_tags">Tags</string>
     <string name="comick_prefs_title">Préférences des mises à jour</string>
     <string name="comick_prefs_type">Type</string>
+    <string name="comick_prefs_type_manga_desc">Bandes dessinées originaires du Japon.</string>
+    <string name="comick_prefs_type_manhwa_desc">Terme coréen général pour les bandes dessinées - hors Corée, désigne généralement les bandes dessinées sud-coréennes.</string>
+    <string name="comick_prefs_type_manhua_desc">Bandes dessinées en chinois produites en Chine et à Taïwan.</string>
+    <string name="comick_prefs_type_others_desc">Bandes dessinées d\'autres langues d\'origine, ou dont le pays d\'origine n\'est pas encore défini.</string>
     <string name="comick_prefs_demographic">Démographie</string>
     <string name="comick_prefs_no_demographic">Sans démographie</string>
+    <string name="comick_prefs_demo_shounen_desc">Destinée principalement aux garçons et jeunes hommes.</string>
+    <string name="comick_prefs_demo_shoujo_desc">Destinée principalement aux filles et jeunes femmes.</string>
+    <string name="comick_prefs_demo_seinen_desc">Destinée aux hommes adultes.</string>
+    <string name="comick_prefs_demo_josei_desc">Destinée aux femmes adultes.</string>
+    <string name="comick_prefs_no_demographic_desc">L\'œuvre n\'a pas de groupe démographique cible défini.</string>
     <string name="comick_prefs_mature">Contenu pour adultes</string>
     <string name="comick_prefs_mature_suggestive">Contenu suggestif</string>
+    <string name="comick_prefs_mature_suggestive_desc">Ces bandes dessinées peuvent contenir des thèmes déconseillés à tous les publics, comme une nudité légère ou des situations suggestives. La prudence est recommandée.</string>
     <string name="comick_prefs_mature_violence">Violence ou gore fréquent (18+)</string>
+    <string name="comick_prefs_mature_violence_desc">Contenu présentant une violence ou un gore extrême.</string>
     <string name="comick_prefs_mature_adult">Contenu pour adultes (nudité, sexe)</string>
+    <string name="comick_prefs_mature_adult_desc">Contenu sexuel explicite ou graphique destiné exclusivement aux adultes (18+).</string>
     <string name="comick_prefs_button">Préférences</string>
 
     <string name="detail_chapter_downloaded">Téléchargé</string>

@@ -471,12 +471,24 @@
     <string name="comick_browse_tags">Tags</string>
     <string name="comick_prefs_title">Updates Preferences</string>
     <string name="comick_prefs_type">Type</string>
+    <string name="comick_prefs_type_manga_desc">Comics originating from Japan.</string>
+    <string name="comick_prefs_type_manhwa_desc">General Korean term for comics - outside Korea it usually refers to South Korean comics.</string>
+    <string name="comick_prefs_type_manhua_desc">Chinese-language comics produced in China and Taiwan.</string>
+    <string name="comick_prefs_type_others_desc">Comics from other original languages, or comics whose country of origin isn\'t set yet.</string>
     <string name="comick_prefs_demographic">Demographic</string>
     <string name="comick_prefs_no_demographic">No demographic</string>
+    <string name="comick_prefs_demo_shounen_desc">Aimed mainly at boys and young men.</string>
+    <string name="comick_prefs_demo_shoujo_desc">Aimed mainly at girls and young women.</string>
+    <string name="comick_prefs_demo_seinen_desc">Aimed at adult men.</string>
+    <string name="comick_prefs_demo_josei_desc">Aimed at adult women.</string>
+    <string name="comick_prefs_no_demographic_desc">No target demographic set for this title.</string>
     <string name="comick_prefs_mature">Mature Content</string>
     <string name="comick_prefs_mature_suggestive">Suggestive Content</string>
+    <string name="comick_prefs_mature_suggestive_desc">These comics may contain themes not suitable for all audiences, such as mild nudity or suggestive situations. Viewer discretion is advised.</string>
     <string name="comick_prefs_mature_violence">Frequent Violence or Gore (18+)</string>
+    <string name="comick_prefs_mature_violence_desc">Content that features extreme violence or gore.</string>
     <string name="comick_prefs_mature_adult">Adult Content (nudity, sex)</string>
+    <string name="comick_prefs_mature_adult_desc">Explicit or graphic sexual material intended solely for adults (18+).</string>
     <string name="comick_prefs_button">Preferences</string>
 
     <string name="detail_chapter_downloaded">Downloaded</string>

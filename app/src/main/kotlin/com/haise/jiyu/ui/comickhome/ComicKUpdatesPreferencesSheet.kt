@@ -4,11 +4,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -51,7 +48,7 @@ import compose.icons.tablericons.Check
  * Type/Demographic filtrují, co se v Aktualizacích vůbec zobrazí; Mature Content jsou
  * opt-in přepínače navíc k běžnému (safe) obsahu, ne filtr co ho skrývá.
  */
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ComicKUpdatesPreferencesSheet(
     initialCountries: Set<String>,
@@ -82,14 +79,15 @@ fun ComicKUpdatesPreferencesSheet(
             LazyColumn(modifier = Modifier.weight(1f).padding(horizontal = 20.dp)) {
                 item { PrefsSectionLabel(stringResource(R.string.comick_prefs_type)) }
                 item {
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(bottom = 12.dp)) {
+                    Column(modifier = Modifier.padding(bottom = 8.dp)) {
                         listOf(
-                            "jp" to stringResource(R.string.browse_source_type_manga),
-                            "kr" to stringResource(R.string.browse_source_type_manhwa),
-                            "cn" to stringResource(R.string.browse_source_type_manhua),
-                            "others" to stringResource(R.string.comick_browse_type_others),
-                        ).forEach { (value, label) ->
-                            PrefsChip(label, value in countries) {
+                            "jp" to (stringResource(R.string.browse_source_type_manga) to stringResource(R.string.comick_prefs_type_manga_desc)),
+                            "kr" to (stringResource(R.string.browse_source_type_manhwa) to stringResource(R.string.comick_prefs_type_manhwa_desc)),
+                            "cn" to (stringResource(R.string.browse_source_type_manhua) to stringResource(R.string.comick_prefs_type_manhua_desc)),
+                            "others" to (stringResource(R.string.comick_browse_type_others) to stringResource(R.string.comick_prefs_type_others_desc)),
+                        ).forEach { (value, labelAndDesc) ->
+                            val (label, description) = labelAndDesc
+                            PrefsCheckboxOption(label, description, value in countries) {
                                 countries = if (value in countries) countries - value else countries + value
                             }
                         }
@@ -97,9 +95,16 @@ fun ComicKUpdatesPreferencesSheet(
                 }
                 item { PrefsSectionLabel(stringResource(R.string.comick_prefs_demographic)) }
                 item {
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(bottom = 12.dp)) {
-                        listOf("1" to "Shounen", "2" to "Josei", "3" to "Seinen", "4" to "Shoujo", "0" to stringResource(R.string.comick_prefs_no_demographic)).forEach { (value, label) ->
-                            PrefsChip(label, value in demographics) {
+                    Column(modifier = Modifier.padding(bottom = 8.dp)) {
+                        listOf(
+                            "1" to ("Shounen" to stringResource(R.string.comick_prefs_demo_shounen_desc)),
+                            "2" to ("Josei" to stringResource(R.string.comick_prefs_demo_josei_desc)),
+                            "3" to ("Seinen" to stringResource(R.string.comick_prefs_demo_seinen_desc)),
+                            "4" to ("Shoujo" to stringResource(R.string.comick_prefs_demo_shoujo_desc)),
+                            "0" to (stringResource(R.string.comick_prefs_no_demographic) to stringResource(R.string.comick_prefs_no_demographic_desc)),
+                        ).forEach { (value, labelAndDesc) ->
+                            val (label, description) = labelAndDesc
+                            PrefsCheckboxOption(label, description, value in demographics) {
                                 demographics = if (value in demographics) demographics - value else demographics + value
                             }
                         }
@@ -110,11 +115,12 @@ fun ComicKUpdatesPreferencesSheet(
                     item {
                         Column(modifier = Modifier.padding(bottom = 12.dp)) {
                             listOf(
-                                "suggestive" to stringResource(R.string.comick_prefs_mature_suggestive),
-                                "violence" to stringResource(R.string.comick_prefs_mature_violence),
-                                "adult" to stringResource(R.string.comick_prefs_mature_adult),
-                            ).forEach { (value, label) ->
-                                PrefsCheckRow(label, value in matureFlags) {
+                                "suggestive" to (stringResource(R.string.comick_prefs_mature_suggestive) to stringResource(R.string.comick_prefs_mature_suggestive_desc)),
+                                "violence" to (stringResource(R.string.comick_prefs_mature_violence) to stringResource(R.string.comick_prefs_mature_violence_desc)),
+                                "adult" to (stringResource(R.string.comick_prefs_mature_adult) to stringResource(R.string.comick_prefs_mature_adult_desc)),
+                            ).forEach { (value, labelAndDesc) ->
+                                val (label, description) = labelAndDesc
+                                PrefsCheckboxOption(label, description, value in matureFlags) {
                                     matureFlags = if (value in matureFlags) matureFlags - value else matureFlags + value
                                 }
                             }
@@ -144,33 +150,24 @@ private fun PrefsSectionLabel(text: String) {
     )
 }
 
+/** Checkbox + název + popis pod ním, stejný styl jako ComicK vlastní Preferences
+ * stránka (viz screenshoty) - dřív tahle sekce používala pilulkové chipy bez
+ * popisu (Type/Demographic) nebo zmáčknutý checkbox (Mature Content: `.size(20.dp)`
+ * následované `.padding(end = 10.dp)` zmenšilo viditelnou kreslicí plochu o polovinu,
+ * takže z čtverečku vznikl úzký proužek - uživatelský report se screenshotem). */
 @Composable
-private fun PrefsChip(label: String, selected: Boolean, onClick: () -> Unit) {
-    Box(
-        modifier = Modifier
-            .clip(RoundedCornerShape(50.dp))
-            .background(if (selected) Violet.copy(alpha = 0.25f) else Color.Transparent)
-            .border(1.dp, if (selected) Violet else CardBorder, RoundedCornerShape(50.dp))
-            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClick)
-            .padding(horizontal = 13.dp, vertical = 7.dp),
-    ) {
-        Text(text = label, color = if (selected) Violet else TextSecondary, fontSize = 12.sp)
-    }
-}
-
-@Composable
-private fun PrefsCheckRow(label: String, checked: Boolean, onToggle: () -> Unit) {
+private fun PrefsCheckboxOption(label: String, description: String, checked: Boolean, onToggle: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onToggle)
-            .padding(vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
+            .padding(vertical = 10.dp),
+        verticalAlignment = Alignment.Top,
     ) {
         Box(
             modifier = Modifier
+                .padding(top = 1.dp)
                 .size(20.dp)
-                .padding(end = 10.dp)
                 .clip(RoundedCornerShape(4.dp))
                 .background(if (checked) Violet else Color.Transparent)
                 .border(1.dp, if (checked) Violet else CardBorder, RoundedCornerShape(4.dp)),
@@ -180,6 +177,9 @@ private fun PrefsCheckRow(label: String, checked: Boolean, onToggle: () -> Unit)
                 Icon(TablerIcons.Check, contentDescription = null, tint = Color.White, modifier = Modifier.size(14.dp))
             }
         }
-        Text(text = label, color = if (checked) Color.White else TextSecondary, fontSize = 13.sp)
+        Column(modifier = Modifier.padding(start = 12.dp)) {
+            Text(text = label, color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+            Text(text = description, color = TextSecondary, fontSize = 12.sp, modifier = Modifier.padding(top = 2.dp))
+        }
     }
 }

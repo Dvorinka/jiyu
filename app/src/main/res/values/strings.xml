@@ -490,12 +490,24 @@
     <string name="comick_browse_tags">Tagy</string>
     <string name="comick_prefs_title">Předvolby Aktualizací</string>
     <string name="comick_prefs_type">Typ</string>
+    <string name="comick_prefs_type_manga_desc">Komiksy pocházející z Japonska.</string>
+    <string name="comick_prefs_type_manhwa_desc">Obecný korejský výraz pro komiksy - mimo Koreu se obvykle vztahuje na jihokorejské komiksy.</string>
+    <string name="comick_prefs_type_manhua_desc">Čínsky psané komiksy vydávané v Číně a na Tchaj-wanu.</string>
+    <string name="comick_prefs_type_others_desc">Komiksy z jiných zemí původu, nebo komiksy, jejichž země původu ještě není nastavena.</string>
     <string name="comick_prefs_demographic">Demografie</string>
     <string name="comick_prefs_no_demographic">Bez demografie</string>
+    <string name="comick_prefs_demo_shounen_desc">Cílená především na chlapce a mladé muže.</string>
+    <string name="comick_prefs_demo_shoujo_desc">Cílená především na dívky a mladé ženy.</string>
+    <string name="comick_prefs_demo_seinen_desc">Cílená na dospělé muže.</string>
+    <string name="comick_prefs_demo_josei_desc">Cílená na dospělé ženy.</string>
+    <string name="comick_prefs_no_demographic_desc">Dílo nemá určenou cílovou demografickou skupinu.</string>
     <string name="comick_prefs_mature">Obsah pro dospělé</string>
     <string name="comick_prefs_mature_suggestive">Sugestivní obsah</string>
+    <string name="comick_prefs_mature_suggestive_desc">Tyto komiksy mohou obsahovat témata nevhodná pro všechny diváky, jako je mírná nahota nebo sugestivní situace. Doporučuje se opatrnost.</string>
     <string name="comick_prefs_mature_violence">Násilí a krvavé scény (18+)</string>
+    <string name="comick_prefs_mature_violence_desc">Obsah s extrémním násilím nebo krvavými scénami.</string>
     <string name="comick_prefs_mature_adult">Obsah pro dospělé (nahota, sex)</string>
+    <string name="comick_prefs_mature_adult_desc">Explicitní nebo grafický sexuální obsah určený výhradně pro dospělé (18+).</string>
     <string name="comick_prefs_button">Předvolby</string>
 
     <string name="detail_chapter_downloaded">Staženo</string>
