@@ -96,8 +96,19 @@ class SourceResolverViewModel @Inject constructor(
                         // ne po kazdem prubeznem vysledku - uzivatelsky pozadavek: seznam by se
                         // jinak mohl prehazet pod prstem, kdyz uz si nekdo vybira, zatimco jeste
                         // hleda dal na pozadi.
-                        _candidates.value = _candidates.value
+                        val sorted = _candidates.value
                             .sortedWith(compareByDescending<ResolvedCandidate> { it.isFavorite }.thenByDescending { it.matchedChapterCount })
+                        _candidates.value = sorted
+                        // Uzivatelsky pozadavek: kdyz POZADOVANOU kapitolu nema ani jeden nalezeny
+                        // zdroj (typicky nejnovejsi/predbezne cislo, co ComicK uz eviduje, ale
+                        // zadny scan tym jeste nepreloz-il), nenutit uzivatele rucne prochazet
+                        // seznam samych "Tuhle kapitolu nema" - rovnou otevrit zdroj s nejvic
+                        // kapitolami (oblibene prvni, stejne razeni jako v seznamu), a v nem
+                        // nejblizsi dostupne cislo (viz selectCandidate - uz to tak delal i pri
+                        // rucnim vyberu, jen se predtim k vyberu vubec nedostalo bez dotyku).
+                        if (sorted.isNotEmpty() && sorted.none { it.hasRequestedChapter }) {
+                            selectCandidate(sorted.first())
+                        }
                     }
                     .collect { candidate ->
                         _candidates.value = _candidates.value + candidate
