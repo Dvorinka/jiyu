@@ -4,6 +4,14 @@
 > vidět v historii commitů a v popisech jednotlivých vydání na GitHubu; zpětně to sem
 > nedopisuju, abych si nevymýšlel.
 
+## v1.2.25
+
+### Hlavička na ComicK Domů už nezůstává přilepená nahoře
+Nadpis "ComicK", lupa a tlačítka Domů/Procházet byly napevno ukotvené
+nahoře obrazovky a při scrollování zůstávaly na místě. Teď jsou součástí
+obsahu a odjedou pryč spolu se sekcemi - stejně tak v režimu vyhledávání
+i při načítání/chybě.
+
 ## v1.2.24
 
 ### Kapacita: dva noví free-tier provideři (Cerebras, Mistral)
