@@ -4,6 +4,23 @@
 > vidět v historii commitů a v popisech jednotlivých vydání na GitHubu; zpětně to sem
 > nedopisuju, abych si nevymýšlel.
 
+## v1.2.23
+
+### Oprava: bílý pruh přes sousední bublinu a kresbu
+Bublina bez detekovaného tvaru (heuristický box) nevěděla o sousední bublině
+s detekovaným tvarem a mohla svůj box roztáhnout až 3x vlastní šířku přímo
+skrz ni a do kresby za ní - nahlášeno na natěsno namačkaném trsu bublin
+("C'MON!" vedle "LET'S LEARN TOGETHER, IORI."). Heuristika teď bere tvarové
+bubliny jako pevné překážky, které nikdy nepřejede.
+
+### Příprava na budoucí doladění: dvě další observability logy
+- `BubbleSkip`/`TinyBubbleBox` - u nahlášeného případu, kdy bublina ("YAH!")
+  v natěsno namačkaném trsu úplně zmizela (ani originál, ani překlad).
+- `DroppedSentence` - u nahlášeného případu, kdy "spojená" (dvouhrbá)
+  bublina se dvěma větami skončila v překladu jen s jednou.
+Ani jeden log nic nemění na chování appky, jen sbírá data pro budoucí
+opravu na jistotu, ne na dohad.
+
 ## v1.2.22
 
 ### Spolehlivost překladu novel
