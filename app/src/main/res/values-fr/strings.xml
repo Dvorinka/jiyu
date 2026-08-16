@@ -770,9 +770,8 @@
     <string name="account_sign_out">Se déconnecter</string>
     <string name="account_error_unsupported_credential">Type de connexion non pris en charge</string>
     <string name="account_error_login_generic">Erreur de connexion</string>
+    <string name="account_error_no_google_account">Aucun compte Google n\'a été trouvé sur ce téléphone, ou l\'appli n\'y a pas accès. Vérifie dans les réglages du téléphone que tu es connecté à un compte Google, ou connecte-toi par e-mail.</string>
     <string name="account_sync_done">Synchronisation terminée</string>
-    <string name="account_error_sync_generic">Erreur de synchronisation</string>
-    <string name="account_error_signup_generic">Erreur d\'inscription</string>
 
     <!-- Communauté -->
 

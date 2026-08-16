@@ -827,9 +827,8 @@
     <string name="account_sign_out">Odhlásit se</string>
     <string name="account_error_unsupported_credential">Nepodporovaný typ přihlášení</string>
     <string name="account_error_login_generic">Chyba přihlášení</string>
+    <string name="account_error_no_google_account">Na telefonu nebyl nalezen žádný Google účet, nebo k němu appka nemá povolení. Zkontroluj v nastavení telefonu, že jsi přihlášený/á k Google účtu, nebo se přihlas přes e-mail.</string>
     <string name="account_sync_done">Synchronizace dokončena</string>
-    <string name="account_error_sync_generic">Chyba synchronizace</string>
-    <string name="account_error_signup_generic">Chyba registrace</string>
 
     <!-- Komunita -->
 

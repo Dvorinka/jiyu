@@ -773,9 +773,8 @@
     <string name="account_sign_out">Sign out</string>
     <string name="account_error_unsupported_credential">Unsupported sign-in type</string>
     <string name="account_error_login_generic">Sign-in error</string>
+    <string name="account_error_no_google_account">No Google account was found on this phone, or the app isn\'t authorized for it. Check that you\'re signed into a Google account in your phone\'s settings, or sign in with email instead.</string>
     <string name="account_sync_done">Sync complete</string>
-    <string name="account_error_sync_generic">Sync error</string>
-    <string name="account_error_signup_generic">Sign-up error</string>
 
     <!-- Community -->
 

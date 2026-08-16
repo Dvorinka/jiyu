@@ -4,6 +4,9 @@ import android.content.Context
 import androidx.credentials.CredentialManager
 import androidx.credentials.CustomCredential
 import androidx.credentials.GetCredentialRequest
+import androidx.credentials.exceptions.GetCredentialCancellationException
+import androidx.credentials.exceptions.GetCredentialException
+import androidx.credentials.exceptions.NoCredentialException
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.work.Constraints
@@ -118,8 +121,26 @@ class AccountViewModel @Inject constructor(
                 } else {
                     _authState.value = AuthUiState.Error(appContext.getString(R.string.account_error_unsupported_credential))
                 }
+            } catch (e: GetCredentialCancellationException) {
+                // Uzivatel jen zavrel vyber uctu (tap mimo / zpet) - to neni chyba,
+                // jen se vrat do klidoveho stavu beze slova. Driv se to hlasilo
+                // stejne jako skutecna chyba a vyskocila zbytecna "Chyba:" snackbar
+                // za to, ze si to uzivatel rozmyslel.
+                _authState.value = AuthUiState.Idle
+            } catch (e: NoCredentialException) {
+                // Nejcastejsi pricina: na telefonu neni pridany zadny Google ucet,
+                // nebo OAuth klient v Google Cloud Console nema spravne
+                // zaregistrovany balicek + SHA-1 appky. Syrova SDK hlaska
+                // ("No credentials available") byla nesrozumitelna a neakcni
+                // (uzivatelsky report se screenshotem).
+                e.report("account:signInWithGoogle:noCredential")
+                _authState.value = AuthUiState.Error(appContext.getString(R.string.account_error_no_google_account))
+            } catch (e: GetCredentialException) {
+                e.report("account:signInWithGoogle")
+                _authState.value = AuthUiState.Error(appContext.getString(R.string.account_error_login_generic))
             } catch (e: Exception) {
-                _authState.value = AuthUiState.Error(e.message ?: appContext.getString(R.string.account_error_login_generic))
+                e.report("account:signInWithGoogle")
+                _authState.value = AuthUiState.Error(e.toFriendlyMessage())
             }
         }
     }
@@ -139,7 +160,8 @@ class AccountViewModel @Inject constructor(
                 syncRepository.pullFromCloud()
                 _syncState.value = SyncState.Done(appContext.getString(R.string.account_sync_done))
             } catch (e: Exception) {
-                _syncState.value = SyncState.Error(e.message ?: appContext.getString(R.string.account_error_sync_generic))
+                e.report("account:syncNow")
+                _syncState.value = SyncState.Error(e.toFriendlyMessage())
             }
         }
     }
@@ -153,7 +175,8 @@ class AccountViewModel @Inject constructor(
                 scheduleBackgroundSync()
                 syncNow()
             } catch (e: Exception) {
-                _authState.value = AuthUiState.Error(e.message ?: appContext.getString(R.string.account_error_login_generic))
+                e.report("account:signInWithEmail")
+                _authState.value = AuthUiState.Error(e.toFriendlyMessage())
             }
         }
     }
@@ -165,7 +188,8 @@ class AccountViewModel @Inject constructor(
                 authRepository.signUpWithEmail(email, password)
                 _authState.value = AuthUiState.Success
             } catch (e: Exception) {
-                _authState.value = AuthUiState.Error(e.message ?: appContext.getString(R.string.account_error_signup_generic))
+                e.report("account:signUpWithEmail")
+                _authState.value = AuthUiState.Error(e.toFriendlyMessage())
             }
         }
     }

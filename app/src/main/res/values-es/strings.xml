@@ -770,9 +770,8 @@
     <string name="account_sign_out">Cerrar sesión</string>
     <string name="account_error_unsupported_credential">Tipo de inicio de sesión no compatible</string>
     <string name="account_error_login_generic">Error de inicio de sesión</string>
+    <string name="account_error_no_google_account">No se encontró ninguna cuenta de Google en este teléfono, o la app no tiene permiso para usarla. Comprueba en los ajustes del teléfono que has iniciado sesión con una cuenta de Google, o inicia sesión con correo electrónico.</string>
     <string name="account_sync_done">Sincronización completada</string>
-    <string name="account_error_sync_generic">Error de sincronización</string>
-    <string name="account_error_signup_generic">Error de registro</string>
 
     <!-- Comunidad -->
 
