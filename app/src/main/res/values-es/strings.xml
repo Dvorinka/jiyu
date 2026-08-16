@@ -74,6 +74,8 @@
     <string name="common_all">Todos</string>
 
     <!-- Ajustes: pantalla principal -->
+    <string name="settings_main_account_title">Cuenta</string>
+    <string name="settings_main_account_subtitle">Inicio de sesión, sincronización en la nube entre dispositivos, AniList</string>
     <string name="settings_main_appearance_title">Apariencia</string>
     <string name="settings_main_appearance_subtitle">Idioma, Tema, Biblioteca</string>
     <string name="settings_main_sources_title">Fuentes de manga</string>
@@ -84,15 +86,16 @@
     <string name="settings_main_storage_subtitle">Caché de traducción, Caché de imágenes</string>
     <string name="settings_main_downloads_title">Descargas</string>
     <string name="settings_main_downloads_subtitle">Carpeta de descarga, Wi-Fi, Gestión</string>
-    <string name="settings_main_update_check_title">Buscar nuevos capítulos</string>
-    <string name="settings_main_update_check_subtitle">Intervalo, Notificaciones</string>
-    <string name="settings_main_services_title">Servicios</string>
-    <string name="settings_main_services_subtitle">Sync en la nube, MyAnimeList, Kitsu, MangaUpdates</string>
+    <string name="settings_main_update_check_title">Actualizaciones de capítulos</string>
+    <string name="settings_main_update_check_subtitle">Intervalo de búsqueda de capítulos nuevos, Notificaciones</string>
+    <string name="settings_main_services_title">Trackers</string>
+    <string name="settings_main_services_subtitle">MyAnimeList, Kitsu, MangaUpdates</string>
     <string name="settings_main_backup_title">Copia de seguridad y restauración</string>
     <string name="settings_main_backup_subtitle">Copia de biblioteca, Copia de ajustes, Importar Mihon</string>
+    <string name="settings_main_duplicates_title">Detector de duplicados</string>
     <string name="settings_main_duplicates_subtitle">Buscar duplicados en tu biblioteca</string>
     <string name="settings_main_about_title">Acerca de</string>
-    <string name="settings_main_about_subtitle">Versión, Actualizaciones</string>
+    <string name="settings_main_about_subtitle">Versión de la app, Actualizaciones de la app</string>
 
     <!-- Ajustes: Apariencia -->
     <string name="settings_appearance_theme_title">Tema</string>
@@ -223,9 +226,7 @@
     <string name="settings_update_notify_downloads_desc">Avisa cuando una descarga de capítulo termina o falla</string>
 
     <!-- Ajustes: Servicios -->
-    <string name="settings_services_title">Servicios</string>
-    <string name="settings_services_account_section">Cuenta</string>
-    <string name="settings_services_account_button">Inicio de sesión y sync en la nube</string>
+    <string name="settings_services_title">Trackers</string>
     <string name="settings_services_logged_in">Conectado</string>
     <string name="settings_services_logout">Cerrar sesión</string>
     <string name="settings_services_mal_login_desc">Inicia sesión con MAL OAuth para sincronizar el seguimiento.</string>

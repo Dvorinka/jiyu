@@ -46,7 +46,6 @@ import com.haise.jiyu.ui.theme.screenGradient
 @Composable
 fun ServicesSettingsScreen(
     onBack: () -> Unit,
-    onOpenAccount: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val malIsLoggedIn     by viewModel.malIsLoggedIn.collectAsState()
@@ -75,18 +74,6 @@ fun ServicesSettingsScreen(
                     .verticalScroll(rememberScrollState())
                     .padding(horizontal = 16.dp),
             ) {
-                SettingsSection(title = stringResource(R.string.settings_services_account_section)) {
-                    OutlinedButton(
-                        onClick = onOpenAccount,
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Violet),
-                    ) {
-                        Text(stringResource(R.string.settings_services_account_button))
-                    }
-                }
-
-                Spacer(Modifier.height(12.dp))
-
                 // ── MAL OAuth ────────────────────────────────────────────────
                 SettingsSection(title = "MyAnimeList") {
                     if (malIsLoggedIn) {

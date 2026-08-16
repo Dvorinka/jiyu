@@ -297,6 +297,7 @@ fun JiyuNavGraph(
         composable(Routes.SETTINGS) {
             SettingsScreen(
                 onBack = { navController.popBackStack() },
+                onOpenAccount = { navController.navigate(Routes.ACCOUNT) },
                 onOpenAppearance = { navController.navigate(Routes.SETTINGS_APPEARANCE) },
                 onOpenSources = { navController.navigate(Routes.SETTINGS_SOURCES) },
                 onOpenReaderSettings = { navController.navigate(Routes.SETTINGS_READER) },
@@ -345,10 +346,7 @@ fun JiyuNavGraph(
         }
 
         composable(Routes.SETTINGS_SERVICES) {
-            ServicesSettingsScreen(
-                onBack = { navController.popBackStack() },
-                onOpenAccount = { navController.navigate(Routes.ACCOUNT) },
-            )
+            ServicesSettingsScreen(onBack = { navController.popBackStack() })
         }
 
         composable(Routes.SETTINGS_BACKUP) {

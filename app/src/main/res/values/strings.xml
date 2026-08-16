@@ -78,6 +78,8 @@
     <string name="common_all">Vše</string>
 
     <!-- Settings: hlavní obrazovka -->
+    <string name="settings_main_account_title">Účet</string>
+    <string name="settings_main_account_subtitle">Přihlášení, Cloud sync napříč zařízeními, AniList</string>
     <string name="settings_main_appearance_title">Vzhled</string>
     <string name="settings_main_appearance_subtitle">Jazyk, Téma, Knihovna</string>
     <string name="settings_main_sources_title">Zdroje mang</string>
@@ -88,15 +90,16 @@
     <string name="settings_main_storage_subtitle">Cache překladů, Cache obrázků</string>
     <string name="settings_main_downloads_title">Stažené</string>
     <string name="settings_main_downloads_subtitle">Složka stahování, Wi-Fi, Správa</string>
-    <string name="settings_main_update_check_title">Zkontrolovat nové kapitoly</string>
-    <string name="settings_main_update_check_subtitle">Interval, Notifikace</string>
-    <string name="settings_main_services_title">Služby</string>
-    <string name="settings_main_services_subtitle">Cloud sync, MyAnimeList, Kitsu, MangaUpdates</string>
+    <string name="settings_main_update_check_title">Aktualizace kapitol</string>
+    <string name="settings_main_update_check_subtitle">Interval kontroly nových kapitol, Notifikace</string>
+    <string name="settings_main_services_title">Trackery</string>
+    <string name="settings_main_services_subtitle">MyAnimeList, Kitsu, MangaUpdates</string>
     <string name="settings_main_backup_title">Zálohovat a obnovit</string>
     <string name="settings_main_backup_subtitle">Záloha knihovny, Záloha nastavení, Import Mihon</string>
+    <string name="settings_main_duplicates_title">Detektor duplicit</string>
     <string name="settings_main_duplicates_subtitle">Vyhledání duplicit v knihovně</string>
     <string name="settings_main_about_title">O aplikaci</string>
-    <string name="settings_main_about_subtitle">Verze, Aktualizace</string>
+    <string name="settings_main_about_subtitle">Verze appky, Aktualizace appky</string>
 
     <!-- Settings: Vzhled -->
     <string name="settings_appearance_theme_title">Téma</string>
@@ -239,9 +242,7 @@
     <string name="settings_update_notify_downloads_desc">Upozornění při dokončení nebo selhání stahování kapitoly</string>
 
     <!-- Settings: Služby -->
-    <string name="settings_services_title">Služby</string>
-    <string name="settings_services_account_section">Účet</string>
-    <string name="settings_services_account_button">Přihlášení &amp; Cloud sync</string>
+    <string name="settings_services_title">Trackery</string>
     <string name="settings_services_logged_in">Přihlášen</string>
     <string name="settings_services_logout">Odhlásit</string>
     <string name="settings_services_mal_login_desc">Přihlas se přes MAL OAuth pro synchronizaci sledování.</string>

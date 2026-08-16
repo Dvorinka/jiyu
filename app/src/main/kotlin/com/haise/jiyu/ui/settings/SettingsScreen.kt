@@ -44,6 +44,7 @@ import compose.icons.tablericons.Palette
 import compose.icons.tablericons.Puzzle
 import compose.icons.tablericons.Refresh
 import compose.icons.tablericons.Stack
+import compose.icons.tablericons.User
 
 private data class SettingsCategory(
     val title: String,
@@ -55,6 +56,7 @@ private data class SettingsCategory(
 @Composable
 fun SettingsScreen(
     onBack: () -> Unit,
+    onOpenAccount: () -> Unit,
     onOpenAppearance: () -> Unit,
     onOpenSources: () -> Unit,
     onOpenReaderSettings: () -> Unit,
@@ -67,6 +69,11 @@ fun SettingsScreen(
     onOpenAbout: () -> Unit,
 ) {
     val categories = listOf(
+        // Ucet je zamerne UPLNE PRVNI - drive slo jen sahnout skrz "Sluzby" (mysleno
+        // jako trackery MAL/Kitsu/MangaUpdates), takze prihlaseni/cloud sync bylo
+        // schovane dve urovne hluboko pod nazvem, ktery s uctem vubec neevokoval
+        // souvislost (uzivatelsky pozadavek "aby se tam slo vyznat").
+        SettingsCategory(stringResource(R.string.settings_main_account_title), stringResource(R.string.settings_main_account_subtitle), TablerIcons.User, onOpenAccount),
         SettingsCategory(stringResource(R.string.settings_main_appearance_title), stringResource(R.string.settings_main_appearance_subtitle), TablerIcons.Palette, onOpenAppearance),
         SettingsCategory(stringResource(R.string.settings_main_sources_title), stringResource(R.string.settings_main_sources_subtitle), TablerIcons.Stack, onOpenSources),
         SettingsCategory(stringResource(R.string.settings_main_reader_title), stringResource(R.string.settings_main_reader_subtitle), TablerIcons.Book, onOpenReaderSettings),
@@ -75,7 +82,7 @@ fun SettingsScreen(
         SettingsCategory(stringResource(R.string.settings_main_update_check_title), stringResource(R.string.settings_main_update_check_subtitle), TablerIcons.Refresh, onOpenUpdateCheck),
         SettingsCategory(stringResource(R.string.settings_main_services_title), stringResource(R.string.settings_main_services_subtitle), TablerIcons.Puzzle, onOpenServices),
         SettingsCategory(stringResource(R.string.settings_main_backup_title), stringResource(R.string.settings_main_backup_subtitle), TablerIcons.History, onOpenBackup),
-        SettingsCategory(stringResource(R.string.settings_reading_duplicates_button), stringResource(R.string.settings_main_duplicates_subtitle), TablerIcons.Copy, onOpenDuplicates),
+        SettingsCategory(stringResource(R.string.settings_main_duplicates_title), stringResource(R.string.settings_main_duplicates_subtitle), TablerIcons.Copy, onOpenDuplicates),
         SettingsCategory(stringResource(R.string.settings_main_about_title), stringResource(R.string.settings_main_about_subtitle), TablerIcons.InfoCircle, onOpenAbout),
     )
 

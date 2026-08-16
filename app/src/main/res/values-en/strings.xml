@@ -77,6 +77,8 @@
     <string name="common_all">All</string>
 
     <!-- Settings: main screen -->
+    <string name="settings_main_account_title">Account</string>
+    <string name="settings_main_account_subtitle">Sign in, cross-device cloud sync, AniList</string>
     <string name="settings_main_appearance_title">Appearance</string>
     <string name="settings_main_appearance_subtitle">Language, Theme, Library</string>
     <string name="settings_main_sources_title">Manga sources</string>
@@ -87,15 +89,16 @@
     <string name="settings_main_storage_subtitle">Translation cache, Image cache</string>
     <string name="settings_main_downloads_title">Downloads</string>
     <string name="settings_main_downloads_subtitle">Download folder, Wi-Fi, Manage</string>
-    <string name="settings_main_update_check_title">Check for new chapters</string>
-    <string name="settings_main_update_check_subtitle">Interval, Notifications</string>
-    <string name="settings_main_services_title">Services</string>
-    <string name="settings_main_services_subtitle">Cloud sync, MyAnimeList, Kitsu, MangaUpdates</string>
+    <string name="settings_main_update_check_title">Chapter updates</string>
+    <string name="settings_main_update_check_subtitle">New-chapter check interval, Notifications</string>
+    <string name="settings_main_services_title">Trackers</string>
+    <string name="settings_main_services_subtitle">MyAnimeList, Kitsu, MangaUpdates</string>
     <string name="settings_main_backup_title">Backup &amp; restore</string>
     <string name="settings_main_backup_subtitle">Library backup, Settings backup, Mihon import</string>
+    <string name="settings_main_duplicates_title">Duplicate detector</string>
     <string name="settings_main_duplicates_subtitle">Find duplicates in your library</string>
     <string name="settings_main_about_title">About</string>
-    <string name="settings_main_about_subtitle">Version, Updates</string>
+    <string name="settings_main_about_subtitle">App version, App updates</string>
 
     <!-- Settings: Appearance -->
     <string name="settings_appearance_theme_title">Theme</string>
@@ -226,9 +229,7 @@
     <string name="settings_update_notify_downloads_desc">Notify when a chapter download finishes or fails</string>
 
     <!-- Settings: Services -->
-    <string name="settings_services_title">Services</string>
-    <string name="settings_services_account_section">Account</string>
-    <string name="settings_services_account_button">Sign in &amp; Cloud sync</string>
+    <string name="settings_services_title">Trackers</string>
     <string name="settings_services_logged_in">Signed in</string>
     <string name="settings_services_logout">Sign out</string>
     <string name="settings_services_mal_login_desc">Sign in via MAL OAuth to sync tracking.</string>

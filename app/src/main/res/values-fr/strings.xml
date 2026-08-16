@@ -74,6 +74,8 @@
     <string name="common_all">Tous</string>
 
     <!-- Paramètres : écran principal -->
+    <string name="settings_main_account_title">Compte</string>
+    <string name="settings_main_account_subtitle">Connexion, synchronisation cloud entre appareils, AniList</string>
     <string name="settings_main_appearance_title">Apparence</string>
     <string name="settings_main_appearance_subtitle">Langue, Thème, Bibliothèque</string>
     <string name="settings_main_sources_title">Sources de manga</string>
@@ -84,15 +86,16 @@
     <string name="settings_main_storage_subtitle">Cache de traduction, Cache d\'images</string>
     <string name="settings_main_downloads_title">Téléchargements</string>
     <string name="settings_main_downloads_subtitle">Dossier de téléchargement, Wi-Fi, Gestion</string>
-    <string name="settings_main_update_check_title">Vérifier les nouveaux chapitres</string>
-    <string name="settings_main_update_check_subtitle">Intervalle, Notifications</string>
-    <string name="settings_main_services_title">Services</string>
-    <string name="settings_main_services_subtitle">Sync cloud, MyAnimeList, Kitsu, MangaUpdates</string>
+    <string name="settings_main_update_check_title">Mises à jour des chapitres</string>
+    <string name="settings_main_update_check_subtitle">Intervalle de vérification des nouveaux chapitres, Notifications</string>
+    <string name="settings_main_services_title">Trackers</string>
+    <string name="settings_main_services_subtitle">MyAnimeList, Kitsu, MangaUpdates</string>
     <string name="settings_main_backup_title">Sauvegarder et restaurer</string>
     <string name="settings_main_backup_subtitle">Sauvegarde bibliothèque, Sauvegarde paramètres, Import Mihon</string>
+    <string name="settings_main_duplicates_title">Détecteur de doublons</string>
     <string name="settings_main_duplicates_subtitle">Rechercher les doublons dans la bibliothèque</string>
     <string name="settings_main_about_title">À propos</string>
-    <string name="settings_main_about_subtitle">Version, Mises à jour</string>
+    <string name="settings_main_about_subtitle">Version de l\'appli, Mises à jour de l\'appli</string>
 
     <!-- Paramètres : Apparence -->
     <string name="settings_appearance_theme_title">Thème</string>
@@ -223,9 +226,7 @@
     <string name="settings_update_notify_downloads_desc">Notifie quand un téléchargement de chapitre se termine ou échoue</string>
 
     <!-- Paramètres : Services -->
-    <string name="settings_services_title">Services</string>
-    <string name="settings_services_account_section">Compte</string>
-    <string name="settings_services_account_button">Connexion &amp; Sync cloud</string>
+    <string name="settings_services_title">Trackers</string>
     <string name="settings_services_logged_in">Connecté</string>
     <string name="settings_services_logout">Se déconnecter</string>
     <string name="settings_services_mal_login_desc">Connectez-vous via MAL OAuth pour synchroniser le suivi.</string>
