@@ -32,6 +32,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
@@ -157,105 +158,6 @@ fun ComicKHomeScreen(
         containerColor = Color.Transparent,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         snackbarHost = { SnackbarHost(snackbarHostState) },
-        topBar = {
-            Column(modifier = Modifier.statusBarsPadding()) {
-                if (searchActive) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        IconButton(onClick = {
-                            searchActive = false
-                            searchViewModel.setQuery("")
-                            searchViewModel.search()
-                        }) {
-                            Icon(TablerIcons.ArrowLeft, contentDescription = stringResource(R.string.common_back), tint = TextPrimary)
-                        }
-                        Row(
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(42.dp)
-                                .clip(RoundedCornerShape(50.dp))
-                                .background(Color.White.copy(alpha = 0.06f))
-                                .border(1.dp, if (searchQuery.isNotEmpty()) Violet.copy(alpha = 0.5f) else Color.White.copy(alpha = 0.08f), RoundedCornerShape(50.dp))
-                                .padding(horizontal = 14.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Icon(TablerIcons.Search, contentDescription = null, tint = TextSecondary.copy(alpha = 0.6f), modifier = Modifier.size(16.dp))
-                            BasicTextField(
-                                value = searchQuery,
-                                onValueChange = { searchViewModel.setQuery(it) },
-                                singleLine = true,
-                                textStyle = TextStyle(color = TextPrimary, fontSize = 14.sp),
-                                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                                keyboardActions = KeyboardActions(onSearch = { searchViewModel.search() }),
-                                decorationBox = { inner ->
-                                    Box(modifier = Modifier.weight(1f).padding(horizontal = 10.dp)) {
-                                        if (searchQuery.isEmpty()) {
-                                            Text(stringResource(R.string.comick_browse_search_placeholder), color = TextSecondary.copy(alpha = 0.5f), fontSize = 14.sp)
-                                        }
-                                        inner()
-                                    }
-                                },
-                                modifier = Modifier.weight(1f).focusRequester(searchFocusRequester),
-                            )
-                            if (searchQuery.isNotEmpty()) {
-                                IconButton(onClick = { searchViewModel.setQuery(""); searchViewModel.search() }, modifier = Modifier.size(28.dp)) {
-                                    Icon(TablerIcons.X, contentDescription = stringResource(R.string.common_clear), tint = TextSecondary, modifier = Modifier.size(15.dp))
-                                }
-                            }
-                        }
-                    }
-                } else {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(
-                            "ComicK",
-                            color = TextPrimary,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 20.sp,
-                            modifier = Modifier
-                                .weight(1f)
-                                .pointerInput(Unit) { detectTapGestures(onLongPress = { showPreferences = true }) },
-                        )
-                        IconButton(onClick = { searchActive = true }) {
-                            Icon(TablerIcons.Search, contentDescription = stringResource(R.string.common_search), tint = TextSecondary)
-                        }
-                    }
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        // "Domu" uz neni prepinatelna zalozka (Aktualizace je od teď rovnou
-                        // soucasti Domu, viz uzivatelsky pozadavek) - zustava jako vizualni
-                        // "jsi tady" indikator. Misto Aktualizace je tlacitko na Prochazet
-                        // (search+filtry obrazovka, viz ComicKBrowseScreen).
-                        Button(
-                            onClick = {},
-                            modifier = Modifier.weight(1f),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Violet.copy(alpha = 0.2f),
-                                contentColor = Violet,
-                            ),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, Violet.copy(alpha = 0.5f)),
-                            elevation = null,
-                        ) { Text(stringResource(R.string.comick_home_tab_home), fontSize = 13.sp) }
-                        Button(
-                            onClick = onOpenBrowse,
-                            modifier = Modifier.weight(1f),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Color.Transparent,
-                                contentColor = TextSecondary,
-                            ),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, TextSecondary.copy(alpha = 0.15f)),
-                            elevation = null,
-                        ) { Text(stringResource(R.string.main_screen_tab_browse), fontSize = 13.sp) }
-                    }
-                }
-            }
-        },
     ) { innerPadding ->
         Box(
             modifier = Modifier.fillMaxSize().background(screenGradient).padding(innerPadding),
@@ -263,52 +165,102 @@ fun ComicKHomeScreen(
             if (searchActive) {
                 val navBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
                 val gridState = rememberLazyGridState()
-                when {
-                    searchLoading && searchResults.isEmpty() -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { JiyuLoadingIndicator() }
-                    searchError != null && searchResults.isEmpty() -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(32.dp)) {
-                            Text(stringResource(R.string.comick_home_load_failed), color = TextSecondary, fontSize = 14.sp)
-                            Text(searchError ?: "", color = TextSecondary.copy(alpha = 0.6f), fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp, bottom = 16.dp))
-                            OutlinedButton(onClick = { searchViewModel.search() }) { Text(stringResource(R.string.common_retry), color = Violet) }
+                val headerContent: @Composable () -> Unit = {
+                    ComicKHomeHeader(
+                        searchActive = true,
+                        searchQuery = searchQuery,
+                        searchFocusRequester = searchFocusRequester,
+                        onBackFromSearch = {
+                            searchActive = false
+                            searchViewModel.setQuery("")
+                            searchViewModel.search()
+                        },
+                        onQueryChange = { searchViewModel.setQuery(it) },
+                        onSearchSubmit = { searchViewModel.search() },
+                        onClearQuery = { searchViewModel.setQuery(""); searchViewModel.search() },
+                        onSearchIconClick = {},
+                        onTitleLongPress = {},
+                        onOpenBrowse = onOpenBrowse,
+                    )
+                }
+                LazyVerticalGrid(
+                    state = gridState,
+                    columns = GridCells.Adaptive(minSize = 110.dp),
+                    contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 0.dp, bottom = 16.dp + navBottom),
+                    modifier = Modifier.fillMaxSize(),
+                ) {
+                    item(span = { GridItemSpan(maxLineSpan) }) { headerContent() }
+                    when {
+                        searchLoading && searchResults.isEmpty() -> item(span = { GridItemSpan(maxLineSpan) }) {
+                            Box(Modifier.fillMaxWidth().padding(vertical = 48.dp), contentAlignment = Alignment.Center) { JiyuLoadingIndicator() }
                         }
-                    }
-                    searchQuery.isBlank() -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text(stringResource(R.string.comick_home_search_hint), color = TextSecondary, fontSize = 14.sp)
-                    }
-                    searchResults.isEmpty() -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text(stringResource(R.string.comick_home_empty), color = TextSecondary, fontSize = 14.sp)
-                    }
-                    else -> LazyVerticalGrid(
-                        state = gridState,
-                        columns = GridCells.Adaptive(minSize = 110.dp),
-                        contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 10.dp, bottom = 16.dp + navBottom),
-                        modifier = Modifier.fillMaxSize(),
-                    ) {
-                        gridItems(searchResults, key = { it.sourceId + it.url }) { manga ->
+                        searchError != null && searchResults.isEmpty() -> item(span = { GridItemSpan(maxLineSpan) }) {
+                            Box(Modifier.fillMaxWidth().padding(vertical = 32.dp), contentAlignment = Alignment.Center) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(32.dp)) {
+                                    Text(stringResource(R.string.comick_home_load_failed), color = TextSecondary, fontSize = 14.sp)
+                                    Text(searchError ?: "", color = TextSecondary.copy(alpha = 0.6f), fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp, bottom = 16.dp))
+                                    OutlinedButton(onClick = { searchViewModel.search() }) { Text(stringResource(R.string.common_retry), color = Violet) }
+                                }
+                            }
+                        }
+                        searchQuery.isBlank() -> item(span = { GridItemSpan(maxLineSpan) }) {
+                            Box(Modifier.fillMaxWidth().padding(vertical = 48.dp), contentAlignment = Alignment.Center) {
+                                Text(stringResource(R.string.comick_home_search_hint), color = TextSecondary, fontSize = 14.sp)
+                            }
+                        }
+                        searchResults.isEmpty() -> item(span = { GridItemSpan(maxLineSpan) }) {
+                            Box(Modifier.fillMaxWidth().padding(vertical = 48.dp), contentAlignment = Alignment.Center) {
+                                Text(stringResource(R.string.comick_home_empty), color = TextSecondary, fontSize = 14.sp)
+                            }
+                        }
+                        else -> gridItems(searchResults, key = { it.sourceId + it.url }) { manga ->
                             ComicKMangaCard(manga = manga, onClick = { searchViewModel.openManga(manga, onOpenManga) })
                         }
                     }
                 }
             } else {
+            val headerContent: @Composable () -> Unit = {
+                ComicKHomeHeader(
+                    searchActive = false,
+                    searchQuery = searchQuery,
+                    searchFocusRequester = searchFocusRequester,
+                    onBackFromSearch = {},
+                    onQueryChange = {},
+                    onSearchSubmit = {},
+                    onClearQuery = {},
+                    onSearchIconClick = { searchActive = true },
+                    onTitleLongPress = { showPreferences = true },
+                    onOpenBrowse = onOpenBrowse,
+                )
+            }
             when {
-                loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        JiyuLoadingIndicator()
-                        Text(stringResource(R.string.comick_home_loading), color = TextSecondary, fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp))
+                loading -> Column(Modifier.fillMaxSize()) {
+                    headerContent()
+                    Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            JiyuLoadingIndicator()
+                            Text(stringResource(R.string.comick_home_loading), color = TextSecondary, fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp))
+                        }
                     }
                 }
-                error != null -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(32.dp)) {
-                        Text(stringResource(R.string.comick_home_load_failed), color = TextSecondary, fontSize = 14.sp)
-                        Text(error ?: "", color = TextSecondary.copy(alpha = 0.6f), fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp, bottom = 16.dp))
-                        OutlinedButton(onClick = { viewModel.retry() }) { Text(stringResource(R.string.common_retry), color = Violet) }
+                error != null -> Column(Modifier.fillMaxSize()) {
+                    headerContent()
+                    Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(32.dp)) {
+                            Text(stringResource(R.string.comick_home_load_failed), color = TextSecondary, fontSize = 14.sp)
+                            Text(error ?: "", color = TextSecondary.copy(alpha = 0.6f), fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp, bottom = 16.dp))
+                            OutlinedButton(onClick = { viewModel.retry() }) { Text(stringResource(R.string.common_retry), color = Violet) }
+                        }
                     }
                 }
                 else -> {
                     val feed = topFeed
                     if (feed == null) {
-                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            Text(stringResource(R.string.comick_home_empty), color = TextSecondary, fontSize = 14.sp)
+                        Column(Modifier.fillMaxSize()) {
+                            headerContent()
+                            Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                                Text(stringResource(R.string.comick_home_empty), color = TextSecondary, fontSize = 14.sp)
+                            }
                         }
                     } else {
                         val navBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
@@ -333,6 +285,7 @@ fun ComicKHomeScreen(
                         }
 
                         LazyColumn(state = homeListState, contentPadding = PaddingValues(bottom = 16.dp + navBottom)) {
+                            item { headerContent() }
                             item {
                                 val recentlyAddedLabel = stringResource(R.string.comick_home_recently_added)
                                 val completedLabel = stringResource(R.string.comick_home_completed)
@@ -452,6 +405,114 @@ fun ComicKHomeScreen(
                 showPreferences = false
             },
         )
+    }
+}
+
+@Composable
+private fun ComicKHomeHeader(
+    searchActive: Boolean,
+    searchQuery: String,
+    searchFocusRequester: FocusRequester,
+    onBackFromSearch: () -> Unit,
+    onQueryChange: (String) -> Unit,
+    onSearchSubmit: () -> Unit,
+    onClearQuery: () -> Unit,
+    onSearchIconClick: () -> Unit,
+    onTitleLongPress: () -> Unit,
+    onOpenBrowse: () -> Unit,
+) {
+    Column(modifier = Modifier.statusBarsPadding()) {
+        if (searchActive) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                IconButton(onClick = onBackFromSearch) {
+                    Icon(TablerIcons.ArrowLeft, contentDescription = stringResource(R.string.common_back), tint = TextPrimary)
+                }
+                Row(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(42.dp)
+                        .clip(RoundedCornerShape(50.dp))
+                        .background(Color.White.copy(alpha = 0.06f))
+                        .border(1.dp, if (searchQuery.isNotEmpty()) Violet.copy(alpha = 0.5f) else Color.White.copy(alpha = 0.08f), RoundedCornerShape(50.dp))
+                        .padding(horizontal = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(TablerIcons.Search, contentDescription = null, tint = TextSecondary.copy(alpha = 0.6f), modifier = Modifier.size(16.dp))
+                    BasicTextField(
+                        value = searchQuery,
+                        onValueChange = onQueryChange,
+                        singleLine = true,
+                        textStyle = TextStyle(color = TextPrimary, fontSize = 14.sp),
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                        keyboardActions = KeyboardActions(onSearch = { onSearchSubmit() }),
+                        decorationBox = { inner ->
+                            Box(modifier = Modifier.weight(1f).padding(horizontal = 10.dp)) {
+                                if (searchQuery.isEmpty()) {
+                                    Text(stringResource(R.string.comick_browse_search_placeholder), color = TextSecondary.copy(alpha = 0.5f), fontSize = 14.sp)
+                                }
+                                inner()
+                            }
+                        },
+                        modifier = Modifier.weight(1f).focusRequester(searchFocusRequester),
+                    )
+                    if (searchQuery.isNotEmpty()) {
+                        IconButton(onClick = onClearQuery, modifier = Modifier.size(28.dp)) {
+                            Icon(TablerIcons.X, contentDescription = stringResource(R.string.common_clear), tint = TextSecondary, modifier = Modifier.size(15.dp))
+                        }
+                    }
+                }
+            }
+        } else {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    "ComicK",
+                    color = TextPrimary,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 20.sp,
+                    modifier = Modifier
+                        .weight(1f)
+                        .pointerInput(Unit) { detectTapGestures(onLongPress = { onTitleLongPress() }) },
+                )
+                IconButton(onClick = onSearchIconClick) {
+                    Icon(TablerIcons.Search, contentDescription = stringResource(R.string.common_search), tint = TextSecondary)
+                }
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                // "Domu" uz neni prepinatelna zalozka (Aktualizace je od teď rovnou
+                // soucasti Domu, viz uzivatelsky pozadavek) - zustava jako vizualni
+                // "jsi tady" indikator. Misto Aktualizace je tlacitko na Prochazet
+                // (search+filtry obrazovka, viz ComicKBrowseScreen).
+                Button(
+                    onClick = {},
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Violet.copy(alpha = 0.2f),
+                        contentColor = Violet,
+                    ),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Violet.copy(alpha = 0.5f)),
+                    elevation = null,
+                ) { Text(stringResource(R.string.comick_home_tab_home), fontSize = 13.sp) }
+                Button(
+                    onClick = onOpenBrowse,
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color.Transparent,
+                        contentColor = TextSecondary,
+                    ),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, TextSecondary.copy(alpha = 0.15f)),
+                    elevation = null,
+                ) { Text(stringResource(R.string.main_screen_tab_browse), fontSize = 13.sp) }
+            }
+        }
     }
 }
 
