@@ -4,6 +4,29 @@
 > vidět v historii commitů a v popisech jednotlivých vydání na GitHubu; zpětně to sem
 > nedopisuju, abych si nevymýšlel.
 
+## v1.2.24
+
+### Kapacita: dva noví free-tier provideři (Cerebras, Mistral)
+Fallback řetězec pro AI překlad měl jen tři nezávislé služby (Gemini/Groq/
+OpenRouter) - když všechny vyčerpaly denní kvótu, appka hlásila "denní
+limit vyčerpán". Přibyly dva další, oba bez placení a bez karty:
+Cerebras (stejný model jako Groq, ale ~5x větší denní rozpočet) a
+Mistral (nezávislá evropská alternativa se silnou podporou češtiny).
+
+### Quota-aware ProviderHealth
+Appka dřív po odmítnutí providera čekala napevno 15 minut, protože
+nepoznala limit "na minutu" od vyčerpané denní kvóty. Teď čte skutečné
+navržené čekání přímo z odpovědi providera (Retry-After hlavička u
+Groq/OpenRouter/Cerebras/Mistral, tělo odpovědi u Gemini) a použije ho
+přesně - žádné zbytečné čekání ani zbytečné předčasné zkoušení
+vyčerpaného providera.
+
+### Žánrové tón-pravidlo a kontext pro novely
+Překlad teď zohledňuje demografické cílení díla (shónen/šódžo/seinen/
+džosei), pokud ho appka zná ze žánrových štítků. Novely navíc konečně
+dostávají stejný kontext o díle (název/typ/žánry) jako manga - dřív
+model při překladu novely nevěděl ani název díla.
+
 ## v1.2.23
 
 ### Oprava: bílý pruh přes sousední bublinu a kresbu
