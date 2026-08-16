@@ -485,6 +485,7 @@
     <string name="detail_comments_empty">No comments yet.</string>
     <string name="detail_comments_load_more">Load more</string>
     <string name="detail_comments_open_on_comick">Open on ComicK</string>
+    <string name="detail_comments_replying_to">↳ Reply to %1$s</string>
     <string name="detail_recommendations_button">Recommended</string>
     <string name="detail_recommendations_title">Recommendations</string>
     <string name="detail_recommendations_empty">No recommendations for this title yet.</string>

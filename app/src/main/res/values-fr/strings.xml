@@ -482,6 +482,7 @@
     <string name="detail_comments_empty">Pas encore de commentaires.</string>
     <string name="detail_comments_load_more">Charger plus</string>
     <string name="detail_comments_open_on_comick">Ouvrir sur ComicK</string>
+    <string name="detail_comments_replying_to">↳ Réponse à %1$s</string>
     <string name="detail_recommendations_button">Recommandé</string>
     <string name="detail_recommendations_title">Recommandations</string>
     <string name="detail_recommendations_empty">Pas encore de recommandations pour ce titre.</string>

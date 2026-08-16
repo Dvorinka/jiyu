@@ -1486,9 +1486,15 @@ private fun originationFlag(contentType: String?): String = when (contentType) {
  * odsazeného Column, takže se odsazení sčítalo (16+38dp na úroveň) a u delších
  * vláken vytlačilo text komentáře prakticky mimo obrazovku (uživatelský report
  * se screenshotem). ComicK nezachovává hlubší strom vláken ve svém vlastním UI
- * ani on - i tam se hlubší odpovědi zobrazí na stejné úrovni jako první odpověď. */
-private fun flattenReplies(replies: List<ComicKComment>): List<ComicKComment> =
-    replies.flatMap { reply -> listOf(reply) + flattenReplies(reply.replies) }
+ * ani on - i tam se hlubší odpovědi zobrazí na stejné úrovni jako první odpověď.
+ *
+ * Aby se zploštěním neztratilo, KOMU kdo odpovídá (druhá uživatelská připomínka -
+ * "musíme poznat, že jsou to odpovědi"), nese každá zplošťěná odpověď jméno
+ * uživatele, na kterého přímo reaguje - u odpovědi přímo na kořenový komentář je
+ * null (to je vidět z jediné úrovně odsazení), u odpovědi na odpověď je to jméno
+ * rodičovské odpovědi, vykreslené jako "↳ Odpověď uživateli X" nad textem. */
+private fun flattenReplies(replies: List<ComicKComment>, replyingTo: String? = null): List<Pair<ComicKComment, String?>> =
+    replies.flatMap { reply -> listOf(reply to replyingTo) + flattenReplies(reply.replies, replyingTo = reply.username) }
 
 /** Jeden komentář z [detail_comments_title] sekce - všechny odpovědi (i vnořené,
  * viz [flattenReplies]) se vykreslí na jedné pevné odsazené úrovni pod ním. */
@@ -1496,14 +1502,14 @@ private fun flattenReplies(replies: List<ComicKComment>): List<ComicKComment> =
 private fun CommentCard(comment: ComicKComment) {
     Column(modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp)) {
         CommentRow(comment)
-        flattenReplies(comment.replies).forEach { reply ->
-            CommentRow(reply, modifier = Modifier.padding(start = 38.dp, top = 8.dp))
+        flattenReplies(comment.replies).forEach { (reply, replyingTo) ->
+            CommentRow(reply, replyingTo = replyingTo, modifier = Modifier.padding(start = 38.dp, top = 8.dp))
         }
     }
 }
 
 @Composable
-private fun CommentRow(comment: ComicKComment, modifier: Modifier = Modifier) {
+private fun CommentRow(comment: ComicKComment, replyingTo: String? = null, modifier: Modifier = Modifier) {
     Row(modifier = modifier, verticalAlignment = Alignment.Top) {
         AsyncImage(
             model = comment.avatarUrl,
@@ -1512,6 +1518,16 @@ private fun CommentRow(comment: ComicKComment, modifier: Modifier = Modifier) {
             modifier = Modifier.size(28.dp).clip(RoundedCornerShape(50)).background(NightBlue),
         )
         Column(modifier = Modifier.padding(start = 10.dp).weight(1f)) {
+            if (replyingTo != null) {
+                Text(
+                    text = stringResource(R.string.detail_comments_replying_to, replyingTo),
+                    color = Violet.copy(alpha = 0.8f),
+                    fontSize = 11.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(bottom = 2.dp),
+                )
+            }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(comment.username, color = TextPrimary, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
                 Text(

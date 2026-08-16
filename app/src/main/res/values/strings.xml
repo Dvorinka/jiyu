@@ -504,6 +504,7 @@
     <string name="detail_comments_empty">Zatím žádné komentáře.</string>
     <string name="detail_comments_load_more">Načíst další</string>
     <string name="detail_comments_open_on_comick">Otevřít na ComicK</string>
+    <string name="detail_comments_replying_to">↳ Odpověď uživateli %1$s</string>
     <string name="detail_recommendations_button">Doporučené</string>
     <string name="detail_recommendations_title">Doporučené tituly</string>
     <string name="detail_recommendations_empty">K tomuhle titulu nejsou žádná doporučení.</string>
