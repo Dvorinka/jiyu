@@ -252,7 +252,7 @@ fun ComicKBrowseScreen(
 /** Jeden řádek výsledku hledání - foto/název/počet kapitol, jak to má ComicK Search,
  * jen bez pořadového čísla a bez úryvku popisu (uživatelský požadavek). */
 @Composable
-private fun ComicKSearchResultRow(manga: SManga, onClick: () -> Unit) {
+internal fun ComicKSearchResultRow(manga: SManga, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()

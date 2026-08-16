@@ -31,11 +31,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.GridItemSpan
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items as gridItems
-import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
@@ -164,7 +159,7 @@ fun ComicKHomeScreen(
         ) {
             if (searchActive) {
                 val navBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-                val gridState = rememberLazyGridState()
+                val searchListState = rememberLazyListState()
                 val headerContent: @Composable () -> Unit = {
                     ComicKHomeHeader(
                         searchActive = true,
@@ -183,18 +178,21 @@ fun ComicKHomeScreen(
                         onOpenBrowse = onOpenBrowse,
                     )
                 }
-                LazyVerticalGrid(
-                    state = gridState,
-                    columns = GridCells.Adaptive(minSize = 110.dp),
-                    contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 0.dp, bottom = 16.dp + navBottom),
+                // Vysledky hledani jsou kompaktni radky (nahled + nazev + pocet kapitol),
+                // stejne jako na ComicK Prochazet (viz ComicKSearchResultRow) - ne mrizka
+                // velkych karet, aby se dalo rychle prochazet vic shod najednou, stejne
+                // jako to dela vyhledavaci napoveda primo na comick.io.
+                LazyColumn(
+                    state = searchListState,
+                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp + navBottom),
                     modifier = Modifier.fillMaxSize(),
                 ) {
-                    item(span = { GridItemSpan(maxLineSpan) }) { headerContent() }
+                    item { headerContent() }
                     when {
-                        searchLoading && searchResults.isEmpty() -> item(span = { GridItemSpan(maxLineSpan) }) {
+                        searchLoading && searchResults.isEmpty() -> item {
                             Box(Modifier.fillMaxWidth().padding(vertical = 48.dp), contentAlignment = Alignment.Center) { JiyuLoadingIndicator() }
                         }
-                        searchError != null && searchResults.isEmpty() -> item(span = { GridItemSpan(maxLineSpan) }) {
+                        searchError != null && searchResults.isEmpty() -> item {
                             Box(Modifier.fillMaxWidth().padding(vertical = 32.dp), contentAlignment = Alignment.Center) {
                                 Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(32.dp)) {
                                     Text(stringResource(R.string.comick_home_load_failed), color = TextSecondary, fontSize = 14.sp)
@@ -203,18 +201,18 @@ fun ComicKHomeScreen(
                                 }
                             }
                         }
-                        searchQuery.isBlank() -> item(span = { GridItemSpan(maxLineSpan) }) {
+                        searchQuery.isBlank() -> item {
                             Box(Modifier.fillMaxWidth().padding(vertical = 48.dp), contentAlignment = Alignment.Center) {
                                 Text(stringResource(R.string.comick_home_search_hint), color = TextSecondary, fontSize = 14.sp)
                             }
                         }
-                        searchResults.isEmpty() -> item(span = { GridItemSpan(maxLineSpan) }) {
+                        searchResults.isEmpty() -> item {
                             Box(Modifier.fillMaxWidth().padding(vertical = 48.dp), contentAlignment = Alignment.Center) {
                                 Text(stringResource(R.string.comick_home_empty), color = TextSecondary, fontSize = 14.sp)
                             }
                         }
-                        else -> gridItems(searchResults, key = { it.sourceId + it.url }) { manga ->
-                            ComicKMangaCard(manga = manga, onClick = { searchViewModel.openManga(manga, onOpenManga) })
+                        else -> items(searchResults, key = { it.sourceId + it.url }) { manga ->
+                            ComicKSearchResultRow(manga = manga, onClick = { searchViewModel.openManga(manga, onOpenManga) })
                         }
                     }
                 }
