@@ -4,6 +4,38 @@
 > vidět v historii commitů a v popisech jednotlivých vydání na GitHubu; zpětně to sem
 > nedopisuju, abych si nevymýšlel.
 
+## v1.2.26
+
+### ComicK: opravy a grafika na míru zbytku appky
+Stejná úprava jako u hlavičky na Domů z minulé verze teď platí i pro
+obrazovku jednotlivých zdrojů (MangaDex, MANGA Plus, Hitomi.La atd.) -
+záhlaví se zpět tlačítkem/hledáním/filtrem/přepínačem Populární-Nejnovější
+odjíždí pryč se scrollem místo aby zabíralo místo napořád. Vyhledávání na
+ComicK Domů teď navíc zobrazuje výsledky jako kompaktní řádky (náhled +
+název + počet kapitol) místo mřížky velkých karet - stejně jako to má
+ComicK vlastní vyhledávací nápověda.
+
+### Komentáře: odsazení odpovědí přestalo utíkat mimo obrazovku
+U delších vláken se odsazení každé další úrovně odpovědi sčítalo, takže
+text nakonec vytlačilo skoro celý mimo obrazovku. Všechny odpovědi, i
+vícekrát vnořené, se teď zobrazují na jedné pevné odsazené úrovni pod
+rodičovským komentářem - a protože se tím ztrácelo, komu kdo přesně
+odpovídá, přibyl u vnořených odpovědí štítek "↳ Odpověď uživateli X".
+
+### Předvolby aktualizací a doporučené tituly
+Sekce Typ/Demografie/Obsah pro dospělé v Předvolbách aktualizací teď
+používají checkboxy s popiskem (stejně jako ComicK vlastní stránka
+Preferences) místo pilulkových chipů bez vysvětlení a rozbitého
+zmáčklého checkboxu. Sheet "Doporučené tituly" se navíc přizpůsobuje
+skutečnému počtu doporučení místo aby se vždy natáhl na 85 % obrazovky
+s prázdnou plochou pod jednou dvěma kartami.
+
+### Filtry na Procházet - přehlednější a bez nechtěného zavírání
+Mezi sekcemi filtrů (Řazení/Typ/Demografie/Stav/Žánry/Tagy...) přibyla
+oddělovací čára a výraznější nadpisy i chipy, takže dlouhá zeď pilulek
+u Žánrů/Tagů je čitelnější. Opravený i bug, kdy rychlý fling nahoru hned
+po dojetí na konec seznamu zavřel celý sheet.
+
 ## v1.2.25
 
 ### Hlavička na ComicK Domů už nezůstává přilepená nahoře
