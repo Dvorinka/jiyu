@@ -4,6 +4,13 @@
 > vidět v historii commitů a v popisech jednotlivých vydání na GitHubu; zpětně to sem
 > nedopisuju, abych si nevymýšlel.
 
+## v1.2.30
+
+### Nová ikona appky
+Nahrazuje původní fialové dveře za nový design - otevřenou knihu, jejíž stránky se rozpadají
+do zářících fragmentů. Doladěná i barva pozadí adaptive icon, aby seděla s novým logem na
+všech tvarech masky (kruh, čtverec se zaoblenými rohy).
+
 ## v1.2.29
 
 ### Bezpečnost: vlastní podpisový klíč a šifrovaná session účtu
