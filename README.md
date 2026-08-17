@@ -4,14 +4,36 @@
 
 ## English
 
-Personal Android reader for manga/manhwa/comics/light novels, with its own
-extension architecture (like Tachiyomi/Kotatsu) and a built-in AI translator.
-Strictly personal use, no paid APIs or libraries.
+Personal Android reader for manga, manhwa, manhua, American comics and light
+novels, with its own extension architecture (like Tachiyomi/Kotatsu) and a
+built-in AI translator. Strictly personal use, no paid APIs or libraries.
 
 > **Note:** the translator is tuned mainly for Czech (compression rules,
 > hyphenation, glossary prompts - all written with Czech output in mind), but
 > the target language is just a free-text setting, so other languages work
 > too, just with less-tuned prompts.
+
+### Two ways to browse
+
+During first-run setup (and any time after, in Settings → Manga sources)
+you choose how the app should feel:
+
+- **Aggregated catalog (ComicK style)** - one unified catalog pulled from
+  comick.io's own API: browsing, search, filters, genres/tags, translation
+  groups, comments and a live updates feed all look and behave like the real
+  ComicK website. Actually reading a chapter is resolved automatically behind
+  the scenes - the app cross-checks every real reading source it knows for
+  that title and opens the one that actually has the chapter you asked for,
+  or the closest match if none has it exactly, so it never silently lands
+  you on a source whose translation has stalled or only started much later.
+  This mode covers manga, manhwa and manhua only - no light novels, no
+  American comics.
+- **Manual source browsing** - the classic way: browse and pick from all
+  110+ built-in sources one by one, including light novels and American
+  comics.
+
+Both modes share the same downloaded library and reading history, so
+switching later doesn't lose anything.
 
 ### Running it
 
@@ -31,49 +53,77 @@ Tests: `./gradlew testDebugUnitTest`. Build APK: `./gradlew assembleDebug`.
 - OkHttp + Jsoup - HTTP and HTML parsing for sources without an official API
 - Coil - images, DataStore - settings
 - ML Kit Text Recognition (EN/JP/CN/KR) - on-device OCR
-- Gemini / Groq / OpenRouter - LLM translation, routed through a Supabase
-  Edge Function acting as a proxy (the app never holds API keys, the client
-  only calls its own backend)
-- Supabase - auth, cloud library sync, community features
+- Gemini, Groq, OpenRouter, Cerebras and Mistral - five independent LLM
+  providers chained together as translation fallbacks, all routed through a
+  Supabase Edge Function acting as a proxy (the app never holds API keys,
+  the client only ever calls its own backend)
+- Supabase - authentication (Google sign-in through Android's Credential
+  Manager, or plain email/password), cloud library sync, community features
 
 ### Features
 
-**Sources** - 60+ `MangaSource` implementations (manga, manhwa, American
-comics, light novels). MangaDex and ComicK go through official APIs, the rest
-are scrapers for specific sites or the generic Madara template
-(`source/madara`), where adding a new site is just a base URL.
+**Sources** - 110+ `MangaSource` implementations (manga, manhwa, manhua,
+American comics, light novels). MangaDex, ComicK and MANGA Plus go through
+official APIs, the rest are scrapers for specific sites or the generic
+Madara template (`source/madara`), where adding a new site is just a base
+URL.
 
 **Reader** - horizontal and webtoon mode, reads downloaded files or streams
-straight from the URL, never opens a browser.
+straight from the URL, never opens a browser. Configurable page zoom (fit
+width, fit height, fit screen, or stretch), double-page spread in landscape,
+automatic cropping of blank page borders, an OLED-friendly pure black
+background between pages, a fullscreen toggle, adjustable webtoon scroll
+speed, automatic advance to the next chapter, and background pre-translation
+of the next chapter so it's already waiting when you get there.
 
 **AI bubble translation** - OCR finds the text and the bubble's actual shape
-(not just a bounding box), the LLM translates with context about the work and
-a glossary of proper nouns (the glossary learns new terms on the fly from the
-model's own answers), then the overlay renders the text back into the bubble
-shape with shrink-to-fit sizing. If one model hits a rate limit, the chain
-automatically falls back to the next one (Gemini → Groq → OpenRouter).
+(not just a rectangular box), the LLM translates with context about the work
+and a glossary of proper nouns (the glossary learns new terms on the fly
+from the model's own answers), then the overlay renders the text back into
+the bubble shape with shrink-to-fit sizing. If one provider hits a rate
+limit, the chain automatically falls back to the next one. The renderer also
+catches and quietly fixes common translation-quality slips on its own -
+leftover untranslated text, stray punctuation dropped onto its own line,
+wrong spacing around punctuation, and words broken mid-way without a hyphen.
 
-**Offline downloads** - a WorkManager worker downloads a whole chapter in the
-background, optionally zips it into a `.cbz`. Chapters are saved under a
+**Offline downloads** - a WorkManager worker downloads a whole chapter in
+the background, optionally zips it into a `.cbz`. Chapters are saved under a
 readable `Manga Title/0012 - Chapter Name` structure, so you can just copy
 them to a PC.
 
+**Account & cloud sync** - optional sign-in with Google or with email and
+password (Supabase-backed). Once signed in, the library, reading history and
+settings sync across every device you use, and ComicK titles unlock
+community features - comments with reply threads, personalized
+recommendations, and update-check preferences (which content types,
+demographics and maturity ratings to include when the app looks for new
+chapters).
+
 **Library & tracking** - categories, reading history, reading goals,
-statistics, duplicate-title detection, AniList/MyAnimeList sync, library and
-settings backup/restore (JSON export/import), sharing a manga via QR code, a
-home screen widget, cross-device library sync through Supabase.
+statistics, duplicate-title detection, AniList/MyAnimeList/Kitsu/MangaUpdates
+sync, library and settings backup/restore (JSON export/import), sharing a
+manga via QR code, a home screen widget.
+
+**First-run setup** - a short guided setup on first launch: app language,
+browsing mode (aggregated vs. manual, see above), reading direction and
+style, download folder, and age/privacy (crash reporting is opt-in and off
+by default). Nothing asked here is required to use the app, and every choice
+can be changed later in Settings.
 
 ### Architecture
 
-- `source/` - the `MangaSource` interface + one implementation per source.
-  A new source is just a new class, nothing else in the app needs to change.
+- `source/` - the `MangaSource` interface + one implementation per source,
+  plus `source/comick/` for the ComicK API client and the chapter resolver
+  that finds a readable source for a title opened in aggregated mode.
 - `data/db/` - Room (library, chapters, download state, history)
 - `data/repository/` - the single place that combines sources + database
 - `download/` - WorkManager worker for background downloads
 - `translate/` - the whole translation pipeline: OCR → bubble shape
   detection → LLM client → glossary → layout/render overlay
 - `sync/`, `anilist/`, `auth/` - cloud sync and tracker integrations
-- `ui/` - Compose screens + ViewModels, one folder per screen
+- `ui/` - Compose screens + ViewModels, one folder per screen (`ui/comickhome`
+  and `ui/resolver` cover the aggregated catalog, `ui/account` the cloud
+  account)
 
 ### What's next
 
@@ -86,14 +136,35 @@ home screen widget, cross-device library sync through Supabase.
 
 ## Čeština
 
-Osobní Android reader na manga/manhwu/komiksy/light novely s vlastní extension
-architekturou (jako Tachiyomi/Kotatsu) a zabudovaným AI překladačem. Čistě pro
-osobní použití, žádné placené API ani knihovny.
+Osobní Android reader na manga/manhwu/manhuu/americké komiksy/light novely
+s vlastní extension architekturou (jako Tachiyomi/Kotatsu) a zabudovaným AI
+překladačem. Čistě pro osobní použití, žádné placené API ani knihovny.
 
 > **Poznámka:** překladač je laděný hlavně na češtinu (kompresní pravidla,
 > dělení slov, glosářové prompty - všechno psané s ohledem na český výstup),
 > ale cílový jazyk je jen textové nastavení, takže fungují i jiné jazyky,
 > jen s méně doladěnými prompty.
+
+### Dva styly procházení
+
+Při prvním spuštění (a kdykoli potom v Nastavení → Zdroje mang) si vybereš,
+jak má appka fungovat:
+
+- **Agregovaný katalog (styl ComicK)** - jeden sjednocený katalog tažený
+  přímo z API comick.io: procházení, hledání, filtry, žánry/tagy,
+  překladatelské skupiny, komentáře i živý feed aktualizací vypadají a
+  fungují stejně jako skutečný web ComicK. Samotné čtení kapitoly se řeší
+  automaticky na pozadí - appka projde všechny reálné čtecí zdroje, které
+  pro daný titul zná, a otevře ten, který skutečně má požadovanou kapitolu,
+  případně nejbližší dostupnou, pokud ji nemá žádný přesně - takže tě nikdy
+  potichu nepošle na zdroj, jehož překlad už dávno skončil nebo teprve
+  nedávno začal. Tenhle režim pokrývá jen mangu, manhwu a manhuu - bez light
+  novel a bez amerických komiksů.
+- **Ruční výběr zdrojů** - klasický způsob: procházíš a vybíráš z 110+
+  vestavěných zdrojů jednotlivě, včetně light novel a amerických komiksů.
+
+Oba režimy sdílejí stejnou staženou knihovnu a historii čtení, takže
+přepnutí později nic nesmaže.
 
 ### Jak spustit
 
@@ -109,43 +180,69 @@ Testy: `./gradlew testDebugUnitTest`. Build APK: `./gradlew assembleDebug`.
 ### Stack
 
 - Kotlin + Jetpack Compose, Hilt (DI), Room (lokální DB)
-- WorkManager - stahování kapitol a periodická kontrola nových kapitol na pozadí
+- WorkManager - stahování kapitol a periodická kontrola nových kapitol na
+  pozadí
 - OkHttp + Jsoup - HTTP a HTML parsing pro zdroje bez oficiálního API
 - Coil - obrázky, DataStore - nastavení
 - ML Kit Text Recognition (EN/JP/CN/KR) - OCR přímo na zařízení
-- Gemini / Groq / OpenRouter - LLM překlad, přes Supabase Edge Function jako
-  proxy (appka nikdy nedrží API klíče, klient jen volá vlastní backend)
-- Supabase - auth, cloud sync knihovny, komunitní funkce
+- Gemini, Groq, OpenRouter, Cerebras a Mistral - pět nezávislých LLM
+  poskytovatelů zapojených jako zálohy za sebou, všechno přes Supabase Edge
+  Function jako proxy (appka nikdy nedrží API klíče, klient jen volá vlastní
+  backend)
+- Supabase - přihlášení (Google přes Android Credential Manager, nebo klasicky
+  e-mail a heslo), cloud sync knihovny, komunitní funkce
 
 ### Co umí
 
-**Zdroje** - 60+ implementací `MangaSource` (manga, manhwa, americké komiksy,
-light novely). Mangadex a ComicK běží přes oficiální API, zbytek jsou scrapery
-na konkrétní stránky nebo generická Madara šablona (`source/madara`), kam stačí
-dodat jen base URL nového webu.
+**Zdroje** - 110+ implementací `MangaSource` (manga, manhwa, manhua, americké
+komiksy, light novely). MangaDex, ComicK a MANGA Plus běží přes oficiální
+API, zbytek jsou scrapery na konkrétní stránky nebo generická Madara šablona
+(`source/madara`), kam stačí dodat jen base URL nového webu.
 
 **Čtečka** - horizontální i webtoon mód, čte stažené soubory nebo streamuje
-přímo z URL, nikdy neotevírá browser.
+přímo z URL, nikdy neotevírá browser. Nastavitelné přiblížení stránky (na
+šířku, na výšku, na obrazovku, nebo roztáhnout), dvoustránkové zobrazení na
+šířku, automatický ořez prázdných bílých okrajů, čistě černé pozadí mezi
+stránkami šetřící OLED displej, přepínač celé obrazovky, nastavitelná
+rychlost scrollování u webtoonu, automatický přechod na další kapitolu a
+přednačítání překladu další kapitoly na pozadí, aby byla hned připravená.
 
-**AI překlad bublin** - OCR najde text a tvar bubliny (ne jen obdélníkový box),
-LLM přeloží s ohledem na kontext díla a glosář vlastních jmen (glosář se učí
-za běhu z odpovědí modelu), overlay pak text vyrenderuje zpátky do tvaru
-bubliny se shrink-to-fit velikostí písma. Když jeden model narazí na limit,
-řetězec automaticky zkusí další (Gemini → Groq → OpenRouter).
+**AI překlad bublin** - OCR najde text a skutečný tvar bubliny (ne jen
+obdélníkový box), LLM přeloží s ohledem na kontext díla a glosář vlastních
+jmen (glosář se učí za běhu z odpovědí modelu), overlay pak text vyrenderuje
+zpátky do tvaru bubliny se shrink-to-fit velikostí písma. Když jeden
+poskytovatel narazí na limit, řetězec automaticky zkusí dalšího. Vykreslovač
+si navíc sám hlídá a potichu opravuje časté chyby kvality překladu -
+nepřeložené zbytky původního textu, osamocenou interpunkci na vlastním
+řádku, špatné mezery kolem interpunkce a slova rozlomená napůl bez pomlčky.
 
 **Offline stahování** - WorkManager worker stáhne celou kapitolu na pozadí,
 volitelně zabalí do `.cbz`. Kapitoly se ukládají pod čitelnou strukturou
 `Název mangy/0012 - Název kapitoly`, jde je normálně zkopírovat na PC.
 
+**Účet a cloud sync** - volitelné přihlášení přes Google nebo e-mail a heslo
+(běží na Supabase). Po přihlášení se knihovna, historie čtení i nastavení
+synchronizují mezi všemi zařízeními, a u titulů na ComicK se navíc odemknou
+komunitní funkce - komentáře s vlákny odpovědí, doporučené tituly na míru a
+předvolby kontroly aktualizací (jaké typy obsahu, demografie a hodnocení pro
+dospělé se mají brát v úvahu při hledání nových kapitol).
+
 **Knihovna a sledování** - kategorie, historie čtení, cíle čtení, statistiky,
-detekce duplicitně přidaných titulů, sync s AniList/MyAnimeList, záloha/obnova
-knihovny i nastavení (JSON export/import), sdílení mangy přes QR kód, widget
-na plochu, sync knihovny mezi zařízeními přes Supabase.
+detekce duplicitně přidaných titulů, sync s AniList/MyAnimeList/Kitsu/
+MangaUpdates, záloha/obnova knihovny i nastavení (JSON export/import),
+sdílení mangy přes QR kód, widget na plochu.
+
+**Úvodní nastavení** - krátký průvodce při prvním spuštění: jazyk appky,
+styl procházení (agregovaný vs. ruční, viz výše), styl a směr čtení, složka
+pro stahování a věk/soukromí (hlášení pádů je volitelné a ve výchozím stavu
+vypnuté). Nic z toho není pro používání appky povinné a všechno jde kdykoli
+změnit v Nastavení.
 
 ### Architektura
 
-- `source/` - rozhraní `MangaSource` + jedna implementace na zdroj. Nový zdroj
-  = nová třída, nic dalšího se v appce měnit nemusí.
+- `source/` - rozhraní `MangaSource` + jedna implementace na zdroj, plus
+  `source/comick/` s klientem ComicK API a resolverem kapitol, který k
+  titulu otevřenému v agregovaném režimu najde skutečný čtecí zdroj.
 - `data/db/` - Room (knihovna, kapitoly, stav stažení, historie)
 - `data/repository/` - jediné místo, které kombinuje zdroje + databázi
 - `download/` - WorkManager worker pro stahování na pozadí
@@ -153,6 +250,8 @@ na plochu, sync knihovny mezi zařízeními přes Supabase.
   LLM klient → glosář → layout/render overlay
 - `sync/`, `anilist/`, `auth/` - cloud sync a tracker integrace
 - `ui/` - Compose obrazovky + ViewModely, po jedné složce na obrazovku
+  (`ui/comickhome` a `ui/resolver` mají na starosti agregovaný katalog,
+  `ui/account` cloudový účet)
 
 ### Co dál
 
