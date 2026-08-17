@@ -4,6 +4,21 @@
 > vidět v historii commitů a v popisech jednotlivých vydání na GitHubu; zpětně to sem
 > nedopisuju, abych si nevymýšlel.
 
+## v1.2.28
+
+### Onboarding: nový krok pro výběr stylu procházení
+Appka měla dva prohlížecí styly (agregovaný ComicK katalog vs. ruční výběr
+z jednotlivých zdrojů) schované jen v Nastavení, bez vysvětlení rozdílu.
+Onboarding teď přidává vlastní krok, který oba styly popíše (včetně toho,
+že agregovaný ComicK režim neobsahuje novely ani americké komiksy) a
+připomene, že volba jde kdykoli později změnit v Nastavení → Zdroje mang.
+Zároveň odstraněna prázdná úvodní věta na kroku Věk a soukromí.
+
+### README
+Aktualizace na skutečný stav appky - 110+ zdrojů místo 60+, popis obou
+prohlížecích stylů, účtu a cloud syncu, komunitních funkcí na ComicK a
+rozšířeného nastavení čtečky.
+
 ## v1.2.27
 
 ### Překlad: pět oprav vykreslování a kvality textu v bublinách

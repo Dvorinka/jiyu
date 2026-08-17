@@ -41,8 +41,9 @@ switching later doesn't lose anything.
 2. Sync should just work - all dependencies are standard (Compose, Room,
    Hilt, Coil, OkHttp, WorkManager, ML Kit) and come from
    `google()`/`mavenCentral()`.
-3. `minSdk 26` / `targetSdk 34` - runs on an emulator or a real device
-   (Android 8.0+).
+3. `minSdk 33` / `targetSdk 36` - runs on an emulator or a real device
+   (Android 13+; the floor is set by an AGSL shader effect used in the reader
+   that doesn't exist on older Android versions).
 
 Tests: `./gradlew testDebugUnitTest`. Build APK: `./gradlew assembleDebug`.
 
@@ -172,8 +173,9 @@ přepnutí později nic nesmaže.
 2. Sync by měl proběhnout bez zásahu - všechny závislosti jsou standardní
    (Compose, Room, Hilt, Coil, OkHttp, WorkManager, ML Kit) a táhnou se
    z `google()`/`mavenCentral()`.
-3. `minSdk 26` / `targetSdk 34` - spustí se na emulátoru i fyzickém zařízení
-   (Android 8.0+).
+3. `minSdk 33` / `targetSdk 36` - spustí se na emulátoru i fyzickém zařízení
+   (Android 13+; hranici dané verzí drží AGSL shader efekt v čtečce, který
+   na starších Androidech neexistuje).
 
 Testy: `./gradlew testDebugUnitTest`. Build APK: `./gradlew assembleDebug`.
 
