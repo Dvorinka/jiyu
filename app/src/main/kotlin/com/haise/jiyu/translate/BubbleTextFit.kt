@@ -136,6 +136,29 @@ const val ABSOLUTE_MIN_FONT_SP = 4f
 fun minTranslationFontSp(textScale: Float): Float =
     (ABSOLUTE_MIN_FONT_SP * textScale).coerceAtMost(ABSOLUTE_MIN_FONT_SP)
 
+/**
+ * Šířka nejdelšího NEDĚLITELNÉHO úseku textu - vstup pro [TextMeasurement.longestWordWidthPx],
+ * pojistku [fitFontSizeToBox] proti rozseknutí slova uprostřed po písmenech (viz její doc
+ * komentář).
+ *
+ * Slovo se soft hyphenem (viz [hyphenationSegments]) NENÍ jeden nedělitelný kus, i když
+ * neobsahuje mezeru - smí se rozlomit přesně tam, kam ho model/appka označila jako platné
+ * místo zlomu. Bez tohohle rozdělení se dřív měřila šířka CELÉHO slova (i s rozdělovníkem)
+ * jako atomická jednotka - a když se ani tak nevešla do žádné velikosti až po podlahu,
+ * [fitFontSizeToBox] se vzdal (`fits()` nikdy neprošlo) a vrátil velikost, při které Compasův
+ * VLASTNÍ nouzový zlom slovo rozsekl úplně JINDE, než kam rozdělovník ukazoval - nahlášeno:
+ * "PANTEŘÍ" s rozdělovníkem "Pante­rí" (platný, 5+2 písmen) se vykreslilo jako "PANTER"/"Í".
+ *
+ * @param measureSegment šířka jednoho úseku BEZ zalamování (např. `softWrap = false` u Compose
+ *   TextMeasureru) - stejný princip jako u [TextMeasurement.longestWordWidthPx].
+ */
+internal fun longestIndivisibleRunWidthPx(text: String, measureSegment: (String) -> Float): Float =
+    text.split(' ', '\n')
+        .filter { it.isNotBlank() }
+        .flatMap { hyphenationSegments(it) }
+        .filter { it.isNotEmpty() }
+        .maxOfOrNull { measureSegment(it) } ?: 0f
+
 /** Hrubý krok prvního sestupu z [ShapeFitResult] hledání (viz [fitFontSizeToBox]). */
 private const val COARSE_STEP_SP = 2f
 

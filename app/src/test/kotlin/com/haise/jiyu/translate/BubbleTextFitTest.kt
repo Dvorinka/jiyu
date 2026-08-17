@@ -367,6 +367,60 @@ class BubbleTextFitTest {
         assertTrue("expected the old maximize behavior when preferredFontSp is null, got ${result.fontSp}", result.fontSp > 20f)
     }
 
+    // ── longestIndivisibleRunWidthPx (viz nahlášené "PANTEŘÍ" -> "PANTER"/"Í") ──
+
+    private val SH = 173.toChar().toString()
+
+    @Test
+    fun `a word with a soft hyphen measures by its longest SEGMENT, not the whole word`() {
+        // "Pante­rí" (5+2 pismen) neni jeden nedelitelny kus - smi se rozlomit presne tam,
+        // kam ukazuje rozdelovnik. Nejdelsi USEK je "Pante" (5 znaku), ne cele slovo (7 znaku).
+        val width = longestIndivisibleRunWidthPx("Pante${SH}rí houba") { it.length * 10f }
+        assertEquals(50f, width, 0.01f) // "Pante" = 5 znaku * 10px, delsi nez "rí" (2) i "houba" (5)
+    }
+
+    @Test
+    fun `a word with no soft hyphen still measures as a whole`() {
+        val width = longestIndivisibleRunWidthPx("Panterí houba") { it.length * 10f }
+        assertEquals(70f, width, 0.01f) // "Panterí" cele, zadny zlom k dispozici
+    }
+
+    @Test
+    fun `treating a hyphenatable word as atomic lets fitFontSizeToBox reject a size that actually fits`() {
+        // JADRO NALEZU: pri stare (atomicke) mere "Panterí" (7 znaku) je "moc siroke" pro box,
+        // ktery by ve skutecnosti pojal oba useky "Pante"/"rí" zvlast - fitFontSizeToBox se pak
+        // vzdal a vratil velikost, pri ktere Compose vlastni nouzovy zlom slovo rozsekl JINDE,
+        // nez kam rozdelovnik ukazoval (nahlaseno: "Pante­rí" -> vykresleno "PANTER"/"Í").
+        val text = "Pante${SH}rí houba"
+        val boxWidthPx = 55f // pojme "Pante" (50px) i "houba" (50px) zvlast, ale ne cele "Panterí" (70px)
+
+        fun measure(fontSp: Float, maxW: Float, useSegments: Boolean): TextMeasurement {
+            val charWidth = fontSp
+            val longest = if (useSegments) {
+                longestIndivisibleRunWidthPx(text) { it.length * charWidth }
+            } else {
+                text.split(' ', '\n').filter { it.isNotBlank() }.maxOf { it.length * charWidth }
+            }
+            return TextMeasurement(totalHeightPx = fontSp * 1.25f, lines = emptyList(), longestWordWidthPx = longest)
+        }
+
+        val withSegments = fitFontSizeToBox(
+            minFontSp = 6f, maxFontSp = 10f, boxWidthPx = boxWidthPx, maxHeightPx = 100f,
+            measure = { fontSp, maxW -> measure(fontSp, maxW, useSegments = true) },
+        )
+        val withoutSegments = fitFontSizeToBox(
+            minFontSp = 6f, maxFontSp = 10f, boxWidthPx = boxWidthPx, maxHeightPx = 100f,
+            measure = { fontSp, maxW -> measure(fontSp, maxW, useSegments = false) },
+        )
+
+        // Pri fontSp=10 (charWidth=10): "Pante"=50px se vejde do boxu 55px, cele "Panterí"=70px ne.
+        assertEquals("segmentove mereni musi dovolit plnou velikost 10sp", 10f, withSegments.fontSp, 0.01f)
+        assertTrue(
+            "atomicke mereni se zbytecne vzdava a smrsti pod plnou velikost (dostalo ${withoutSegments.fontSp})",
+            withoutSegments.fontSp < withSegments.fontSp,
+        )
+    }
+
     // ── minTranslationFontSp: podlaha velikosti písma ──
 
     @Test

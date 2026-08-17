@@ -112,4 +112,21 @@ class SoftHyphenationTest {
         assertTrue("appka si musí poradit sama, dostala „$fallback\"", fallback.contains(SH))
         assertTrue(isValidSyllableBreaks("poslední", fallback))
     }
+
+    // ── hyphenationSegments (viz longestIndivisibleRunWidthPx v BubbleTextFitTest) ──
+
+    @Test
+    fun `a word with one soft hyphen splits into two segments`() {
+        assertEquals(listOf("Pante", "rí"), hyphenationSegments("Pante${SH}rí"))
+    }
+
+    @Test
+    fun `a word with no soft hyphen is a single segment`() {
+        assertEquals(listOf("houba"), hyphenationSegments("houba"))
+    }
+
+    @Test
+    fun `a word with multiple soft hyphens splits into all its segments`() {
+        assertEquals(listOf("gravi", "ta", "ce"), hyphenationSegments("gravi${SH}ta${SH}ce"))
+    }
 }
