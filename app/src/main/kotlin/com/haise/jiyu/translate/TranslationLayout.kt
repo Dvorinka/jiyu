@@ -111,8 +111,11 @@ private fun layoutHeuristic(
         // Symetrická expanze kolem středu originálu - vizuálně stabilnější než nezávislé
         // roztažení každou stranou zvlášť (bublina pak "nesedí" mimo střed originálu).
         val center = (b.leftF + b.rightF) / 2f
-        val halfWidth = minOf(center - expandLimitLeft, expandLimitRight - center)
-            .coerceAtLeast((b.rightF - b.leftF) / 2f)
+        val halfWidth = minOf(
+            center - expandLimitLeft,
+            expandLimitRight - center,
+            ownWidth * expandFactor / 2f,
+        ).coerceAtLeast(ownWidth / 2f)
         val finalLeft = (center - halfWidth).coerceIn(0f, b.leftF)
         val finalRight = (center + halfWidth).coerceIn(b.rightF, 1f)
 
