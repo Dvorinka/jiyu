@@ -39,6 +39,28 @@ class BubbleMergeTest {
     }
 
     @Test
+    fun `merges a bold emphasis word with the normal-size rest of the same bubble`() {
+        // Reprodukuje uzivatelskou zpetnou vazbu (Vagabond kap. 2, str. 10): bublina
+        // "WHY DON'T YOU ASK ME ANYTHING?" ma prvni slovo VYSAZENE VETSIM/TUCNYM pismem
+        // (bezny komiksovy duraz), zbytek vety normalni velikosti o kus niz. Skutecne
+        // souradnice z OCR (RawTextBlock) na tehle strance:
+        //   "WH" (cast "WHY", tucne)  t=0.5400 b=0.5483 (vyska 0.0083)
+        //   "YOU ASK ME ANY..."       t=0.5708 b=0.6000 (2 radky, prumerna vyska 0.01083)
+        // Mezera mezi nimi (0.5708-0.5483=0.0225) je pres 2x prumerne vysky obou radku
+        // (0.0096), takze puvodni prah (0.9x) merge odmitl - "WH" pak zustalo osamocene,
+        // s bgUniform=false (lezi na okraji bubliny, ne v jejim rovnem vyplnenem stredu),
+        // coz spustilo SFX heuristiku ([BubbleClassifier.detectSfx]) a bublina se ukazala
+        // napůl anglicky, napůl cesky. hasWallBetween zustava skutecnou pojistkou proti
+        // spojeni doopravdy ruznych bublin - tady jde jen o uvolneni geometrie.
+        val a = block("WH", 0.7809f, 0.5400f, 0.8127f, 0.5483f)
+        val b = block("YOU ASK ME ANY", 0.7576f, 0.5708f, 0.8433f, 0.6000f)
+
+        val merged = mergeNearbyLines(listOf(a, b))
+
+        assertEquals(1, merged.size)
+    }
+
+    @Test
     fun `does not merge lines with a large gap`() {
         val a = block("Ahoj", 0.30f, 0.10f, 0.50f, 0.14f)
         val b = block("Nazdar", 0.30f, 0.50f, 0.50f, 0.54f)
