@@ -4,6 +4,32 @@
 > vidět v historii commitů a v popisech jednotlivých vydání na GitHubu; zpětně to sem
 > nedopisuju, abych si nevymýšlel.
 
+## v1.2.31
+
+### ComicK: automatický výběr zdroje a oprava počtu kapitol
+Appka dřív po otevření kapitoly v agregovaném ComicK režimu vždycky ukázala seznam nalezených
+zdrojů k ručnímu výběru - i když jeden z nich byl jasně nejlepší (přesně ta překladatelská
+skupina, co kapitolu přeložila, a s kompletním pokrytím). Appka teď vždy sama vybere a rovnou
+otevře nejvhodnější zdroj podle priority: oblíbený zdroj → stejná překladatelská skupina jako
+u otevírané kapitoly (Asura, Thunderscans, ...) → zdroj, co danou kapitolu má → nejúplnější
+pokrytí. Ruční seznam se ukáže jen když se nenajde žádný zdroj.
+
+Opraven i špatně zobrazovaný počet kapitol u ComicK titulů - ComicK eviduje jednu kapitolu
+vícekrát, jednou za každou skupinu, co ji přeložila, takže appka dřív sčítala všechny tyhle
+duplicity dohromady (titul se 156 kapitolami tak ukazoval "434 kapitol"). Teď se počítají
+unikátní čísla kapitol.
+
+### Nový zdroj: Thunderscans
+Hlavní doména thunderscans.com je bohužel hijacknutá - místo obsahu teď servíruje
+fingerprinting redirect na cizí doménu. Appka proto používá funkční anglický mirror
+(en-thunderscans.com).
+
+### Detekce tvaru bublin: doladění a záložní algoritmus
+Vylepšení heuristiky, která odhaduje přesný tvar bubliny z OCR textu - tolerantnější poměr
+tvaru k ploše textu, nová záložní metoda (paprskové skenování hranic) pro případy, kdy
+základní flood-fill selže, a strop na to, jak moc se odhadovaný obdélník bubliny může
+roztáhnout nad samotný OCR text.
+
 ## v1.2.30
 
 ### Nová ikona appky

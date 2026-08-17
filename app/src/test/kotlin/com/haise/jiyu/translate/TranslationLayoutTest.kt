@@ -54,25 +54,25 @@ class TranslationLayoutTest {
             "non-uniform background must expand less than uniform ($nonUniformWidth vs $uniformWidth)",
             nonUniformWidth < uniformWidth * 0.8f,
         )
-        // Uniformní bublina bez souseda roste až k okrajům stránky (existující chování).
-        assertEquals(1f, uniformWidth, 0.01f)
+        // Uniformní bublina bez souseda smí narůst nejvýše 3× vlastní OCR šířku.
+        assertEquals(0.6f, uniformWidth, 0.01f)
         // Pořád musí krýt aspoň vlastní OCR rozsah, jen se štědře nenafukovat navíc.
         assertTrue(nonUniformPositioned.leftF <= nonUniformBlock.leftF + 1e-4f)
         assertTrue(nonUniformPositioned.rightF >= nonUniformBlock.rightF - 1e-4f)
     }
 
     @Test
-    fun `single block expands horizontally to page edges but caps vertical growth when no neighbors`() {
-        // Vodorovně beze zbytku sousedů roste až k okrajům stránky (bezpečné - box se
-        // stejně zobrazí jen tak široký, jak potřebuje AutoFitTranslatedText).
+    fun `single block expands up to 3x own width but caps vertical growth when no neighbors`() {
+        // Vodorovně beze zbytku sousedů roste symetricky kolem středu, ale nikdy víc
+        // než 3× vlastní OCR šířku - jinak by box přetékal přes bublinu do kresby.
         // Svisle ALE MUSÍ mít strop i bez souseda: box teď fyzicky vyplňuje aspoň vlastní
         // rozsah bubliny (viz ReaderScreen.kt .heightIn(min=)), takže "žádný soused dole
         // = roztáhni box přes zbytek stránky" by v reálné appce vytvořilo obří box přes
         // spoustu prázdného pozadí (reprodukováno a opraveno na reálném zařízení).
         val positioned = layoutTranslationBlocks(listOf(block(0.4f, 0.2f, 0.6f, 0.25f)))
         assertEquals(1, positioned.size)
-        assertEquals(0f, positioned[0].leftF)
-        assertEquals(1f, positioned[0].rightF)
+        assertEquals(0.2f, positioned[0].leftF, 0.01f)
+        assertEquals(0.8f, positioned[0].rightF, 0.01f)
         assertTrue("vertical growth without a neighbor must stay bounded, not reach the page edge", positioned[0].maxBottomF < 0.5f)
         assertEquals(0.35f, positioned[0].maxBottomF, 0.01f)
     }
