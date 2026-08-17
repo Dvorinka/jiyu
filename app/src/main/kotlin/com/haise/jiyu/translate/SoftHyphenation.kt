@@ -6,7 +6,15 @@ package com.haise.jiyu.translate
  * neviditelný znak v souboru - ten je nebezpečný na dohledání/úpravu (viz podobný
  * incident s NUL bajtem v ChapterStorage.kt).
  */
-private val SOFT_HYPHEN: Char = 173.toChar()
+internal val SOFT_HYPHEN: Char = 173.toChar()
+
+/**
+ * Rozdělí [word] na kusy na měkkých rozdělovnících - pro účely měření "nejdelšího nedělitelného
+ * úseku" (viz [longestIndivisibleRunWidthPx]). Slovo se soft hyphenem NENÍ atomické, i když
+ * neobsahuje mezeru - smí se rozlomit přesně tam, kam ho model/appka označila jako platné místo
+ * zlomu (viz [isValidSyllableBreaks]/[ensureFallbackHyphens]).
+ */
+internal fun hyphenationSegments(word: String): List<String> = word.split(SOFT_HYPHEN)
 
 private val CZECH_VOWELS = "aeiouyáéíóúůýěAEIOUYÁÉÍÓÚŮÝĚ".toSet()
 

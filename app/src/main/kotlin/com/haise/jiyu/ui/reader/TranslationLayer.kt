@@ -73,6 +73,7 @@ import com.haise.jiyu.translate.fitTextToShape
 import com.haise.jiyu.translate.isSuspiciouslyTinyBubbleBox
 import com.haise.jiyu.translate.largestInscribedRect
 import com.haise.jiyu.translate.layoutTranslationBlocks
+import com.haise.jiyu.translate.longestIndivisibleRunWidthPx
 import com.haise.jiyu.translate.matchOriginalCase
 import com.haise.jiyu.translate.minTranslationFontSp
 import com.haise.jiyu.translate.renderBoxRect
@@ -681,16 +682,21 @@ private fun AutoFitTranslatedText(
                         bottomPx = measured.getLineBottom(i),
                     )
                 }
-                // Nejdelší JEDNOTLIVÉ slovo měřené BEZ šířkového omezení - jinak by ho Compose
+                // Nejdelší NEDĚLITELNÝ úsek měřený BEZ šířkového omezení - jinak by ho Compose
                 // sám zalomil a naměřená šířka by byla vždycky menší než limit, takže by
                 // kontrola v fitFontSizeToBox nikdy nic nezachytila. Tohle je jediná obrana
                 // proti tomu, aby se slovo rozsekalo uprostřed po písmenech ("KDYBYCH" ->
                 // "KDYB"/"YCH", viz uživatelská zpětná vazba).
-                val longestWordWidthPx = text.split(' ', '\n')
-                    .filter { it.isNotBlank() }
-                    .maxOfOrNull { word ->
-                        textMeasurer.measure(text = word, style = style, softWrap = false).size.width.toFloat()
-                    } ?: 0f
+                //
+                // longestIndivisibleRunWidthPx měří po ÚSECÍCH mezi soft hyphen zlomy, ne po
+                // celých slovech - slovo s rozdělovníkem (viz SoftHyphenation) NENÍ atomické,
+                // i když neobsahuje mezeru. Bez tohohle rozdělení se dřív měřila šířka CELÉHO
+                // slova i s rozdělovníkem, a když se ani tak nevešla, fitter se vzdal a Compose
+                // vlastní nouzový zlom slovo rozsekl JINDE, než kam rozdělovník ukazoval
+                // (nahlášeno: "Pante­rí" (platný zlom 5+2 písmen) vykresleno jako "PANTER"/"Í").
+                val longestWordWidthPx = longestIndivisibleRunWidthPx(text) { segment ->
+                    textMeasurer.measure(text = segment, style = style, softWrap = false).size.width.toFloat()
+                }
                 TextMeasurement(
                     totalHeightPx = measured.size.height + strokeReservePx,
                     lines = lines,
