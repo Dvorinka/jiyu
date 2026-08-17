@@ -221,7 +221,14 @@ fun SourceBrowseScreen(
                     modifier = Modifier.fillMaxSize(),
                     state = listState,
                 ) {
-                    item(span = { GridItemSpan(maxLineSpan) }) { headerContent() }
+                    // Zaporny horizontalni padding vyrusi mrizkovy contentPadding (12dp z kazde
+                    // strany) jen pro header - jinak by mel oproti loading/error/prazdnemu stavu
+                    // (headerContent() tam bez obalky primo v Column) navic i tenhle 12dp odsazeni
+                    // ze ctverecku a vypadal by "smrsklý" doprostred, i kdyz obalky nize maji sve
+                    // vlastni odsazeni schvalne (viz BrowseMangaCard).
+                    item(span = { GridItemSpan(maxLineSpan) }) {
+                        Box(modifier = Modifier.padding(horizontal = (-12).dp)) { headerContent() }
+                    }
                     items(results, key = { it.sourceId + it.url }) { manga ->
                         val isOpening = openingManga?.let { it.sourceId == manga.sourceId && it.url == manga.url } == true
                         BrowseMangaCard(manga = manga, isLoading = isOpening, onClick = {
