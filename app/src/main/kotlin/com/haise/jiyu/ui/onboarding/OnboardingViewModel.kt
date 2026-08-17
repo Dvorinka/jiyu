@@ -5,6 +5,7 @@ import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.os.LocaleListCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.haise.jiyu.settings.AppMode
 import com.haise.jiyu.settings.ReadingDirection
 import com.haise.jiyu.settings.ReadingMode
 import com.haise.jiyu.settings.SettingsRepository
@@ -32,6 +33,12 @@ class OnboardingViewModel @Inject constructor(
     private val _selectedLanguage = MutableStateFlow("cs")
     val selectedLanguage: StateFlow<String> = _selectedLanguage.asStateFlow()
 
+    // Vychozi hodnota kopiruje skutecny vychozi appMode v SettingsRepository (AppMode.SOURCES),
+    // aby predvybrana karta v onboardingu odpovidala tomu, co by platilo, kdyby uzivatel krok
+    // proste preskocil bez sahnuti na volbu.
+    private val _appMode = MutableStateFlow(AppMode.SOURCES)
+    val appMode: StateFlow<String> = _appMode.asStateFlow()
+
     private val _readingDir = MutableStateFlow(ReadingDirection.LTR)
     val readingDir: StateFlow<String> = _readingDir.asStateFlow()
 
@@ -51,7 +58,7 @@ class OnboardingViewModel @Inject constructor(
     private val _crashReporting = MutableStateFlow(false)
     val crashReporting: StateFlow<Boolean> = _crashReporting.asStateFlow()
 
-    val totalSteps = 5
+    val totalSteps = 6
 
     init {
         // Výchozí jazyk (cs) je v UI hned zaškrtnutý, ale dokud uživatel aktivně
@@ -66,6 +73,7 @@ class OnboardingViewModel @Inject constructor(
         AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags(tag))
     }
 
+    fun setAppMode(mode: String) { _appMode.value = mode }
     fun setReadingDir(dir: String) { _readingDir.value = dir }
     fun setReadingMode(mode: String) { _readingMode.value = mode }
     fun setDownloadFolderUri(uri: String?) { _downloadFolderUri.value = uri }
@@ -95,6 +103,7 @@ class OnboardingViewModel @Inject constructor(
     fun complete(onDone: () -> Unit) {
         viewModelScope.launch {
             kotlinx.coroutines.withContext(kotlinx.coroutines.NonCancellable) {
+                settings.setAppMode(_appMode.value)
                 settings.setReadingDirection(_readingDir.value)
                 settings.setReadingMode(_readingMode.value)
                 settings.setDownloadFolderUri(_downloadFolderUri.value)

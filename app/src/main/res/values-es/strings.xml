@@ -10,6 +10,14 @@
 
     <string name="onb_welcome_title">Bienvenido a Jiyu</string>
     <string name="onb_welcome_subtitle">Tu lector de manga.\nElige el idioma de la aplicación.</string>
+    <string name="onb_mode_title">Estilo de navegación</string>
+    <string name="onb_mode_subtitle">¿Cómo quieres buscar y leer los títulos?</string>
+    <string name="onb_mode_aggregated_title">Estilo agregado (ComicK)</string>
+    <string name="onb_mode_aggregated_desc">Un catálogo único con todos los títulos y grupos de traducción, igual que en comick.io. La forma más rápida de encontrar y leer manga, manhwa y manhua.</string>
+    <string name="onb_mode_aggregated_note">No incluye novelas ni cómics americanos.</string>
+    <string name="onb_mode_manual_title">Selección manual de fuentes</string>
+    <string name="onb_mode_manual_desc">Explora y elige las fuentes una por una, incluyendo novelas y cómics americanos. Más variedad, menos unificado.</string>
+    <string name="onb_mode_changeable">Se puede cambiar en cualquier momento en Ajustes → Fuentes de manga.</string>
     <string name="onb_reading_title">Estilo de lectura</string>
     <string name="onb_reading_subtitle">¿Cómo prefieres leer manga?</string>
     <string name="onb_reading_opt_ltr">De izquierda a derecha (manhwa, webtoon)</string>
@@ -1049,7 +1057,6 @@
 
     <!-- Krok onboardingu: vek a soukromi -->
     <string name="onb_privacy_title">Edad y privacidad</string>
-    <string name="onb_privacy_subtitle">Dos cosas claras antes de empezar.</string>
     <string name="onb_privacy_birthdate">Fecha de nacimiento</string>
     <string name="onb_privacy_birthdate_hint">Toca para elegir: desbloquea las fuentes para adultos</string>
     <string name="onb_privacy_data_title">Qué sale de tu teléfono</string>

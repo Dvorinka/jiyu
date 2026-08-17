@@ -65,6 +65,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.haise.jiyu.R
+import com.haise.jiyu.settings.AppMode
 import com.haise.jiyu.settings.ReadingDirection
 import com.haise.jiyu.settings.ReadingMode
 import com.haise.jiyu.ui.theme.Cyan
@@ -88,6 +89,7 @@ fun OnboardingScreen(
 ) {
     val step            by viewModel.step.collectAsState()
     val selectedLang    by viewModel.selectedLanguage.collectAsState()
+    val appMode         by viewModel.appMode.collectAsState()
     val readingDir      by viewModel.readingDir.collectAsState()
     val readingMode     by viewModel.readingMode.collectAsState()
     val downloadFolder  by viewModel.downloadFolderUri.collectAsState()
@@ -141,24 +143,28 @@ fun OnboardingScreen(
                         selectedLang = selectedLang,
                         onSelect = viewModel::setLanguage,
                     )
-                    1 -> ReadingStep(
+                    1 -> ModeStep(
+                        appMode = appMode,
+                        onSelect = viewModel::setAppMode,
+                    )
+                    2 -> ReadingStep(
                         readingDir = readingDir,
                         readingMode = readingMode,
                         onDirSelect = viewModel::setReadingDir,
                         onModeSelect = viewModel::setReadingMode,
                     )
-                    2 -> StorageStep(
+                    3 -> StorageStep(
                         folderUri = downloadFolder,
                         onPickFolder = { folderPicker.launch(null) },
                         onClearFolder = { viewModel.setDownloadFolderUri(null) },
                     )
-                    3 -> PrivacyStep(
+                    4 -> PrivacyStep(
                         birthDate = birthDate,
                         onPickDate = { showDatePicker = true },
                         crashReporting = crashReporting,
                         onCrashReportingChange = viewModel::setCrashReporting,
                     )
-                    4 -> DoneStep()
+                    5 -> DoneStep()
                 }
             }
 
@@ -282,7 +288,106 @@ private fun LanguageStep(selectedLang: String, onSelect: (String) -> Unit) {
     }
 }
 
-// ── Krok 2: Styl čtení ────────────────────────────────────────────────────────
+// ── Krok 2: Styl procházení (agregovaný vs. ruční výběr zdrojů) ────────────────
+@Composable
+private fun ModeStep(appMode: String, onSelect: (String) -> Unit) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        StepIcon(TablerIcons.Stack)
+        Spacer(Modifier.height(16.dp))
+        Text(
+            text = stringResource(R.string.onb_mode_title),
+            color = TextPrimary, fontSize = 26.sp, fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center,
+        )
+        Spacer(Modifier.height(8.dp))
+        Text(
+            text = stringResource(R.string.onb_mode_subtitle),
+            color = TextSecondary, fontSize = 15.sp, textAlign = TextAlign.Center,
+        )
+        Spacer(Modifier.height(28.dp))
+
+        ModeOptionCard(
+            title = stringResource(R.string.onb_mode_aggregated_title),
+            description = stringResource(R.string.onb_mode_aggregated_desc),
+            note = stringResource(R.string.onb_mode_aggregated_note),
+            selected = appMode == AppMode.COMICK,
+            onClick = { onSelect(AppMode.COMICK) },
+        )
+        Spacer(Modifier.height(10.dp))
+        ModeOptionCard(
+            title = stringResource(R.string.onb_mode_manual_title),
+            description = stringResource(R.string.onb_mode_manual_desc),
+            note = null,
+            selected = appMode == AppMode.SOURCES,
+            onClick = { onSelect(AppMode.SOURCES) },
+        )
+
+        Spacer(Modifier.height(12.dp))
+        Text(
+            text = stringResource(R.string.onb_mode_changeable),
+            color = TextSecondary, fontSize = 12.sp, textAlign = TextAlign.Center,
+        )
+    }
+}
+
+@Composable
+private fun ModeOptionCard(
+    title: String,
+    description: String,
+    note: String?,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(if (selected) GlowViolet.copy(alpha = 0.15f) else Color.White.copy(alpha = 0.05f))
+            .border(
+                1.dp,
+                if (selected) Violet else Color.White.copy(alpha = 0.12f),
+                RoundedCornerShape(12.dp),
+            )
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.Top,
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                color = if (selected) TextPrimary else TextSecondary,
+                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+                fontSize = 15.sp,
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = description,
+                color = TextSecondary, fontSize = 12.sp,
+            )
+            if (note != null) {
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = note,
+                    color = TextSecondary, fontSize = 12.sp, fontWeight = FontWeight.Medium,
+                )
+            }
+        }
+        if (selected) {
+            Spacer(Modifier.width(8.dp))
+            Box(
+                modifier = Modifier
+                    .size(20.dp)
+                    .background(Violet, CircleShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(TablerIcons.Check, contentDescription = null,
+                    tint = Color.White, modifier = Modifier.size(13.dp))
+            }
+        }
+    }
+}
+
+// ── Krok 3: Styl čtení ────────────────────────────────────────────────────────
 @Composable
 private fun ReadingStep(
     readingDir: String,
@@ -327,7 +432,7 @@ private fun ReadingStep(
     }
 }
 
-// ── Krok 3: Úložiště ──────────────────────────────────────────────────────────
+// ── Krok 4: Úložiště ──────────────────────────────────────────────────────────
 @Composable
 private fun StorageStep(
     folderUri: String?,
@@ -399,7 +504,7 @@ private fun StorageStep(
     }
 }
 
-// ── Krok 4: Věk a soukromí ────────────────────────────────────────────────────
+// ── Krok 5: Věk a soukromí ────────────────────────────────────────────────────
 /**
  * Jediné místo, kde appka nahlas říká, co z telefonu odchází - a jediné, kde se ptá na věk.
  *
@@ -420,11 +525,6 @@ private fun PrivacyStep(
             text = stringResource(R.string.onb_privacy_title),
             color = TextPrimary, fontSize = 26.sp, fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center,
-        )
-        Spacer(Modifier.height(8.dp))
-        Text(
-            text = stringResource(R.string.onb_privacy_subtitle),
-            color = TextSecondary, fontSize = 15.sp, textAlign = TextAlign.Center,
         )
         Spacer(Modifier.height(24.dp))
 
@@ -535,7 +635,7 @@ private fun PrivacyStep(
     }
 }
 
-// ── Krok 5: Dokončení ─────────────────────────────────────────────────────────
+// ── Krok 6: Dokončení ─────────────────────────────────────────────────────────
 @Composable
 private fun DoneStep() {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {

@@ -11,6 +11,14 @@
     <!-- Onboarding -->
     <string name="onb_welcome_title">Vítej v Jiyu</string>
     <string name="onb_welcome_subtitle">Tvůj manga čtečka.\nVyber jazyk aplikace.</string>
+    <string name="onb_mode_title">Styl procházení</string>
+    <string name="onb_mode_subtitle">Jak chceš v appce hledat a číst tituly?</string>
+    <string name="onb_mode_aggregated_title">Agregovaný styl (ComicK)</string>
+    <string name="onb_mode_aggregated_desc">Jeden katalog se všemi tituly a překladatelskými skupinami přesně jako na comick.io. Nejrychlejší způsob, jak najít a číst mangu, manhwu i manhuu.</string>
+    <string name="onb_mode_aggregated_note">Neobsahuje novely ani americké komiksy.</string>
+    <string name="onb_mode_manual_title">Ruční výběr zdrojů</string>
+    <string name="onb_mode_manual_desc">Procházíš a vybíráš zdroje jednotlivě, včetně novel a amerických komiksů. Větší výběr, méně sjednocené.</string>
+    <string name="onb_mode_changeable">Dá se kdykoli změnit v Nastavení → Zdroje mang.</string>
     <string name="onb_reading_title">Styl čtení</string>
     <string name="onb_reading_subtitle">Jak chceš číst manga?</string>
     <string name="onb_reading_opt_ltr">Zleva doprava (manhwa, webtoon)</string>
@@ -1038,7 +1046,6 @@
 
     <!-- Krok onboardingu: vek a soukromi -->
     <string name="onb_privacy_title">Věk a soukromí</string>
-    <string name="onb_privacy_subtitle">Než začneme, dvě věci na rovinu.</string>
     <string name="onb_privacy_birthdate">Datum narození</string>
     <string name="onb_privacy_birthdate_hint">Ťukni a vyber — odemyká zdroje pro dospělé</string>
     <string name="onb_privacy_data_title">Co odchází z telefonu</string>

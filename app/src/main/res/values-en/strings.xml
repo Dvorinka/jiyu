@@ -11,6 +11,14 @@
     <!-- Onboarding -->
     <string name="onb_welcome_title">Welcome to Jiyu</string>
     <string name="onb_welcome_subtitle">Your manga reader.\nChoose the app language.</string>
+    <string name="onb_mode_title">Browsing style</string>
+    <string name="onb_mode_subtitle">How do you want to find and read titles?</string>
+    <string name="onb_mode_aggregated_title">Aggregated style (ComicK)</string>
+    <string name="onb_mode_aggregated_desc">One catalog with all titles and translation groups, just like comick.io. The fastest way to find and read manga, manhwa, and manhua.</string>
+    <string name="onb_mode_aggregated_note">Doesn\'t include novels or American comics.</string>
+    <string name="onb_mode_manual_title">Manual source selection</string>
+    <string name="onb_mode_manual_desc">Browse and pick sources one by one, including novels and American comics. Wider selection, less unified.</string>
+    <string name="onb_mode_changeable">You can change this anytime in Settings → Manga sources.</string>
     <string name="onb_reading_title">Reading Style</string>
     <string name="onb_reading_subtitle">How do you prefer to read manga?</string>
     <string name="onb_reading_opt_ltr">Left to right (manhwa, webtoon)</string>
@@ -1029,7 +1037,6 @@
 
     <!-- Krok onboardingu: vek a soukromi -->
     <string name="onb_privacy_title">Age and privacy</string>
-    <string name="onb_privacy_subtitle">Two things up front, before we start.</string>
     <string name="onb_privacy_birthdate">Date of birth</string>
     <string name="onb_privacy_birthdate_hint">Tap to pick — unlocks adult sources</string>
     <string name="onb_privacy_data_title">What leaves your phone</string>
