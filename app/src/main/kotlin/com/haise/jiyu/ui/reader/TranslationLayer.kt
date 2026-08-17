@@ -296,7 +296,12 @@ fun TranslationOverlay(
     // spoustu prázdného pozadí) - použít ho jako MINIMUM by box nutilo vyplnit i prázdný
     // prostor, kde žádný originál nebyl. Skutečné minimum je vlastní OCR rozsah bubliny
     // (block.bottomF, ne maxBottomF) - to jediné je potřeba zakrýt, aby nikde neprosvítal originál.
-    val effectiveMinBottomF = pos.block.shape?.let { pos.maxBottomF } ?: pos.block.bottomF
+    //
+    // Výjimka: u bublin s rovnoměrným pozadím (či se známým tvarem) můžeme bezpečně použít
+    // maxBottomF, protože jednolitá výplň plynule splyne s bublinou a pokrývá celou oblast,
+    // ne jen písmena. U textu přes kresbu naopak zůstáváme na vlastním OCR rozsahu, aby
+    // záplata/pozadí nezakrývalo víc kresby, než je nutné.
+    val effectiveMinBottomF = if (pos.block.shape != null || pos.block.bgUniform) pos.maxBottomF else pos.block.bottomF
     val minH = (imageRect.height * (effectiveMinBottomF - pos.minTopF)).dp.coerceAtLeast(0.dp) + bleed * 2
     val maxH = (imageRect.height * (pos.maxBottomF - pos.minTopF)).dp.coerceAtLeast(0.dp) + bleed * 2
     if (isSuspiciouslyTinyBubbleBox(w.value, maxH.value)) {
