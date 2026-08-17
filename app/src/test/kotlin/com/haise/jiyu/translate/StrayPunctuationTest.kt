@@ -48,6 +48,40 @@ class StrayPunctuationTest {
     }
 
     @Test
+    fun `unicode space separators before the closing period are removed too`() {
+        // Nahlášeno se skutečnou stránkou (Vagabond, "A JSME UPRCHLÍCI" + osamocená tečka) -
+        // bublina seděla v JEDNÉ souvislé bublině (ověřeno vizuálně zoomem do screenshotu,
+        // žádný oddělený tvar/pozadí), takže šlo o zalomení, ne o ztracený OCR blok. Testy
+        // s obyčejnou mezerou/zlomem řádku výš ale prochází - podezření padlo na to, že model
+        // (teď i Cerebras/Mistral/Groq, ne jen Gemini) místo obyčejné mezery U+0020 občas
+        // vrátí jiný unicode "space" znak, který stará třída [ \t\n\r ] nezná, takže
+        // zalamovači zůstane nabídnutý zlom stát.
+        //
+        // Znaky se skládají z kódu přes [Char], ne jako literál v souboru - stejný důvod jako
+        // u SOFT_HYPHEN v SoftHyphenation.kt (neviditelný/těžko odlišitelný znak je nebezpečný
+        // na dohledání/úpravu přímo v souboru).
+        val emSpace = 0x2003.toChar()
+        val thinSpace = 0x2009.toChar()
+        val ideographicSpace = 0x3000.toChar()
+        val enSpace = 0x2002.toChar()
+        assertEquals("UPRCHLÍCI.", tidyStrandedPunctuation("UPRCHLÍCI$emSpace."))
+        assertEquals("UPRCHLÍCI.", tidyStrandedPunctuation("UPRCHLÍCI$thinSpace."))
+        assertEquals("UPRCHLÍCI.", tidyStrandedPunctuation("UPRCHLÍCI$ideographicSpace."))
+        assertEquals("UPRCHLÍCI.", tidyStrandedPunctuation("UPRCHLÍCI$enSpace."))
+    }
+
+    @Test
+    fun `a zero-width space before the closing period is removed too`() {
+        // Neviditelný znak (nulová šířka) je ještě zákeřnější než unicode mezera - v editoru/logu
+        // vypadá text úplně stejně jako správně slepený, takže bez tohohle testu by regrese
+        // prošla bez povšimnutí.
+        val zeroWidthSpace = 0x200B.toChar()
+        val zeroWidthNoBreakSpace = 0xFEFF.toChar() // BOM
+        assertEquals("UPRCHLÍCI.", tidyStrandedPunctuation("UPRCHLÍCI$zeroWidthSpace."))
+        assertEquals("UPRCHLÍCI.", tidyStrandedPunctuation("UPRCHLÍCI$zeroWidthNoBreakSpace."))
+    }
+
+    @Test
     fun `spacing inside the sentence is not touched`() {
         // Mezera před čárkou UPROSTŘED věty se nechává být: za ní text pokračuje, takže osamocený
         // řádek z ní vzniknout nemůže, a přepisovat uživateli text nad rámec nahlášené chyby nemá

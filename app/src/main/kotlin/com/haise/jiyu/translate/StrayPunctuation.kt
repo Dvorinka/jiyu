@@ -46,6 +46,14 @@ fun hasTranslatableLetters(text: String): Boolean = text.any { it.isLetter() }
  * Mezery/zlomy před koncovou interpunkcí. Podmínka „a za ní už jen mezery nebo konec" je to
  * podstatné - bez ní by pravidlo slepilo i úvodní výpustku dalšího slova (viz
  * [tidyStrandedPunctuation]).
+ *
+ * Třída záměrně nejde jen po ASCII mezeře/zlomu/NBSP - `\p{Zs}` pokrývá i ostatní unicode
+ * "space" znaky (EM/EN/THIN/IDEOGRAPHIC SPACE atd.), U+200B a U+FEFF jsou neviditelné znaky
+ * nulové šířky (zero-width space, BOM). Nahlášeno se skutečnou stránkou (Vagabond, "A JSME
+ * UPRCHLÍCI" + osamocená tečka), kde tahle přesná bublina prošla testy s obyčejnou mezerou
+ * beze změny - model (teď i Cerebras/Mistral/Groq, ne jen Gemini) místo U+0020 vrátil jiný
+ * "space" znak, který užší třída neznala, takže zalamovači zůstal nabídnutý zlom stát.
+ * Viz StrayPunctuationTest.
  */
 private val SPACE_BEFORE_TRAILING_PUNCTUATION =
-    Regex("[ \\t\\n\\r\\u00A0]+(?=[.,!?:;\\u2026]+[ \\t\\n\\r\\u00A0]*$)")
+    Regex("[\\s\\p{Zs}\\u00A0\\u200B\\uFEFF]+(?=[.,!?:;\\u2026]+[\\s\\p{Zs}\\u00A0\\u200B\\uFEFF]*$)")
