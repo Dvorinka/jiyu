@@ -52,13 +52,21 @@ internal fun originalMatches(returnedOriginal: String, expectedText: String): Bo
  *
  * Nepoužitelný je záznam, který chybí úplně (model bublinu vynechal), má prázdný překlad,
  * nese [GeminiUltraPrompt.UNTRANSLATED_MARKER] (model sám říká "tohle OCR nedává smysl"),
- * nebo jehož echované "original" neodpovídá tomu, co bublina doopravdy obsahovala (viz
- * [originalMatches] - model odpověděl na jinou bublinu). Ve všech případech patří bublina
- * mezi nepřeložené, ne mezi přeložené originálem nebo cizím textem.
+ * je podezřele doslovná kopie originálu (viz [isSuspiciousVerbatimCopy] - model bublinu jen
+ * "přeložil" zkopírováním, čtenář by pak viděl anglickou větu vysázenou jako hotový český
+ * překlad, přesně to tiché selhání, kterému se tenhle soubor snaží předejít), nebo jehož
+ * echované "original" neodpovídá tomu, co bublina doopravdy obsahovala (viz [originalMatches]
+ * - model odpověděl na jinou bublinu). Ve všech případech patří bublina mezi nepřeložené, ne
+ * mezi přeložené originálem nebo cizím textem.
+ *
+ * Dřív se [isSuspiciousVerbatimCopy] jen logovalo (viz `VerbatimCopy` log) - appka pak přesně
+ * takové bubliny vykreslila jako hotový překlad (nahlášeno: "HOW WE MAKE A LIVING."/"ABOUT
+ * WHAT?" zůstaly anglicky, i když okolní bubliny na stejné stránce přeložené byly).
  */
 internal fun isUsableTranslation(translation: GeminiBubbleTranslation?, expectedOriginal: String): Boolean {
     val text = translation?.translated?.trim() ?: return false
     if (text.isEmpty() || text == GeminiUltraPrompt.UNTRANSLATED_MARKER) return false
+    if (isSuspiciousVerbatimCopy(expectedOriginal, text)) return false
     return originalMatches(translation.original, expectedOriginal)
 }
 

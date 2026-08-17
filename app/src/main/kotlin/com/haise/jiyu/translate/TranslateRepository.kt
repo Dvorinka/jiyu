@@ -487,8 +487,13 @@ class TranslateRepository @Inject constructor(
                 // Stejné pravidlo jako u translateWithGemini: chybějící (kratší odpověď než
                 // vstup), prázdný i UNTRANSLATED_MARKER výsledek znamená NEPŘELOŽENO. Dřív se
                 // v prvních dvou případech potichu propadl originál a vykreslil se jako
-                // překlad - viz [TranslationMerge].
-                val usable = raw?.takeIf { it.isNotEmpty() && it != GeminiUltraPrompt.UNTRANSLATED_MARKER }
+                // překlad - viz [TranslationMerge]. Doslovná kopie originálu (viz
+                // isSuspiciousVerbatimCopy) je stejná třída selhání - bez tyhle kontroly appka
+                // klidně vykreslila anglickou větu jako hotový český překlad (nahlášeno: "HOW WE
+                // MAKE A LIVING."/"ABOUT WHAT?").
+                val usable = raw?.takeIf {
+                    it.isNotEmpty() && it != GeminiUltraPrompt.UNTRANSLATED_MARKER && !isSuspiciousVerbatimCopy(c.raw.text, it)
+                }
                 val isUntranslated = usable == null
                 val translated = usable ?: c.raw.text
                 if (!isUntranslated) {
