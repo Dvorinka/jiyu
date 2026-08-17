@@ -4,6 +4,31 @@
 > vidět v historii commitů a v popisech jednotlivých vydání na GitHubu; zpětně to sem
 > nedopisuju, abych si nevymýšlel.
 
+## v1.2.27
+
+### Překlad: pět oprav vykreslování a kvality textu v bublinách
+Živé procházení celé přeložené kapitoly odhalilo několik konkrétních chyb,
+každá opravená s testem, který přesně reprodukuje nahlášený případ:
+
+- **Anglický "překlad" doslovně zkopírovaný z originálu** se dřív vykreslil,
+  jako by šlo o hotový český text ("HOW WE MAKE A LIVING." zůstalo anglicky).
+  Appka teď takové odpovědi pozná a bublinu nechá radši nepřeloženou (čitelný
+  originál) než falešný "překlad".
+- **Osamocená tečka/čárka na vlastním řádku** ("ODLÉTÁME" + tečka pod tím) -
+  příčinou byla mezera před koncovou interpunkcí, kterou model občas napíše
+  jiným unicode znakem (širší mezera, neviditelný znak nulové šířky), který
+  appka dřív neuměla rozpoznat.
+- **Mezera před otazníkem/vykřičníkem** ("CO DĚLÁŠ ?") - čeština na rozdíl
+  od francouzštiny mezeru před `?!:;` nikdy nemá; appka ji teď sama odstraní,
+  i když ji model omylem nechá.
+- **Bublina napůl anglicky, napůl česky** - komiksový lettering občas sází
+  první slovo repliky větším/tučným písmem kvůli důrazu, což appka dřív
+  vyhodnotila jako dvě různé bubliny a přeložila jen tu druhou půlku věty.
+- **Slovo rozlomené uprostřed bez pomlčky** ("PANTEŘÍ" vykreslené jako
+  "PANTER"/"Í") - fitter velikosti písma měřil dělitelná slova jako jeden
+  nedělitelný kus, takže se zbytečně vzdával a spadl na Compose vlastní
+  nekontrolované zalomení.
+
 ## v1.2.26
 
 ### ComicK: opravy a grafika na míru zbytku appky
