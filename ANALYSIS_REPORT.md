@@ -61,8 +61,17 @@ This alone prevents the full-page horizontal spill shown in the screenshot.
 
 When `shape == null` and `bgUniform == true`, cast rays from the OCR box outward using `bgColorArgb` and stop at the first color discontinuity. This produces a conservative rectangular clip that follows the visible bubble boundary much better than `RoundedCornerShape(3.dp)` and avoids spilling into art.
 
-## 6. Verification
+## 6. Implemented long-term fix
 
-A unit test in `app/src/test/.../translate/LayoutHeuristicTest.kt` will reproduce the overflow with a synthetic `TranslatedBlock` and assert that the resulting box width never exceeds `3 ×` the original OCR width. After the fix, the same test should pass.
+The ray-cast fallback is implemented in [BubbleShapeDetector.edgeAwareShape] and is invoked from `OcrEngine` whenever `detectShape` returns `null` and the background is uniform (`bgUniform == true`). It casts rays from the OCR box outward, stops at the first color discontinuity (the bubble outline / page art), and returns a rectangular `BubbleShapePoint` list. `TranslationLayout` then treats it as a real shape, so the overlay is clipped to the bubble instead of being a 3× heuristic box.
 
-Full instrumented / visual verification on an emulator was skipped this session because the available system memory is low and the emulator keeps dying.
+`EdgeAwareShapeTest` and `LayoutHeuristicTest` cover the new code. The full `:app:testDebugUnitTest` suite passes.
+
+## 7. Visual comparison
+
+`/tmp/jiyu_bubble_fix_visual.png` shows a synthetic side-by-side demo:
+
+- **Left**: the 3× heuristic fallback still spills below the bubble.
+- **Right**: the edge-aware fallback is clipped to the actual bubble boundary and does not cover the background.
+
+Full instrumented verification on an emulator was skipped this session because the available system memory is low and the emulator keeps dying.

@@ -285,12 +285,34 @@ class OcrEngine @Inject constructor() {
             // jednu spojitou bilou plochu - flood-fill se pres ten pas prelije do sousedniho
             // laloku a vratil by tvar pokryvajici oba. Vypln by pak premalovala cizi text, a to
             // i text, ktery appka vubec neprelozila. Viz clampShapeToOwnLobe.
-            val shape = detected?.let {
-                clampShapeToOwnLobe(
-                    shape = it,
+            //
+            // Kdyz flood-fill selze (MAX_SHAPE_TO_TEXT_AREA_RATIO/odtekly obrys), pouzije se
+            // jeste jednodussi paprskovy fallback, ktery najde hranici bubliny pres barevnou
+            // zmenu okolo OCR boxu - viz [BubbleShapeDetector.edgeAwareShape].
+            val bgColor = averageArgb(bgSample.topArgb, bgSample.bottomArgb)
+            val shape = when {
+                detected != null -> clampShapeToOwnLobe(
+                    shape = detected,
                     own = block,
                     others = merged.filterIndexed { i, _ -> i != index },
                 )
+                bgSample.uniform -> BubbleShapeDetector.edgeAwareShape(
+                    source = pixelSource,
+                    width = bitmap.width,
+                    height = bitmap.height,
+                    leftF = block.leftF,
+                    topF = block.topF,
+                    rightF = block.rightF,
+                    bottomF = block.bottomF,
+                    bgColorArgb = bgColor,
+                )?.let { edgeShape ->
+                    clampShapeToOwnLobe(
+                        shape = edgeShape,
+                        own = block,
+                        others = merged.filterIndexed { i, _ -> i != index },
+                    )
+                }
+                else -> null
             }
             block.copy(
                 bgColorTopArgb = bgSample.topArgb,
@@ -353,7 +375,7 @@ class OcrEngine @Inject constructor() {
         val pixelSource = BitmapPixelSource(bitmap)
         blocks.map { tb ->
             if (tb.shape != null || tb.isSfx) return@map tb
-            val shape = BubbleShapeDetector.detectShape(
+            val detected = BubbleShapeDetector.detectShape(
                 source = pixelSource,
                 width = w,
                 height = h,
@@ -362,6 +384,40 @@ class OcrEngine @Inject constructor() {
                 textAreaPx = textAreaPx(tb.leftF, tb.topF, tb.rightF, tb.bottomF, w, h),
                 onRatioMeasured = ::logShapeRatio,
             )
+            val shape = when {
+                detected != null -> detected
+                tb.bgUniform -> BubbleShapeDetector.edgeAwareShape(
+                    source = pixelSource,
+                    width = w,
+                    height = h,
+                    leftF = tb.leftF,
+                    topF = tb.topF,
+                    rightF = tb.rightF,
+                    bottomF = tb.bottomF,
+                    bgColorArgb = tb.bgColorArgb,
+                )?.let { edgeShape ->
+                    clampShapeToOwnLobe(
+                        shape = edgeShape,
+                        own = RawTextBlock(
+                            text = tb.originalText,
+                            leftF = tb.leftF,
+                            topF = tb.topF,
+                            rightF = tb.rightF,
+                            bottomF = tb.bottomF,
+                        ),
+                        others = blocks.filter { it !== tb }.map {
+                            RawTextBlock(
+                                text = it.originalText,
+                                leftF = it.leftF,
+                                topF = it.topF,
+                                rightF = it.rightF,
+                                bottomF = it.bottomF,
+                            )
+                        },
+                    )
+                }
+                else -> null
+            }
             tb.copy(shape = shape)
         }
     }

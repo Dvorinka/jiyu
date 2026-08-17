@@ -244,6 +244,97 @@ object BubbleShapeDetector {
         return sortedRows[lo]
     }
 
+    /**
+     * Záchranný tvar pro bubliny, u kterých selhal flood-fill ([detectShape]) - typicky kvůli
+     * agresivnímu [MAX_SHAPE_TO_TEXT_AREA_RATIO] nebo uniklému výplňovému prahu.
+     *
+     * Místo toho, aby se fallbackem vrátil obyčejný obdélník 3× větší než text, vyšle ze
+     * čtyř stran OCR boxu paprsky do vnějšku a zastaví je na první barevné změně
+     * (obrys bubliny / pozadí stránky). Výsledek je konzervativní obdélník, který respektuje
+     * viditelnou hranici bubliny a nepřetéká do okolní kresby.
+     *
+     * Používá se pouze pro [bgUniform] bubliny - u textu přímo v kresbě by nebylo pro paprsky
+     * jasné, kde končí bublina a začíná pozadí.
+     */
+    fun edgeAwareShape(
+        source: PixelSource,
+        width: Int,
+        height: Int,
+        leftF: Float,
+        topF: Float,
+        rightF: Float,
+        bottomF: Float,
+        bgColorArgb: Int,
+        colorDistanceThreshold: Int = 40,
+        marginPx: Int = 4,
+    ): List<BubbleShapePoint>? {
+        if (width <= 0 || height <= 0) return null
+
+        val left = (leftF * width).toInt()
+        val top = (topF * height).toInt()
+        val right = (rightF * width).toInt()
+        val bottom = (bottomF * height).toInt()
+        if (left >= right || top >= bottom) return null
+
+        fun inside(x: Int, y: Int): Boolean {
+            if (x !in 0 until width || y !in 0 until height) return false
+            return colorDistance(source.colorAt(x, y), bgColorArgb) < colorDistanceThreshold
+        }
+
+        val ys = (top.coerceIn(0, height - 1)..bottom.coerceIn(0, height - 1)).toList()
+        val xs = (left.coerceIn(0, width - 1)..right.coerceIn(0, width - 1)).toList()
+        if (ys.isEmpty() || xs.isEmpty()) return null
+
+        var boundLeft = Int.MAX_VALUE
+        var boundRight = Int.MIN_VALUE
+        for (y in ys) {
+            val startX = (left - marginPx).coerceIn(0, width - 1)
+            if (!inside(startX, y)) continue
+            var x = startX
+            while (x > 0 && inside(x - 1, y)) x--
+            if (x < boundLeft) boundLeft = x
+
+            val endX = (right + marginPx).coerceIn(0, width - 1)
+            if (!inside(endX, y)) continue
+            x = endX
+            while (x < width - 1 && inside(x + 1, y)) x++
+            if (x > boundRight) boundRight = x
+        }
+
+        var boundTop = Int.MAX_VALUE
+        var boundBottom = Int.MIN_VALUE
+        for (x in xs) {
+            val startY = (top - marginPx).coerceIn(0, height - 1)
+            if (!inside(x, startY)) continue
+            var y = startY
+            while (y > 0 && inside(x, y - 1)) y--
+            if (y < boundTop) boundTop = y
+
+            val endY = (bottom + marginPx).coerceIn(0, height - 1)
+            if (!inside(x, endY)) continue
+            y = endY
+            while (y < height - 1 && inside(x, y + 1)) y++
+            if (y > boundBottom) boundBottom = y
+        }
+
+        if (boundLeft == Int.MAX_VALUE || boundRight == Int.MIN_VALUE ||
+            boundTop == Int.MAX_VALUE || boundBottom == Int.MIN_VALUE
+        ) {
+            return null
+        }
+        if (boundRight <= boundLeft || boundBottom <= boundTop) return null
+
+        return (0 until SAMPLE_COUNT).map { i ->
+            val frac = i / (SAMPLE_COUNT - 1).toFloat()
+            val y = boundTop + frac * (boundBottom - boundTop)
+            BubbleShapePoint(
+                yF = y / height,
+                leftF = boundLeft / width.toFloat(),
+                rightF = boundRight / width.toFloat(),
+            )
+        }
+    }
+
     private fun colorDistance(a: Int, b: Int): Double {
         val dr = ((a shr 16) and 0xFF) - ((b shr 16) and 0xFF)
         val dg = ((a shr 8) and 0xFF) - ((b shr 8) and 0xFF)
