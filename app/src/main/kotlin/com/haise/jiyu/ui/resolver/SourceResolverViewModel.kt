@@ -35,6 +35,12 @@ class SourceResolverViewModel @Inject constructor(
 
     private var requestedChapterNumber: Float? = null
 
+    // Jmeno/jmena prekladatelske skupiny prave te kapitoly, kterou uzivatel otevrel v seznamu
+    // (napr. "Asura" u radku "Ch.5 Asura") - normalizovano (lowercase, jen alfanumericke znaky)
+    // pro fuzzy porovnani se jmeny nasich zdroju (viz matchesPreferredGroup). ComicK umi u jedne
+    // kapitoly vracet i vic skupin najednou, oddelene carkou (ChapterEntity.scanlationGroup).
+    private var preferredGroupTokens: List<String> = emptyList()
+
     private val _loading = MutableStateFlow(true)
     val loading: StateFlow<Boolean> = _loading.asStateFlow()
 
@@ -75,6 +81,9 @@ class SourceResolverViewModel @Inject constructor(
                 if (manga == null) { _loading.value = false; return@launch }
                 _comicKTitle.value = manga.title
                 requestedChapterNumber = chapter.chapterNumber
+                preferredGroupTokens = (chapter.scanlationGroup ?: "").split(",")
+                    .map { normalizeGroupToken(it) }
+                    .filter { it.length >= 3 }
                 // ComicK eviduje jednu kapitolu vícekrát, jednou za každou skupinu, co ji
                 // přeložila - .size by tak počítal "3× Ch.890" jako 3, ne 1. floor() navíc
                 // sjednocuje granularitu s ComicKChapterResolver.matchedChapterCount (některé
@@ -92,33 +101,37 @@ class SourceResolverViewModel @Inject constructor(
                 )
                     .onCompletion {
                         _searchingMore.value = false
-                        // Trideni (oblibene prvni, pak podle poctu kapitol) az na konci hledani,
-                        // ne po kazdem prubeznem vysledku - uzivatelsky pozadavek: seznam by se
-                        // jinak mohl prehazet pod prstem, kdyz uz si nekdo vybira, zatimco jeste
-                        // hleda dal na pozadi.
-                        val sorted = _candidates.value
-                            .sortedWith(compareByDescending<ResolvedCandidate> { it.isFavorite }.thenByDescending { it.matchedChapterCount })
-                        _candidates.value = sorted
-                        // Uzivatelsky pozadavek: kdyz POZADOVANOU kapitolu nema ani jeden nalezeny
-                        // zdroj (typicky nejnovejsi/predbezne cislo, co ComicK uz eviduje, ale
-                        // zadny scan tym jeste nepreloz-il), nenutit uzivatele rucne prochazet
-                        // seznam samych "Tuhle kapitolu nema" - rovnou otevrit nejvhodnejsi zdroj
-                        // a v nem nejblizsi dostupne cislo (viz selectCandidate).
+                        // Trideni az na konci hledani, ne po kazdem prubeznem vysledku - uzivatelsky
+                        // pozadavek: seznam by se jinak mohl prehazet pod prstem, kdyz uz si nekdo
+                        // vybira, zatimco jeste hleda dal na pozadi.
                         //
-                        // "Nejvhodnejsi" NENI proste zdroj s nejvic kapitolami celkem (sorted.first())
-                        // - to by mohlo sahnout po zdroji, co uz davno skoncil daleko pred cilem
-                        // (preklad ukoncen), nebo naopak zacal az nekde pozdeji (chybi prvnich
-                        // N kapitol) - "nejvic kapitol" nerika nic o tom, KDE presne jsou. Misto
-                        // toho se vybira zdroj s nejmensi vzdalenosti nejblizsi kapitoly od cile
-                        // (nearestChapterDistance), oblibene porad jako prvni tiebreaker.
-                        if (sorted.isNotEmpty() && sorted.none { it.hasRequestedChapter }) {
-                            val bestCandidate = sorted.sortedWith(
-                                compareByDescending<ResolvedCandidate> { it.isFavorite }
-                                    .thenBy { it.nearestChapterDistance ?: Float.MAX_VALUE }
-                                    .thenByDescending { it.matchedChapterCount }
-                            ).first()
-                            selectCandidate(bestCandidate)
-                        }
+                        // Priorita (vsechny urovne sestupne dulezite):
+                        // 1. oblibeny zdroj
+                        // 2. zdroj STEJNE prekladatelske skupiny, jako mela otevrena kapitola
+                        //    (matchesPreferredGroup) - uzivatelsky pozadavek: kdyz napr. "Asura"
+                        //    prekladala kapitolu, kterou chce cist, a appka Asuru mezi zdroji ma,
+                        //    dat ji prednost pred jinym zdrojem, i kdyz ma o par kapitol vic
+                        // 3. zdroj, ktery ma presne POZADOVANOU kapitolu
+                        // 4. zdroj s nejuplnejsim pokrytim (nejvic kapitol celkem) - NENI to proste
+                        //    "nejvic kapitol" samo o sobe (to by mohlo sahnout po zdroji, co uz davno
+                        //    skoncil daleko pred cilem, nebo zacal az pozdeji), ale az po bodech 1-3
+                        //    uz to jen odlisuje kompletni zdroj od neuplneho
+                        // 5. nejmensi vzdalenost nejblizsi dostupne kapitoly od cile (kdyz ani jeden
+                        //    kandidat pozadovanou kapitolu nema)
+                        val sorted = _candidates.value.sortedWith(
+                            compareByDescending<ResolvedCandidate> { it.isFavorite }
+                                .thenByDescending { matchesPreferredGroup(it) }
+                                .thenByDescending { it.hasRequestedChapter }
+                                .thenByDescending { it.matchedChapterCount }
+                                .thenBy { it.nearestChapterDistance ?: Float.MAX_VALUE }
+                        )
+                        _candidates.value = sorted
+                        // Uzivatelsky pozadavek: appka ma vzdycky sama vybrat a rovnou otevrit
+                        // nejvhodnejsi zdroj podle poradi vyse - rucni seznam (SourceResolverScreen)
+                        // se tak realne ukaze jen na kratky okamzik pred prekrytim "resolving"
+                        // overlayem, pripadne vubec, kdyz zadny kandidat nebyl nalezen (viz
+                        // candidates.isEmpty() stav v SourceResolverScreen).
+                        sorted.firstOrNull()?.let { selectCandidate(it) }
                     }
                     .collect { candidate ->
                         _candidates.value = _candidates.value + candidate
@@ -133,6 +146,21 @@ class SourceResolverViewModel @Inject constructor(
                 _searchingMore.value = false
             }
         }
+    }
+
+    /** lowercase + jen alfanumericke znaky, aby "Asura Scans" a "Asura" vysly stejne. */
+    private fun normalizeGroupToken(s: String): String = s.lowercase().filter { it.isLetterOrDigit() }
+
+    /**
+     * Fuzzy shoda: normalizovane jmeno zdroje obsahuje normalizovany token skupiny nebo naopak
+     * (delsi retezec obvykle obsahuje kratsi - "asurascans" obsahuje "asura", ne naopak). Kratke
+     * tokeny (< 3 znaky) uz preferredGroupTokens vyfiltrovalo pri nastaveni, aby se predeslo
+     * falesnym shodam u krakich jmen skupin.
+     */
+    private fun matchesPreferredGroup(candidate: ResolvedCandidate): Boolean {
+        if (preferredGroupTokens.isEmpty()) return false
+        val sourceName = normalizeGroupToken(candidate.source.name)
+        return preferredGroupTokens.any { token -> sourceName.contains(token) || token.contains(sourceName) }
     }
 
     fun selectCandidate(candidate: ResolvedCandidate) {

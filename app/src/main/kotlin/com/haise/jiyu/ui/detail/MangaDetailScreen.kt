@@ -527,8 +527,24 @@ fun MangaDetailScreen(
                                 manga?.followCount?.let { DetailInfoRow(stringResource(R.string.detail_info_followers), formatCount(it)) }
                             }
                             Spacer(modifier = Modifier.weight(1f))
-                            val readCount = chapters.count { it.read }
-                            val totalCount = chapters.size
+                            // ComicK API vraci jednu kapitolu vicekrat - jednou za kazdou prekladatelskou
+                            // skupinu, co ji prelozila (proto seznam kapitol nize ukazuje "Ch.5 Asura",
+                            // "Ch.5 QUANTUM" jako samostatne radky). chapters.size by tak u ComicK titulu
+                            // pocital kazdy tenhle duplicitni radek zvlast (napr. 434 misto realnych 156
+                            // unikatnich kapitol) - stejny floor()+distinct() vzorec jako v
+                            // ComicKChapterResolver/SourceResolverViewModel.totalComicKChapters.
+                            val isComick = manga?.sourceId == "comick"
+                            val totalCount = if (isComick) {
+                                chapters.map { kotlin.math.floor(it.chapterNumber).toInt() }.distinct().size
+                            } else {
+                                chapters.size
+                            }
+                            val readCount = if (isComick) {
+                                chapters.filter { it.read }
+                                    .map { kotlin.math.floor(it.chapterNumber).toInt() }.distinct().size
+                            } else {
+                                chapters.count { it.read }
+                            }
                             Text(text = pluralStringResource(R.plurals.detail_chapter_count, totalCount, totalCount), color = TextSecondary, fontSize = 11.sp)
                             if (totalCount > 0) {
                                 val progress = readCount.toFloat() / totalCount

@@ -100,6 +100,7 @@ import com.haise.jiyu.source.omegascans.OmegaScansSource
 import com.haise.jiyu.source.eahentai.EAHentaiSource
 import com.haise.jiyu.source.simplyhentai.SimplyHentaiSource
 import com.haise.jiyu.source.oppaistream.OppaiStreamSource
+import com.haise.jiyu.source.thunderscans.ThunderscansSource
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -218,6 +219,7 @@ class SourceManager @Inject constructor(
     eaHentaiSource: EAHentaiSource,
     simplyHentaiSource: SimplyHentaiSource,
     oppaiStreamSource: OppaiStreamSource,
+    thunderscansSource: ThunderscansSource,
     private val customSourceDao: CustomSourceDao,
     private val client: OkHttpClient,
     private val settings: com.haise.jiyu.settings.SettingsRepository,
@@ -646,6 +648,13 @@ class SourceManager @Inject constructor(
         // reklamní/podvodný redirect řetězec ("302 → survey-smiles.com",
         // Cowboy server, žádný skutečný obsah) - stejná kategorie jako dřívější
         // zparkované/hijacknuté domény (HenTalk apod.), ne technická překážka.
+
+        // Thunderscans - POZOR: hlavní doména thunderscans.com je k datu přidání (2026-08-17)
+        // HIJACKNUTÁ (stejný vzor jako XToonhub výše - Cowboy server, JS fingerprinting
+        // redirect na cizí doménu misto obsahu, overeno zive PowerShell Invoke-WebRequest).
+        // Skutečný/anglický mirror skupiny je en-thunderscans.com (WordPress "mangareader"
+        // téma, viz ThunderscansSource) - tu appka používá.
+        thunderscansSource,
     )
 
     init {
