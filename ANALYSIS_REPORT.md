@@ -63,7 +63,11 @@ When `shape == null` and `bgUniform == true`, cast rays from the OCR box outward
 
 ## 6. Implemented long-term fix
 
-The ray-cast fallback is implemented in [BubbleShapeDetector.edgeAwareShape] and is invoked from `OcrEngine` whenever `detectShape` returns `null` and the background is uniform (`bgUniform == true`). It casts rays from the OCR box outward, stops at the first color discontinuity (the bubble outline / page art), and returns a rectangular `BubbleShapePoint` list. `TranslationLayout` then treats it as a real shape, so the overlay is clipped to the bubble instead of being a 3× heuristic box.
+The fallback is implemented in [BubbleShapeDetector.edgeAwareShape] and is invoked from `OcrEngine` whenever `detectShape` returns `null` and the background is uniform (`bgUniform == true`).
+
+It first runs a fast ray-cast to get a rough rectangle, then tries a bounded flood-fill with `maxAreaFraction` set to 4× that rough area (and `textAreaPx = 0` so the strict ratio check is skipped). If the bubble is closed, the flood-fill returns a full per-row `BubbleShapePoint` contour. If it is broken and leaks, the function falls back to the conservative rectangle.
+
+`TranslationLayout` then treats it as a real shape, so the overlay is clipped to the bubble instead of being a 3× heuristic box.
 
 `EdgeAwareShapeTest` and `LayoutHeuristicTest` cover the new code. The full `:app:testDebugUnitTest` suite passes.
 

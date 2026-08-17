@@ -324,6 +324,26 @@ object BubbleShapeDetector {
         }
         if (boundRight <= boundLeft || boundBottom <= boundTop) return null
 
+        val roughArea = (boundRight - boundLeft + 1).toLong() * (boundBottom - boundTop + 1)
+        val totalPixels = width.toLong() * height.toLong()
+        val maxAreaFraction = (4 * roughArea).toFloat() / totalPixels
+
+        // Zkusíme ještě jednou flood-fill s omezenou plochou odhadnutou z rychlého
+        // paprskového průzkumu. Když bublina není uzavřená a unikne, vrátí se na
+        // konzervativní obdélník. Jinak vrátíme plný per-row kontur.
+        val contour = detectShape(
+            source = source,
+            width = width,
+            height = height,
+            seeds = ringSeeds(leftF, topF, rightF, bottomF, width, height, marginPx),
+            bgColorArgb = bgColorArgb,
+            colorDistanceThreshold = colorDistanceThreshold,
+            maxAreaFraction = maxAreaFraction.coerceIn(0.001f, 0.25f),
+            textAreaPx = 0,
+            onRatioMeasured = { _, _ -> },
+        )
+        if (contour != null) return contour
+
         return (0 until SAMPLE_COUNT).map { i ->
             val frac = i / (SAMPLE_COUNT - 1).toFloat()
             val y = boundTop + frac * (boundBottom - boundTop)
