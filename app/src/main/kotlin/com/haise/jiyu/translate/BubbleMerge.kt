@@ -17,6 +17,16 @@ package com.haise.jiyu.translate
  * Řádky stejné bubliny mívají mezeru mnohem menší než výška písma; mezi bublinami bývá mezera
  * srovnatelná s výškou písma nebo větší. Čistě geometrický odhad - žádná záruka, proto
  * [hasWallBetween] jako druhá, vizuální pojistka v [mergeNearbyLines].
+ *
+ * Svislý práh je záměrně shovívavý (2,6x prům. výšky, ne jen o málo přes 1x) - komiksový
+ * lettering běžně sází PRVNÍ SLOVO repliky větším/tučným písmem kvůli důrazu ("WHY DON'T you
+ * ask me anything?"), a zbytek věty normální velikostí o kus níž ve STEJNÉ bublině. Naměřeno
+ * na nahlášené stránce (Vagabond kap. 2, str. 10): mezera mezi "WH" (0,54-0,548) a zbytkem věty
+ * (0,571-0,60) byla 2,4x průměr obou výšek - původní práh (0,9x) ji odmítl, "WH" osamocené
+ * navíc spustilo SFX heuristiku ([BubbleClassifier.detectSfx] - krátký text bez mezery na
+ * nerovném pozadí), takže bublina vyšla napůl anglicky, napůl česky. Bezpečnost proti sloučení
+ * doopravdy ROZDÍLNÝCH bublin drží [hasWallBetween], ne tenhle geometrický odhad - viz jeho
+ * doc komentář.
  */
 internal fun shouldMerge(a: RawTextBlock, b: RawTextBlock): Boolean {
     // Svisle sázená japonština je jiný svět: ML Kit vrací celý SLOUPEC jako jeden "řádek",
@@ -34,8 +44,12 @@ internal fun shouldMerge(a: RawTextBlock, b: RawTextBlock): Boolean {
     val horizontalOverlap = minOf(a.rightF, b.rightF) - maxOf(a.leftF, b.leftF)
     val horizontalGap = maxOf(0f, maxOf(a.leftF, b.leftF) - minOf(a.rightF, b.rightF))
 
-    return verticalGap < avgHeight * 0.9f && (horizontalOverlap > 0f || horizontalGap < avgHeight * 1.8f)
+    return verticalGap < avgHeight * VERTICAL_GAP_TOLERANCE &&
+        (horizontalOverlap > 0f || horizontalGap < avgHeight * 1.8f)
 }
+
+/** Viz doc komentář [shouldMerge] - kryje i mezeru za tučným/zvětšeným zdůrazněným slovem. */
+private const val VERTICAL_GAP_TOLERANCE = 2.6f
 
 /**
  * Totéž co [shouldMerge], ale s prohozenými osami: u sloupce hraje roli měřítka jeho ŠÍŘKA,
