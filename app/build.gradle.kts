@@ -38,8 +38,8 @@ android {
         // ktery na nizsich verzich neexistuje.
         minSdk = 33
         targetSdk = 36
-        versionCode = 85
-        versionName = "1.2.28"
+        versionCode = 86
+        versionName = "1.2.29"
         buildConfigField("String", "SUPABASE_URL", "\"${localProps["SUPABASE_URL"] ?: "https://placeholder.supabase.co"}\"")
         buildConfigField("String", "SUPABASE_ANON_KEY", "\"${localProps["SUPABASE_ANON_KEY"] ?: "placeholder-anon-key"}\"")
         buildConfigField("String", "GOOGLE_CLIENT_ID", "\"${localProps["GOOGLE_CLIENT_ID"] ?: "placeholder.apps.googleusercontent.com"}\"")
@@ -54,6 +54,28 @@ android {
 
     }
 
+    // Vlastni release klic (od v1.2.29) - do tohoto data se release podepisoval defaultnim
+    // DEBUG klicem (stejny na kazde instalaci Android Studia na svete), protoze prechod na
+    // vlastni klic si vynuti jednorazovou rucni odinstalaci/instalaci appky. Ta cena uz byla
+    // zaplacena (viz CHANGELOG v1.2.29); dal uz kazdy update nese realnou zaruku podpisu.
+    // Klic (release.keystore.jks) a jeho heslo NEJSOU v gitu (viz .gitignore/local.properties*),
+    // zalohovane mimo repo - jejich ztrata by znamenala uplne stejny problem znovu.
+    val releaseKeystorePath = localProps["RELEASE_KEYSTORE_PATH"] as String?
+    val releaseKeystoreFile = releaseKeystorePath?.let { rootProject.file(it) }?.takeIf { it.exists() }
+
+    signingConfigs {
+        if (releaseKeystoreFile != null) {
+            create("release") {
+                storeFile = releaseKeystoreFile
+                storePassword = localProps["RELEASE_KEYSTORE_PASSWORD"] as String
+                keyAlias = localProps["RELEASE_KEY_ALIAS"] as String
+                // PKCS12 keystory (vychozi format noveho keytool) nema oddelene store/key
+                // heslo - pri generovani klice keytool druhou hodnotu tise ignoruje.
+                keyPassword = localProps["RELEASE_KEYSTORE_PASSWORD"] as String
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = true
@@ -62,13 +84,11 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
-            // Appka se nedistribuuje přes Play Store, jen jako APK z GitHub Releases, a
-            // dosavadní instalace na telefonu jsou podepsané DEBUG klíčem (dřív se kvůli
-            // rozbitému R8 releasovalo debug APK - viz settings.gradle.kts). Android odmítne
-            // aktualizaci podepsanou jiným klíčem, takže přechod na vlastní release keystore
-            // by si vynutil odinstalaci a smazal knihovnu, historii i cache překladů.
-            // Podepisujeme proto stejným debug klíčem, aby aktualizace proběhla v místě.
-            signingConfig = signingConfigs.getByName("debug")
+            // Bez release.keystore.jks (cerstvy git clone bez local.properties) spadne na
+            // DEBUG klic, aby ./gradlew assembleRelease porad slo spustit - jen vysledny APK
+            // pak neni ten, ktery appka skutecne distribuuje (viz GitHub Actions, ktery
+            // assembleRelease vubec nespousti).
+            signingConfig = if (releaseKeystoreFile != null) signingConfigs.getByName("release") else signingConfigs.getByName("debug")
         }
         debug {
             isMinifyEnabled = false

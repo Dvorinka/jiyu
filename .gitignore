@@ -16,6 +16,9 @@ local.properties*
 # Firebase — obsahuje ID projektu, není potřeba (a nechceme) verzovat
 app/google-services.json
 
+# Podepisovací klíč release APK - stejné pravidlo jako u local.properties, nesmí do repa
+*.keystore.jks
+
 # Supabase CLI - lokální metadata linknutého projektu, ne zdrojový kód
 supabase/.temp
 

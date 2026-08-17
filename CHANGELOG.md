@@ -4,6 +4,26 @@
 > vidět v historii commitů a v popisech jednotlivých vydání na GitHubu; zpětně to sem
 > nedopisuju, abych si nevymýšlel.
 
+## v1.2.29
+
+### Bezpečnost: vlastní podpisový klíč a šifrovaná session účtu
+Dva nálezy z bezpečnostního code review (kontrola před tím, než se na projekt podívá senior
+dev):
+
+- **Release APK se dosud podepisoval defaultním DEBUG klíčem** - stejným na každé instalaci
+  Android Studia na světě, takže kontrola podpisu při aktualizaci nic reálně nechránila.
+  Appka teď má vlastní privátní release keystore. Cena za přechod: **tuhle aktualizaci je
+  nutné nainstalovat ručně přes odinstalaci a novou instalaci** (Android odmítne update
+  podepsaný jiným klíčem, než má nainstalovaná appka) - zálohuj si knihovnu přes Nastavení →
+  Zálohovat a obnovit před odinstalací. Od téhle verze dál už každý další update půjde
+  normálně přes appku samotnou.
+- **Přihlašovací session k účtu Jiyu (Google/e-mail) se ukládala nešifrovaně** - appka má pro
+  tracker tokeny (MAL/Kitsu/MangaUpdates) vlastní AES-256 šifrované úložiště přes Android
+  Keystore, ale Supabase Auth session tuhle cestu nepoužívala a spadala na výchozí
+  nešifrované úložiště knihovny. Opraveno - session teď jde přes stejné šifrované úložiště.
+  Důsledek: po aktualizaci se account odhlásí, je potřeba se znovu přihlásit (knihovna v Room
+  databázi tím není nijak dotčená).
+
 ## v1.2.28
 
 ### Onboarding: nový krok pro výběr stylu procházení

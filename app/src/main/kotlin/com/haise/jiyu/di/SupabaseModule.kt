@@ -1,6 +1,7 @@
 package com.haise.jiyu.di
 
 import com.haise.jiyu.BuildConfig
+import com.haise.jiyu.auth.SecureSessionManager
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -17,11 +18,15 @@ object SupabaseModule {
 
     @Provides
     @Singleton
-    fun provideSupabaseClient(): SupabaseClient = createSupabaseClient(
+    fun provideSupabaseClient(secureSessionManager: SecureSessionManager): SupabaseClient = createSupabaseClient(
         supabaseUrl = BuildConfig.SUPABASE_URL,
         supabaseKey = BuildConfig.SUPABASE_ANON_KEY,
     ) {
-        install(Auth)
+        install(Auth) {
+            // Bez tohohle knihovna defaultně uklada session (access/refresh token k uctu
+            // Jiyu) do obycejnych nesifrovanych SharedPreferences - viz SecureSessionManager.
+            sessionManager = secureSessionManager
+        }
         install(Postgrest)
     }
 }
