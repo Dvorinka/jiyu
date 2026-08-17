@@ -50,7 +50,7 @@ object BubbleShapeDetector {
      * s rezervou na obě strany. Když se překročí, vrátí se null a použije se heuristický
      * obdélník - horší odhad tvaru, ale nikdy ne placka přes kresbu.
      */
-    private const val MAX_SHAPE_TO_TEXT_AREA_RATIO = 30L
+    private const val MAX_SHAPE_TO_TEXT_AREA_RATIO = 45L
 
     /**
      * BFS flood-fill (fronta, ne rekurze - kvůli velkým bublinám a JVM stack limitu).

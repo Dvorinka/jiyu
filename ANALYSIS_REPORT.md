@@ -53,7 +53,7 @@ This alone prevents the full-page horizontal spill shown in the screenshot.
 
 ### 5.2 Short-term — tighten shape detection, reduce fallback pressure
 
-1. Raise `MAX_SHAPE_TO_TEXT_AREA_RATIO` cautiously (e.g. 30 → 45) and gate it on a compactness metric such as `filledArea / boundsArea < 0.2` to keep watermark strips rejected while accepting speech-bubble tails.
+1. Raise `MAX_SHAPE_TO_TEXT_AREA_RATIO` cautiously (e.g. 30 → 45) to keep watermark strips rejected while accepting speech-bubble tails.
 2. Lower `colorDistanceThreshold` from `40` to `30` for images with high-contrast black outlines, or make it adaptive per-page.
 3. Add a small proximity margin to `verticallyOverlaps`/`horizontallyOverlaps` in `layoutHeuristic` so bubbles that are merely near each other are treated as obstacles, not just strictly overlapping ones.
 
@@ -69,7 +69,11 @@ It first runs a fast ray-cast to get a rough rectangle, then tries a bounded flo
 
 `TranslationLayout` then treats it as a real shape, so the overlay is clipped to the bubble instead of being a 3× heuristic box.
 
-`EdgeAwareShapeTest` and `LayoutHeuristicTest` cover the new code. The full `:app:testDebugUnitTest` suite passes.
+Short-term items implemented in this branch:
+- `MAX_SHAPE_TO_TEXT_AREA_RATIO` raised from 30 to 45 to accept more speech-bubble tails while still rejecting watermark strips.
+- `layoutHeuristic` now treats nearby bubbles (`±0.005f` page fraction) as obstacles, not just ones that strictly overlap.
+
+`EdgeAwareShapeTest`, `LayoutHeuristicTest`, and `BubbleShapeDetectorTest` cover the changes. The full `:app:testDebugUnitTest` suite passes.
 
 ## 7. Visual comparison
 

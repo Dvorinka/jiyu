@@ -73,11 +73,14 @@ private fun PositionedTranslationBlock.toObstacleRect() = NeighborRect(leftF, mi
  *   heuristický box klidně expandoval skrz sousední tvarovou bublinu i kresbu za ní - viz
  *   uživatelská zpětná vazba (bílý pruh z "NO TAK." přes sousední bublinu).
  */
+private const val NEARBY_PROXIMITY_F = 0.005f
+
 private fun layoutHeuristic(
     blocks: List<TranslatedBlock>,
     shapeObstacles: List<PositionedTranslationBlock> = emptyList(),
 ): List<PositionedTranslationBlock> {
-    fun verticallyOverlaps(a: NeighborRect, b: NeighborRect) = a.topF < b.bottomF && a.bottomF > b.topF
+    fun verticallyOverlaps(a: NeighborRect, b: NeighborRect) =
+        a.topF < b.bottomF + NEARBY_PROXIMITY_F && a.bottomF > b.topF - NEARBY_PROXIMITY_F
 
     val obstacleRects = shapeObstacles.map { it.toObstacleRect() }
 
@@ -119,7 +122,8 @@ private fun layoutHeuristic(
         val finalLeft = (center - halfWidth).coerceIn(0f, b.leftF)
         val finalRight = (center + halfWidth).coerceIn(b.rightF, 1f)
 
-        fun horizontallyOverlaps(o: NeighborRect) = o.leftF < finalRight && o.rightF > finalLeft
+        fun horizontallyOverlaps(o: NeighborRect) =
+            o.leftF < finalRight + NEARBY_PROXIMITY_F && o.rightF > finalLeft - NEARBY_PROXIMITY_F
         val belowNeighbor = peerRects.filter { horizontallyOverlaps(it) && it.topF >= b.bottomF - 0.001f }
             .minByOrNull { it.topF }
         // Strop odvozený z výšky JEDNOHO řádku (ne z celé výšky bloku) - u bloku sloučeného
