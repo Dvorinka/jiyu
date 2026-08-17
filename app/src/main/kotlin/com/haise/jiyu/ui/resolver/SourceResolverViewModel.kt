@@ -13,6 +13,7 @@ import com.haise.jiyu.util.report
 import com.haise.jiyu.util.toFriendlyMessage
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -35,11 +36,22 @@ class SourceResolverViewModel @Inject constructor(
 
     private var requestedChapterNumber: Float? = null
 
+    // ID ComicK titulu (ne realneho zdroje, na ktery se to nakonec vyresi) - potreba pro
+    // synchronizaci "precteno"/Pokracovat ve cteni zpet na ComicK entitu, viz selectCandidate.
+    private var comicKMangaId: String? = null
+
     // Jmeno/jmena prekladatelske skupiny prave te kapitoly, kterou uzivatel otevrel v seznamu
     // (napr. "Asura" u radku "Ch.5 Asura") - normalizovano (lowercase, jen alfanumericke znaky)
     // pro fuzzy porovnani se jmeny nasich zdroju (viz matchesPreferredGroup). ComicK umi u jedne
     // kapitoly vracet i vic skupin najednou, oddelene carkou (ChapterEntity.scanlationGroup).
     private var preferredGroupTokens: List<String> = emptyList()
+
+    // Jakmile prijde dost dobry kandidat (viz collect nize), appka uz nemusi cekat na
+    // zbytek desitek zdroju - zrusi zbyvajici hledani (searchJob) a rovnou otevre. Flag
+    // hlida, aby se stejny vysledek nevybral 2x (jednou tady, jednou v onCompletion,
+    // ktery po zruseni jobu taky jeste dobehne - viz onCompletion nize).
+    private var searchJob: Job? = null
+    private var hasAutoResolved = false
 
     private val _loading = MutableStateFlow(true)
     val loading: StateFlow<Boolean> = _loading.asStateFlow()
@@ -73,24 +85,44 @@ class SourceResolverViewModel @Inject constructor(
     fun clearError() { _error.value = null }
 
     init {
-        viewModelScope.launch {
+        searchJob = viewModelScope.launch {
             try {
                 val chapter = repository.getChapter(chapterId)
                 if (chapter == null) { _loading.value = false; return@launch }
                 val manga = repository.getManga(chapter.mangaId)
                 if (manga == null) { _loading.value = false; return@launch }
                 _comicKTitle.value = manga.title
+                comicKMangaId = manga.id
                 requestedChapterNumber = chapter.chapterNumber
-                preferredGroupTokens = (chapter.scanlationGroup ?: "").split(",")
-                    .map { normalizeGroupToken(it) }
-                    .filter { it.length >= 3 }
+
                 // ComicK eviduje jednu kapitolu vícekrát, jednou za každou skupinu, co ji
                 // přeložila - .size by tak počítal "3× Ch.890" jako 3, ne 1. floor() navíc
                 // sjednocuje granularitu s ComicKChapterResolver.matchedChapterCount (některé
                 // zdroje dělí jeden překlad na X, X.1, X.2 - bez floor() by šel poměr přes
                 // 100 %, viz komentář tam).
-                _totalComicKChapters.value = repository.getAllChapters(chapter.mangaId)
+                val allComicKChapters = repository.getAllChapters(chapter.mangaId)
+                _totalComicKChapters.value = allComicKChapters
                     .map { floor(it.chapterNumber).toInt() }.distinct().size
+
+                // Preferovane skupiny: nejen ta, co prelozila prave otevrenou kapitolu, ale i
+                // 1., posledni a predposledni kapitola titulu - uzivatelsky pozadavek. Prvni
+                // kapitola ukazuje, kdo preklad zacal, posledni dve kdo ho aktivne dodava ted -
+                // dohromady spolehlivejsi signal "hlavniho" prekladatele nez jen jedna nahodna
+                // otevrena kapitola (ta muze byt od vedlejsi/jednorazove skupiny).
+                val distinctNumbersDesc = allComicKChapters.map { floor(it.chapterNumber).toInt() }.distinct().sortedDescending()
+                val signalNumbers = setOfNotNull(
+                    distinctNumbersDesc.firstOrNull(),
+                    distinctNumbersDesc.getOrNull(1),
+                    distinctNumbersDesc.lastOrNull(),
+                )
+                val signalGroupNames = allComicKChapters
+                    .filter { floor(it.chapterNumber).toInt() in signalNumbers }
+                    .map { it.scanlationGroup ?: "" }
+                preferredGroupTokens = (signalGroupNames + (chapter.scanlationGroup ?: ""))
+                    .flatMap { it.split(",") }
+                    .map { normalizeGroupToken(it) }
+                    .filter { it.length >= 3 }
+                    .distinct()
                 _searchingMore.value = true
                 resolver.findCandidatesFlow(
                     comicKMangaId = manga.id,
@@ -101,6 +133,10 @@ class SourceResolverViewModel @Inject constructor(
                 )
                     .onCompletion {
                         _searchingMore.value = false
+                        // Uz vybrano drive (viz "early-exit" v collect nize, ktery searchJob
+                        // zrusil) - onCompletion po zruseni jobu porad jeste dobehne (s
+                        // CancellationException jako "cause"), ale znovu vybirat/otevirat netreba.
+                        if (hasAutoResolved) return@onCompletion
                         // Trideni az na konci hledani, ne po kazdem prubeznem vysledku - uzivatelsky
                         // pozadavek: seznam by se jinak mohl prehazet pod prstem, kdyz uz si nekdo
                         // vybira, zatimco jeste hleda dal na pozadi.
@@ -138,6 +174,20 @@ class SourceResolverViewModel @Inject constructor(
                         // Prvni vysledek uz staci na to prestat ukazovat celoobrazovkovy
                         // spinner - dal se hleda na pozadi, viz _searchingMore.
                         _loading.value = false
+
+                        // Early-exit: uzivatelsky pozadavek - kdyz dorazi zdroj, ktery je
+                        // oblibeny NEBO stejne prekladatelske skupiny jako otevirana kapitola
+                        // (Asura, Thunderscans, ...) A rovnou ma pozadovanou kapitolu, appka uz
+                        // nema duvod cekat, az se prohledaji zbyvajici desitky zdroju - tohle je
+                        // uz jasna volba (nejsilnejsi 2 kriteria z razeni v onCompletion), takže
+                        // rovnou otevre a zbytek hledani zrusi (viz searchJob).
+                        if (!hasAutoResolved && candidate.hasRequestedChapter &&
+                            (candidate.isFavorite || matchesPreferredGroup(candidate))
+                        ) {
+                            hasAutoResolved = true
+                            selectCandidate(candidate)
+                            searchJob?.cancel()
+                        }
                     }
             } catch (e: Exception) {
                 e.report("resolver:findCandidates")
@@ -174,6 +224,17 @@ class SourceResolverViewModel @Inject constructor(
                 if (bestMatch == null) {
                     _error.value = appContext.getString(R.string.resolver_chapter_missing_after_select)
                 } else {
+                    // Realny zdroj (ktery appka jen tise pouziva na pozadi) se do knihovny
+                    // NEPRIDAVA (viz MangaRepository.openPreview) - proto se "precteno" musi
+                    // rucne propsat zpet na SKUTECNY ComicK titul (ten uzivatel ma v knihovne),
+                    // jinak by "Pokracovat ve cteni" i procenta na detailu titulu zustaly navzdy
+                    // na 0 % i po precteni desitek kapitol - viz observeContinueReading (vyzaduje
+                    // inLibrary = 1, ktere ComicK entita ma, ale resolvnuty realny zdroj nikdy).
+                    val comicKId = comicKMangaId
+                    if (comicKId != null) {
+                        repository.updateReadProgress(chapterId, read = true, lastPageRead = 0, lastReadAt = System.currentTimeMillis())
+                        repository.updateLastReadChapter(comicKId, chapterId)
+                    }
                     _openedChapterId.value = bestMatch.id
                 }
             } catch (e: Exception) {

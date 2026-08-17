@@ -42,15 +42,17 @@ class CloudflareInterceptor @Inject constructor(
      * cf_clearance vyresene pres WebView se cachuji per-host, jinak by kazdy
      * dalsi zablokovany pozadavek na tu samou domenu (napr. dalsi stranka
      * vypisu) znovu spoustel cely WebView flow (~1-15s). TTL je konzervativni
-     * odhad - Cloudflare Managed Challenge clearance obvykle vydrzi rady
-     * desitek minut, presna doba se ale lisi web od webu a nikde se neda
-     * precist z odpovedi predem. Cache se navic persistuje do DataStore, aby
-     * vyresena vyzva prezila i restart appky (jinak by se po kazdem cold
-     * startu muselo resit znovu, i kdyz clearance jeste realne plati).
+     * odhad - Cloudflare Managed Challenge clearance v praxi obvykle vydrzi
+     * casto i nekolik hodin, presna doba se ale lisi web od webu a nikde se
+     * neda precist z odpovedi predem (2 hodiny je porad konzervativni oproti
+     * realne pozorovane dobe, jen o dost min casta nez puvodnich 25 minut).
+     * Cache se navic persistuje do DataStore, aby vyresena vyzva prezila i
+     * restart appky (jinak by se po kazdem cold startu muselo resit znovu,
+     * i kdyz clearance jeste realne plati).
      */
     private data class CachedClearance(val cookies: String, val expiresAt: Long)
     private val clearanceCache = ConcurrentHashMap<String, CachedClearance>()
-    private val clearanceTtlMs = TimeUnit.MINUTES.toMillis(25)
+    private val clearanceTtlMs = TimeUnit.HOURS.toMillis(2)
 
     /**
      * Kdyz reseni (tiche i interaktivni) pro host selze - typicky trvaly "Sorry,
@@ -65,6 +67,20 @@ class CloudflareInterceptor @Inject constructor(
 
     /** Soubezne pozadavky na stejny host cekaji na JEDNO reseni, ne kazdy spousti vlastni WebView/dialog. */
     private val hostLocks = ConcurrentHashMap<String, Any>()
+
+    /**
+     * Kdyz appka na pozadi souběžně prohledává desitky zdrojů najednou (ComicKChapterResolver -
+     * hledani realneho zdroje pro ComicK titul), interaktivni Cloudflare vyzva (viz
+     * [CloudflareChallengeBridge]) by uzivatele bombardovala dialogy od zdroju, o ktere se
+     * vubec nezajima - jeden po druhem, jak se na synchronizovanem bridge stridaji (uzivatelsky
+     * pozadavek: "skáče to od různých zdrojů"). Kdyz je tenhle flag zapnuty, tichy WebView pokus
+     * (bezinterakcni Managed Challenge) porad probehne, ale interaktivni fallback se preskoci -
+     * zdroj, ktery potrebuje skutecnou CAPTCHU, se proste bere jako nedostupny pro tenhle pokus
+     * (presne jako kdyby spadl na chybu site), misto aby prekazel. Explicitni prime prochazeni
+     * jednoho zdroje (SourceBrowseScreen) tenhle flag nenastavuje - tam interaktivni vyzva davat
+     * smysl porad ma, uzivatel si ho vybral sam.
+     */
+    @Volatile var suppressInteractiveChallenge: Boolean = false
 
     init {
         loadPersistedCache()
@@ -126,10 +142,15 @@ class CloudflareInterceptor @Inject constructor(
             // (typicky skutecna interaktivni Turnstile CAPTCHA nebo trvaly block),
             // zkusime jeste ukazat WebView viditelne uzivateli (CloudflareChallengeBridge).
             val cookies = solveCloudflareSynchronously(request.url.toString(), host)
-                ?: CloudflareChallengeBridge.awaitUserSolve(request.url.toString(), host, timeoutSeconds = 90)
+                ?: if (suppressInteractiveChallenge) null
+                   else CloudflareChallengeBridge.awaitUserSolve(request.url.toString(), host, timeoutSeconds = 90)
 
             if (cookies == null) {
-                failureCache[host] = System.currentTimeMillis()
+                // Kdyz to bylo "jen" potlacene (viz suppressInteractiveChallenge), nejde o
+                // skutecne zjisteny trvaly block - do failureCache se to nedava, aby pozdejsi
+                // PRIME prochazeni tohohle zdroje (mimo hromadne hledani) porad dostalo sanci
+                // na skutecnou interaktivni vyzvu, misto aby ho cooldown preskocil bez ptani.
+                if (!suppressInteractiveChallenge) failureCache[host] = System.currentTimeMillis()
                 return chain.proceed(request)
             }
 
@@ -169,7 +190,8 @@ class CloudflareInterceptor @Inject constructor(
         val latch = CountDownLatch(1)
 
         mainHandler.post {
-            val webView = WebView(context).apply {
+            lateinit var webView: WebView
+            webView = WebView(context).apply {
                 settings.apply {
                     javaScriptEnabled = true
                     domStorageEnabled = true
@@ -179,14 +201,25 @@ class CloudflareInterceptor @Inject constructor(
                 }
                 webViewClient = object : WebViewClient() {
                     override fun onPageFinished(view: WebView, url: String) {
-                        postDelayed({
-                            val cookies = CookieManager.getInstance().getCookie(url)
-                            if (cookies?.contains("cf_clearance") == true) {
-                                result = cookies
-                                latch.countDown()
-                                destroy()
+                        // Misto jednoho pevneho cekani na jeden konkretni cas (drive 3000ms -
+                        // u pomalejsich webu/zarizeni casto prilis brzo, cf_clearance jeste
+                        // nestihla dorazit) appka teď kontroluje cookie opakovane po 500ms az
+                        // do celkoveho limitu (viz fallback nize) - vyresi se hned, jak je
+                        // hotovo, misto zbytecneho cekani NEBO zmeskani pozdejsiho vysledku.
+                        val poll = object : Runnable {
+                            override fun run() {
+                                if (latch.count == 0L) return
+                                val cookies = CookieManager.getInstance().getCookie(url)
+                                if (cookies?.contains("cf_clearance") == true) {
+                                    result = cookies
+                                    latch.countDown()
+                                    webView.destroy()
+                                } else {
+                                    mainHandler.postDelayed(this, 500L)
+                                }
                             }
-                        }, 3000L)
+                        }
+                        mainHandler.postDelayed(poll, 500L)
                     }
 
                     override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
@@ -205,10 +238,10 @@ class CloudflareInterceptor @Inject constructor(
                     latch.countDown()
                     webView.destroy()
                 }
-            }, 12_000L)
+            }, 15_000L)
         }
 
-        latch.await(15, TimeUnit.SECONDS)
+        latch.await(18, TimeUnit.SECONDS)
         return result
     }
 

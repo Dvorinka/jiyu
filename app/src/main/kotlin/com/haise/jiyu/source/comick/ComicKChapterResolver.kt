@@ -6,6 +6,7 @@ import com.haise.jiyu.source.MangaSource
 import com.haise.jiyu.source.SChapter
 import com.haise.jiyu.source.SManga
 import com.haise.jiyu.source.SourceManager
+import com.haise.jiyu.source.interceptor.CloudflareInterceptor
 import com.haise.jiyu.util.normalizeMangaTitle
 import com.haise.jiyu.util.report
 import kotlinx.coroutines.coroutineScope
@@ -49,6 +50,7 @@ class ComicKChapterResolver @Inject constructor(
     private val sourceManager: SourceManager,
     private val settings: SettingsRepository,
     private val comicKSource: ComicKSource,
+    private val cloudflareInterceptor: CloudflareInterceptor,
 ) {
     private data class CachedCandidate(val source: MangaSource, val manga: SManga, val chapters: List<SChapter>)
 
@@ -119,6 +121,25 @@ class ComicKChapterResolver @Inject constructor(
      * ([findCandidatesFlow] přes `channelFlow.send`) musí umět bezpečně přijímat souběžná volání.
      */
     private suspend fun searchAndFetchStreaming(
+        comicKMangaUrl: String,
+        comicKTitle: String,
+        comicKContentType: String,
+        onFound: suspend (CachedCandidate) -> Unit,
+    ) {
+        // Hromadne prohledavani desitek zdroju najednou nema interaktivni Cloudflare vyzvu
+        // (viz CloudflareInterceptor.suppressInteractiveChallenge) prekazet uzivateli dialogem
+        // od zdroje, ktery zrovna nehleda - zdroj, co potrebuje skutecnou CAPTCHU, se proste
+        // preskoci jako nedostupny pro tenhle pokus. Finally i pri zruseni (viz SourceResolverViewModel
+        // early-exit) flag spolehlive vrati zpet, aby normalni prime prochazeni zdroje dal fungovalo.
+        cloudflareInterceptor.suppressInteractiveChallenge = true
+        try {
+            searchAndFetchStreamingInternal(comicKMangaUrl, comicKTitle, comicKContentType, onFound)
+        } finally {
+            cloudflareInterceptor.suppressInteractiveChallenge = false
+        }
+    }
+
+    private suspend fun searchAndFetchStreamingInternal(
         comicKMangaUrl: String,
         comicKTitle: String,
         comicKContentType: String,

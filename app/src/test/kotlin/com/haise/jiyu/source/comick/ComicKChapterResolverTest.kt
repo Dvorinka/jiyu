@@ -7,6 +7,7 @@ import com.haise.jiyu.source.MangaSource
 import com.haise.jiyu.source.SChapter
 import com.haise.jiyu.source.SManga
 import com.haise.jiyu.source.SourceManager
+import com.haise.jiyu.source.interceptor.CloudflareInterceptor
 import io.mockk.coEvery
 import io.mockk.mockk
 import kotlinx.coroutines.flow.toList
@@ -61,7 +62,11 @@ class ComicKChapterResolverTest {
         // zpátky na comicKTitle samotný a titul se bere jako ne-adult, což zachovává
         // chování testů psaných před zavedením alt. názvů/adult filtru.
         coEvery { comicKSource.getTitleInfo(any()) } returns ComicKTitleInfo(emptyList(), null)
-        resolver = ComicKChapterResolver(sourceManager, settings, comicKSource)
+        // relaxed = true - test se zajima jen o vyhledavaci logiku, ne o skutecne potlaceni
+        // Cloudflare vyzev (suppressInteractiveChallenge je jen var property nastavovana kolem
+        // hledani, viz ComicKChapterResolver.searchAndFetchStreaming).
+        val cloudflareInterceptor = mockk<CloudflareInterceptor>(relaxed = true)
+        resolver = ComicKChapterResolver(sourceManager, settings, comicKSource, cloudflareInterceptor)
     }
 
     @Test

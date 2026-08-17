@@ -4,6 +4,33 @@
 > vidět v historii commitů a v popisech jednotlivých vydání na GitHubu; zpětně to sem
 > nedopisuju, abych si nevymýšlel.
 
+## v1.2.32
+
+### ComicK: dolaďování automatického výběru zdroje z v1.2.31
+Pět navazujících oprav poté, co se automatický výběr zdroje (v1.2.31) dostal do každodenního
+používání:
+
+- **"Pokračovat ve čtení" a procenta u ComicK titulů se nikdy nehýbaly** - appka po vyřešení
+  kapitoly na skutečný zdroj otevírala kapitolu "na pozadí" (bez přidání do knihovny), ale
+  "přečteno" se nikdy nepropsalo zpátky na samotný ComicK titul, co uživatel skutečně má
+  v knihovně. Teď se propisuje při každém vyřešení.
+- **Appka čekala na prohledání úplně všech zdrojů**, i když nejlepší kandidát (oblíbený nebo
+  stejná překladatelská skupina, jakou měla otevíraná kapitola) dorazil hned na začátku. Teď
+  jakmile takový kandidát s hledanou kapitolou dorazí, appka rovnou otevře a zbytek hledání
+  zruší.
+- **Rozšířena detekce "preferované" překladatelské skupiny** - appka teď bere v potaz nejen
+  skupinu, co přeložila právě otevíranou kapitolu, ale i skupiny od 1., poslední a předposlední
+  kapitoly titulu - spolehlivější signál "hlavního" překladatele.
+- **Hlavička (hledání, Populární/Nejnovější) na obrazovce jednotlivého zdroje** (MangaDex,
+  MANGA Plus a další) vypadala zmenšená/posunutá doprostřed oproti stavu při načítání -
+  dvojité odsazení od kraje. Opraveno.
+- **Vyskakující Cloudflare ověření přerušovaly čtení/hledání** - hromadné prohledávání desítek
+  zdrojů najednou umělo narazit na víc webů vyžadujících interaktivní lidské ověření a appka
+  je ukazovala jedno po druhém. Appka teď během hromadného hledání interaktivní výzvu
+  přeskočí (zdroj se bere jako dočasně nedostupný, hledání pokračuje jinde) - přímé procházení
+  jednoho vybraného zdroje se nemění. Zároveň doladěn tichý (bezinterakční) způsob řešení -
+  spolehlivější a rychlejší reakce - a vyřešení se teď pamatuje 2 hodiny místo 25 minut.
+
 ## v1.2.31
 
 ### ComicK: automatický výběr zdroje a oprava počtu kapitol
